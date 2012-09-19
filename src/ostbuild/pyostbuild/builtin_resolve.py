@@ -46,6 +46,8 @@ class OstbuildResolve(builtins.Builtin):
                             help="Path to manifest file")
         parser.add_argument('--fetch-patches', action='store_true',
                             help="Git fetch the patches")
+        parser.add_argument('--fetch-base', action='store_true',
+                            help="Git fetch the base system")
         parser.add_argument('--fetch', action='store_true',
                             help="Also perform a git fetch")
         parser.add_argument('--fetch-keep-going', action='store_true',
@@ -76,6 +78,19 @@ class OstbuildResolve(builtins.Builtin):
             if name in unique_component_names:
                 fatal("Duplicate component name '%s'" % (name, ))
             unique_component_names.add(name)
+
+        if args.fetch and len(args.components) == 0:
+            args.fetch_patches = args.fetch_base = True
+
+        base_meta = buildutil.resolve_component_meta(self.snapshot, self.snapshot['base'])
+        self.snapshot['base'] = base_meta
+        (keytype, uri) = vcs.parse_src_key(base_meta['src'])
+        mirrordir = vcs.ensure_vcs_mirror(self.mirrordir, keytype, uri, base_meta['branch'])
+        if args.fetch_base:
+            run_sync(['git', 'fetch'], cwd=mirrordir, log_initiation=False)
+
+        base_revision = buildutil.get_git_version_describe(mirrordir, base_meta['branch'])
+        base_meta['revision'] = base_revision
 
         global_patches_meta = buildutil.resolve_component_meta(self.snapshot, self.snapshot['patches'])
         self.snapshot['patches'] = global_patches_meta

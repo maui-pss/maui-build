@@ -479,6 +479,38 @@ class OstbuildBuild(builtins.Builtin):
         f.close()
         os.rename(temppath, self.args.status_json_path)
 
+    def _initialize_repo(self):
+        """Set up an OSTree repository in $workdir/repo.
+This is used to store the build results of both the Yocto component
+and the manifest input."""
+        fileutil.ensure_dir(self.repo)
+        if not os.path.isdir(os.path.join(self.repo, 'objects')):
+            run_sync(['ostree', '--repo=' + self.repo, 'init', '--archive'])
+
+    def _build_base(self):
+        """Build the Yocto base system."""
+        basemeta = self.snapshot['base']
+        checkoutdir = os.path.join(self.workdir, 'checkouts', basemeta['name'])
+        fileutil.ensure_parent_dir(checkoutdir)
+
+        (keytype, uri) = buildutil.parse_src_key(basemeta['src'])
+        vcs.get_vcs_checkout(self.mirrordir, keytype, uri, checkoutdir,
+                             basemeta['revision'],
+                             overwrite=False)
+
+        builddir = os.path.join(self.workdir, 'build-' + basemeta['name'])
+        image_deploy_dir = os.path.join(builddir, 'tmp-eglibc', 'deploy', 'images')
+        repo_link = os.path.join(image_deploy_dir, 'repo')
+        if not os.path.islink(repo_link):
+            os.symlink(self.repo, repo_link)
+
+        cmd = ['linux-user-chroot', '--unshare-pid', '/',
+               os.path.join(LIBDIR, 'ostbuild', 'ostree-build-yocto'),
+               checkoutdir, builddir]
+        # We specifically want to kill off any environment variables jhbuild
+        # may have set.
+        run_sync(cmd, env=buildutil.BUILD_ENV)
+        
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
         parser.add_argument('--prefix')
@@ -514,6 +546,9 @@ class OstbuildBuild(builtins.Builtin):
         self.force_build_components = set()
 
         self.cached_patchdir_revision = None
+
+        self._initialize_repo()
+        self._build_base()
 
         components = self.snapshot['components']
 

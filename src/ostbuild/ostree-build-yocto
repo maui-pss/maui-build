@@ -1,0 +1,78 @@
+#!/bin/bash
+# Copyright (C) 2012 Colin Walters <walters@verbum.org>
+# Copyright (C) 2012 Adrian Perez <aperez@igalia.com>
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the
+# Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+# Boston, MA 02111-1307, USA.
+
+set -e
+umask 022
+
+die () {
+    echo "$*" 1>&2
+    exit 1
+}
+
+usage () {
+    echo "$0: SRCDIR BUILDDIR"
+}
+
+srcdir=$1
+test -n "${srcdir}" || (usage; exit 1)
+builddir=$2
+test -n "${builddir}" || (usage; exit 1)
+
+src_gitrev=$(cd ${srcdir} && git rev-parse HEAD)
+built_gitrev_path=${builddir}/built-revision
+if test -f ${built_gitrev_path}; then
+    built_gitrev=$(cat ${built_gitrev_path})
+else
+    built_gitrev=
+fi
+
+if test x${src_gitrev} = x${built_gitrev}; then
+    echo "Already built ${src_gitrev}"
+    exit 0
+else
+    if test -n "${built_gitrev}"; then
+	echo "Yocto build ${src_gitrev} differs from previous ${built_gitrev}"
+    fi
+fi
+
+. "${srcdir}/oe-init-build-env" "${builddir}"
+
+if ! grep -q meta-gnomeos ${builddir}/conf/bblayers.conf; then
+    echo "BBLAYERS += \"${srcdir}/meta-gnomeos\"" >> ${builddir}/conf/bblayers.conf
+fi
+
+if ! grep -q "DISTRO.*gnomeosdistro" ${builddir}/conf/local.conf; then
+    numcpus=$(( $(getconf _NPROCESSORS_ONLN) / 2 + 1 ))
+    cat >> ${builddir}/conf/local.conf <<EOF
+PARALLEL_MAKE = "-j ${numcpus}"
+BB_NUMBER_THREADS = "${numcpus}"
+DISTRO = "gnomeosdistro"
+EOF
+fi
+
+if ! test -L ${builddir}/repo; then
+    ln -s tmp-eglibc/deploy/images/repo ${builddir}/repo
+fi
+
+echo "Building ${src_gitrev}"
+bitbake gnomeos-contents-{runtime,devel}
+
+echo ${src_gitrev} > ${built_gitrev_path}.tmp
+mv ${built_gitrev_path}.tmp ${built_gitrev_path}
+exit 0

@@ -26,8 +26,11 @@ EXTRA_DIST += ostbuild/ostbuild.in
 if BUILDSYSTEM
 bin_SCRIPTS += ostbuild 
 
-compileone_DATA = src/ostbuild/ostree-build-compile-one
-compileonedir = $(libdir)/ostbuild
+utils_SCRIPTS = \
+	src/ostbuild/ostree-build-compile-one \
+	src/ostbuild/ostree-build-yocto \
+	$(NULL)
+utilsdir = $(libdir)/ostbuild
 
 pyostbuilddir=$(libdir)/ostbuild/pyostbuild
 pyostbuild_PYTHON =					\

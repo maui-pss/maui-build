@@ -168,15 +168,11 @@ class Builtin(object):
     def init_repo(self):
         if self.repo is not None:
             return self.repo
-        repo = ostbuildrc.get_key('repo', default=None)
+        repo = ostbuildrc.get_key('override_repo', default=None)
         if repo is not None:
             self.repo = os.path.expanduser(repo)
         else:
-            shadow_path = os.path.join(self.workdir, 'shadow-repo')
-            if os.path.isdir(shadow_path):
-                self.repo = shadow_path
-            else:
-                fatal("No repository configured, and shadow-repo not found.  Use \"ostbuild init\" to make one")
+            self.repo = os.path.join(self.workdir, 'repo')
 
     def parse_prefix(self, prefix):
         if prefix is not None:
