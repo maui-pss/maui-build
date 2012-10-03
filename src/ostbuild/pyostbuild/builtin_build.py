@@ -52,17 +52,12 @@ class OstbuildBuild(builtins.Builtin):
         output = run_sync_get_output(args)
         return output.split('\n')
 
-    def _compose_buildroot(self, component_name, architecture):
+    def _compose_buildroot(self, workdir, component_name, architecture):
         starttime = time.time()
 
-        rootdir_prefix = os.path.join(self.workdir, 'roots')
-        rootdir = os.path.join(rootdir_prefix, component_name)
-        fileutil.ensure_parent_dir(rootdir)
-
-        # Clean up any leftover root dir
-        rootdir_tmp = rootdir + '.tmp'
-        if os.path.isdir(rootdir_tmp):
-            shutil.rmtree(rootdir_tmp)
+        buildname = '%s/%s/%s' % (self.snapshot['prefix'], component_name, architecture)
+        buildroot_cachedir = os.path.join(self.workdir, 'roots', buildname)
+        fileutil.ensure_dir(buildroot_cachedir)
 
         components = self.snapshot['components']
         component = None
@@ -118,23 +113,12 @@ class OstbuildBuild(builtins.Builtin):
 
         new_root_cacheid = sha.hexdigest()
 
-        rootdir_cache_path = os.path.join(rootdir_prefix, component_name + '.cacheid')
-
-        if os.path.isdir(rootdir):
-            if os.path.isfile(rootdir_cache_path):
-                f = open(rootdir_cache_path)
-                prev_cache_id = f.read().strip()
-                f.close()
-                if prev_cache_id == new_root_cacheid:
-                    log("Reusing previous buildroot")
-                    os.unlink(tmppath)
-                    return rootdir
-                else:
-                    log("New buildroot differs from previous")
-
-            shutil.rmtree(rootdir)
-
-        os.mkdir(rootdir_tmp)
+        cached_root = os.path.join(buildroot_cachedir, new_root_cacheid)
+        cached_root_tmp = cached_root + '.tmp'
+        if os.path.isdir(cached_root):
+            log("Reusing cached buildroot: %s" % (cached_root, ))
+            os.unlink(tmppath)
+            return cached_root
 
         if len(checkout_trees) > 0:
             log("composing buildroot from %d parents (last: %r)" % (len(checkout_trees),
@@ -142,26 +126,19 @@ class OstbuildBuild(builtins.Builtin):
 
         run_sync(['ostree', '--repo=' + self.repo,
                   'checkout', '--user-mode', '--union',
-                  '--from-file=' + tmppath, rootdir_tmp])
+                  '--from-file=' + tmppath, cached_root_tmp])
 
-        os.unlink(tmppath);
+        os.unlink(tmppath)
 
-        builddir_tmp = os.path.join(rootdir_tmp, 'ostbuild')
-        os.mkdir(builddir_tmp)
-        os.mkdir(os.path.join(builddir_tmp, 'source'))
-        os.mkdir(os.path.join(builddir_tmp, 'source', component_name))
-        os.mkdir(os.path.join(builddir_tmp, 'results'))
-        os.rename(rootdir_tmp, rootdir)
-
-        f = open(rootdir_cache_path, 'w')
-        f.write(new_root_cacheid)
-        f.write('\n')
-        f.close()
+        builddir_tmp = os.path.join(cached_root_tmp, 'ostbuild')
+        fileutil.ensure_dir(os.path.join(builddir_tmp, 'source', component_name))
+        fileutil.ensure_dir(os.path.join(builddir_tmp, 'results'))
+        os.rename(cached_root_tmp, cached_root)
 
         endtime = time.time()
         log("Composed buildroot; %d seconds elapsed" % (int(endtime - starttime),))
 
-        return rootdir
+        return cached_root
 
     def _analyze_build_failure(self, architecture, component, component_srcdir,
                                current_vcs_version, previous_vcs_version):
@@ -210,6 +187,29 @@ class OstbuildBuild(builtins.Builtin):
             f.close()
             result.append(csum.hexdigest())
         return result
+
+    def _create_task_workdir(self, taskname):
+        workdir = os.path.join(self.workdir, 'tasks')
+        fileutil.ensure_dir(workdir)
+        serialfile = os.path.join(workdir, 'serial')
+        if not os.path.isfile(serialfile):
+            serial = 0
+        else:
+            f = open(serialfile)
+            serial = int(f.read().strip())
+            f.close()
+
+        serial += 1
+        
+        f = open(serialfile, 'w')
+        f.write('%d\n' % (serial, ))
+        f.close()
+
+        taskdir = os.path.join(workdir, '%s/%d' % (taskname, serial))
+        if os.path.isdir(taskdir):
+            shutil.rmtree(taskdir)
+        fileutil.ensure_dir(taskdir)
+        return taskdir
 
     def _build_one_component(self, component, architecture):
         basename = component['name']
@@ -280,8 +280,9 @@ class OstbuildBuild(builtins.Builtin):
             else:
                 log("Need rebuild of %s: %s" % (buildname, rebuild_reason, ) )
 
-        (fd, temp_metadata_path) = tempfile.mkstemp(suffix='.json', prefix='ostbuild-metadata-')
-        os.close(fd)
+        workdir = self._create_task_workdir(buildname)
+
+        temp_metadata_path = os.path.join(workdir, '_ostbuild-meta.json')
         f = open(temp_metadata_path, 'w')
         json.dump(expanded_component, f, indent=4, sort_keys=True)
         f.close()
@@ -303,34 +304,23 @@ class OstbuildBuild(builtins.Builtin):
 
         os.unlink(temp_metadata_path)
 
-        logdir = os.path.join(self.workdir, 'logs', buildname)
-        fileutil.ensure_dir(logdir)
-        log_path = os.path.join(logdir, 'compile.log')
-        if os.path.isfile(log_path):
-            curtime = int(time.time())
-            saved_name = os.path.join(logdir, 'compile-prev.log')
-            os.rename(log_path, saved_name)
+        log_path = os.path.join(workdir, 'compile.log')
 
-        component_resultdir = os.path.join(self.workdir, 'results', buildname)
-        if os.path.isdir(component_resultdir):
-            shutil.rmtree(component_resultdir)
+        component_resultdir = os.path.join(workdir, 'results')
         fileutil.ensure_dir(component_resultdir)
 
         self._write_status({'status': 'building',
                             'target': build_ref})
 
-        rootdir = self._compose_buildroot(basename, architecture)
+        rootdir = self._compose_buildroot(workdir, basename, architecture)
 
-        tmpdir=os.path.join(self.workdir, 'tmp')
+        tmpdir=os.path.join(workdir, 'tmp')
+        fileutil.ensure_dir(tmpdir)
 
         src_compile_one_path = os.path.join(LIBDIR, 'ostbuild', 'ostree-build-compile-one')
         dest_compile_one_path = os.path.join(rootdir, 'ostree-build-compile-one')
         shutil.copy(src_compile_one_path, dest_compile_one_path)
         os.chmod(dest_compile_one_path, 0755)
-        
-        output_metadata = open(os.path.join(component_src, '_ostbuild-meta.json'), 'w')
-        json.dump(expanded_component, output_metadata, indent=4, sort_keys=True)
-        output_metadata.close()
         
         chroot_sourcedir = os.path.join('/ostbuild', 'source', basename)
 
