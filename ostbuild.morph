@@ -1,0 +1,12 @@
+{
+    "name": "ostbuild",
+    "kind": "chunk",
+    "description": "Maui build tool for ostree",
+    "configure-commands": [
+        "sh autogen.sh",
+        "./configure --prefix=\"$PREFIX\" --sysconfdir=/etc --localstatedir=/var --libdir=\"$PREFIX/lib\" --libexecdir=\"$PREFIX/libexec\""
+    ],
+    "install-commands": [
+        "make DESTDIR=\"$DESTDIR\" install"
+    ]
+}
