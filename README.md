@@ -89,8 +89,7 @@ repository.
     $ builddir=/src/build
 
 
-    # First, you'll need "http://git.gnome.org/browse/linux-user-chroot/"
-    # installed as setuid root.
+    # First, you'll need linux-user-chroot installed as setuid root.
 
     $ cd $srcdir
 
@@ -122,24 +121,27 @@ repository.
 
     # Now edit conf/bblayers.conf, and add
     #   /src/poky/meta-maui
-    # to BBLAYERS.
+    # to BBLAYERS and remember to change /src to whatever your $srcdir is.
     #
     # Check the conf/local.conf file and make sure "tools-profile" and
     # "tools-testapps" are not in EXTRA_IMAGE_FEATURES
     #
+    # Change DISTRO from "poky" to "maui".
+    #
     # Also, you should choose useful values for BB_NUMBER_THREADS and
-    # PARALLEL_MAKE
+    # PARALLEL_MAKE.
     #
     # For the meaning of this variables you can check:
-    # http://www.yoctoproject.org/docs/current/poky-ref-manual/poky-ref-manual.html#var-EXTRA_IMAGE_FEATURES
-    # http://www.yoctoproject.org/docs/current/poky-ref-manual/poky-ref-manual.html#var-BB_NUMBER_THREADS
-    # http://www.yoctoproject.org/docs/current/poky-ref-manual/poky-ref-manual.html#var-PARALLEL_MAKE
+    #   http://www.yoctoproject.org/docs/current/poky-ref-manual/poky-ref-manual.html#var-EXTRA_IMAGE_FEATURES
+    #   http://www.yoctoproject.org/docs/current/poky-ref-manual/poky-ref-manual.html#var-DISTRO
+    #   http://www.yoctoproject.org/docs/current/poky-ref-manual/poky-ref-manual.html#var-BB_NUMBER_THREADS
+    #   http://www.yoctoproject.org/docs/current/poky-ref-manual/poky-ref-manual.html#var-PARALLEL_MAKE
 
     $ bitbake ostree-native
 
 
     # After this command, we will have a native compilation of OSTree
-    # e.g. tmp/work/x86_64-linux/ostree-native-1.0-r0/image/opt/gnome-os/tanty/build/maui-build/tmp/sysroots/
+    # e.g. ./tmp-eglibc/work/x86_64-linux/ostree-native-2012.9.11.gc690416-r0/image/src/build/maui-build/tmp-eglibc/sysroots
 
     $ bitbake maui-contents-{runtime,devel}
 
@@ -147,7 +149,7 @@ repository.
     # At the end, the Yocto build process generates two tarballs: one for
     # a base "runtime", and one "devel" with all of the development tools
     # like gcc.  We then import that into an OSTree branch
-    # e.g. "bases/yocto/maui-tp1-i686-devel".
+    # e.g. "bases/yocto/maui-tp1-x86_64-devel".
 
 
     # This bit is just for shorthand convenience, you can skip it
