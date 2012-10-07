@@ -183,9 +183,9 @@ def main(args):
             os.mkdir(builddir)
     
     if use_builddir:
-        args = ['../configure']
+        args = [metadata.get('config-script', '../configure')]
     else:
-        args = ['./configure']
+        args = [metadata.get('config-script', './configure')]
     args.extend(configargs)
     run_sync(args, cwd=builddir)
 
