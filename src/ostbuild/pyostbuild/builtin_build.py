@@ -155,6 +155,14 @@ class OstbuildBuild(builtins.Builtin):
     def _needs_rebuild(self, previous_metadata, new_metadata):
         build_keys = ['config-opts', 'src', 'revision']
         for k in build_keys:
+            if (k not in new_metadata):
+                return 'key %r removed from new_metadata' % (k, )
+            if k in previous_metadata:
+                oldval = previous_metadata[k]
+                newval = new_metadata[k]
+                if oldval != newval:
+                    return 'key %r differs (%r -> %r)' % (k, oldval, newval)
+
             if (k not in new_metadata) or (previous_metadata[k] != new_metadata[k]):
                 return 'key %r differs' % (k, )
             
@@ -257,6 +265,7 @@ class OstbuildBuild(builtins.Builtin):
                 self.cached_patchdir_revision = patches_revision
             if ((previous_metadata is not None) and
                 'patches' in previous_metadata and
+                'revision' in previous_metadata['patches'] and
                 previous_metadata['patches']['revision'] == patches_revision):
                 # Copy over the sha256sums
                 expanded_component['patches'] = previous_metadata['patches']
