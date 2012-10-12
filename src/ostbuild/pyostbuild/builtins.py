@@ -73,13 +73,11 @@ class Builtin(object):
         self.ostbuildrc = ostbuildrc
 
         self.mirrordir = os.path.expanduser(ostbuildrc.get_key('mirrordir'))
-        if not os.path.isdir(self.mirrordir):
-            fatal("Specified mirrordir '%s' is not a directory" % (self.mirrordir, ))
+        fileutil.ensure_dir(self.mirrordir)
         self.workdir = os.path.expanduser(ostbuildrc.get_key('workdir'))
-        if not os.path.isdir(self.workdir):
-            fatal("Specified workdir '%s' is not a directory" % (self.workdir, ))
-
+        fileutil.ensure_dir(self.workdir)
         self.snapshot_dir = os.path.join(self.workdir, 'snapshots')
+        fileutil.ensure_dir(self.snapshot_dir)
         self.patchdir = os.path.join(self.workdir, 'patches')
 
     def get_component_snapshot(self, name):
@@ -173,6 +171,9 @@ class Builtin(object):
             self.repo = os.path.expanduser(repo)
         else:
             self.repo = os.path.join(self.workdir, 'repo')
+            if not os.path.isdir(os.path.join(self.repo, 'objects')):
+                fileutil.ensure_dir(self.repo)
+                run_sync(['ostree', '--repo=' + self.repo, 'init', '--mode=archive-z'])
 
     def parse_prefix(self, prefix):
         if prefix is not None:

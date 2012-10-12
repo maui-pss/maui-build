@@ -26,13 +26,15 @@ die () {
 }
 
 usage () {
-    echo "$0: SRCDIR BUILDDIR"
+    echo "$0: SRCDIR BUILDDIR REPO"
 }
 
 srcdir=$1
 test -n "${srcdir}" || (usage; exit 1)
 builddir=$2
 test -n "${builddir}" || (usage; exit 1)
+repo_path=$3
+test -n "${repo_path}" || (usage; exit 1)
 
 src_gitrev=$(cd ${srcdir} && git rev-parse HEAD)
 built_gitrev_path=${builddir}/built-revision
@@ -66,9 +68,9 @@ DISTRO = "gnomeosdistro"
 EOF
 fi
 
-if ! test -L ${builddir}/repo; then
-    ln -s tmp-eglibc/deploy/images/repo ${builddir}/repo
-fi
+IMAGEDIR=${builddir}/tmp-eglibc/deploy/images
+mkdir -p "${IMAGEDIR}"
+ln -sf ${repo_path} ${IMAGEDIR}/repo
 
 echo "Building ${src_gitrev}"
 bitbake gnomeos-contents-{runtime,devel}

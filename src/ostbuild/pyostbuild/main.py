@@ -28,7 +28,6 @@ from . import builtin_deploy_root
 from . import builtin_deploy_qemu
 from . import builtin_git_mirror
 from . import builtin_import_tree
-from . import builtin_init
 from . import builtin_run_qemu
 from . import builtin_prefix
 from . import builtin_privhelper_deploy_qemu

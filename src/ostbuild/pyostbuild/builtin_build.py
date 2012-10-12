@@ -508,14 +508,10 @@ and the manifest input."""
                              overwrite=False)
 
         builddir = os.path.join(self.workdir, 'build-' + basemeta['name'])
-        image_deploy_dir = os.path.join(builddir, 'tmp-eglibc', 'deploy', 'images')
-        repo_link = os.path.join(image_deploy_dir, 'repo')
-        if not os.path.islink(repo_link):
-            os.symlink(self.repo, repo_link)
 
         cmd = ['linux-user-chroot', '--unshare-pid', '/',
                os.path.join(LIBDIR, 'ostbuild', 'ostree-build-yocto'),
-               checkoutdir, builddir]
+               checkoutdir, builddir, self.repo]
         # We specifically want to kill off any environment variables jhbuild
         # may have set.
         run_sync(cmd, env=buildutil.BUILD_ENV)
