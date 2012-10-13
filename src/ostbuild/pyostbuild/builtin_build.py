@@ -114,7 +114,6 @@ class OstbuildBuild(builtins.Builtin):
         new_root_cacheid = sha.hexdigest()
 
         cached_root = os.path.join(buildroot_cachedir, new_root_cacheid)
-        cached_root_tmp = cached_root + '.tmp'
         if os.path.isdir(cached_root):
             log("Reusing cached buildroot: %s" % (cached_root, ))
             os.unlink(tmppath)
@@ -124,6 +123,9 @@ class OstbuildBuild(builtins.Builtin):
             log("composing buildroot from %d parents (last: %r)" % (len(checkout_trees),
                                                                     checkout_trees[-1][0]))
 
+        cached_root_tmp = cached_root + '.tmp'
+        if os.path.isdir(cached_root_tmp):
+            shutil.rmtree(cached_root_tmp)
         run_sync(['ostree', '--repo=' + self.repo,
                   'checkout', '--user-mode', '--union',
                   '--from-file=' + tmppath, cached_root_tmp])
