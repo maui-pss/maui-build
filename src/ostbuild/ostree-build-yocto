@@ -66,6 +66,7 @@ if ! grep -q "DISTRO.*mauidistro" ${builddir}/conf/local.conf; then
 PARALLEL_MAKE = "-j ${numcpus}"
 BB_NUMBER_THREADS = "${numcpus}"
 DISTRO = "mauidistro"
+MACHINE = "qemux86-64"
 EOF
 fi
 
