@@ -56,9 +56,11 @@ fi
 
 . "${srcdir}/oe-init-build-env" "${builddir}"
 
-if ! grep -q meta-gnomeos ${builddir}/conf/bblayers.conf; then
+if ! grep -q meta-maui ${builddir}/conf/bblayers.conf; then
     echo "BBLAYERS += \"${srcdir}/meta-maui\"" >> ${builddir}/conf/bblayers.conf
 fi
+
+sed -i 's|^MACHINE ?= "qemux86"|#MACHINE ?= "qemux86"|g' ${builddir}/conf/local.conf
 
 if ! grep -q "DISTRO.*mauidistro" ${builddir}/conf/local.conf; then
     numcpus=$(( $(getconf _NPROCESSORS_ONLN) / 2 + 1 ))
