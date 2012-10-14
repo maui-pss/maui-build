@@ -173,7 +173,7 @@ class Builtin(object):
             self.repo = os.path.join(self.workdir, 'repo')
             if not os.path.isdir(os.path.join(self.repo, 'objects')):
                 fileutil.ensure_dir(self.repo)
-                run_sync(['ostree', '--repo=' + self.repo, 'init', '--mode=archive-z'])
+                run_sync(['ostree', '--repo=' + self.repo, 'init', '--mode=archive-z2'])
 
     def parse_prefix(self, prefix):
         if prefix is not None:
