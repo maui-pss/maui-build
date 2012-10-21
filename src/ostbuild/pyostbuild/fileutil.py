@@ -16,7 +16,7 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-import os
+import os,json
 
 def ensure_dir(path):
     if not os.path.isdir(path):
@@ -24,3 +24,12 @@ def ensure_dir(path):
 
 def ensure_parent_dir(path):
     ensure_dir(os.path.dirname(path))
+
+def write_json_file_atomic(path, data):
+    path_tmp = path + '.tmp'
+    f = open(path_tmp, 'w')
+    json.dump(data, f, indent=4, sort_keys=True)
+    f.close()
+    os.chmod(path_tmp, 0644)
+    os.rename(path_tmp, path)
+    
