@@ -147,7 +147,7 @@ class OstbuildAutobuilder(builtins.Builtin):
         return entries
 
     def _write_status(self):
-        status = {}
+        status = {'prefix': self.prefix}
         if self.source_snapshot_path is not None:
             src_db = self.get_src_snapshot_db()
             version = src_db.parse_version(os.path.basename(self.source_snapshot_path))
