@@ -29,6 +29,7 @@ class Mainloop(object):
         self._timeouts = []
         self._pid_watches = {}
         self._fd_callbacks = {}
+        self._source_counter = 0
 
     @classmethod
     def get(cls, context):
@@ -55,7 +56,9 @@ class Mainloop(object):
         self._pid_watches[pid] = callback
 
     def timeout_add(self, ms, callback):
-        self._timeouts.append((ms, callback))
+        self._source_counter += 1
+        self._timeouts.append((self._source_counter, ms, callback))
+        return self._source_counter
 
     def quit(self):
         self._running = False
@@ -64,7 +67,7 @@ class Mainloop(object):
         min_timeout = None
         if len(self._pid_watches) > 0:
             min_timeout = 500
-        for (ms, callback) in self._timeouts:
+        for (source_id, ms, callback) in self._timeouts:
             if (min_timeout is None) or (ms < min_timeout):
                 min_timeout = ms
         origtime = time.time() * 1000
@@ -72,23 +75,28 @@ class Mainloop(object):
         fds = self.poll.poll(min_timeout)
         for fd in fds:
             self._fd_callbacks[fd]()
-        to_delete_pids = []
+        hit_pids = []
         for pid in self._pid_watches:
             (opid, status) = os.waitpid(pid, os.WNOHANG)
             if opid == pid:
-                to_delete_pids.append(pid)
-                self._pid_watches[pid](pid, status)
-        for pid in to_delete_pids:
+                hit_pids.append((pid, status))
+        for (pid, status) in hit_pids:
+            watch = self._pid_watches[pid]
             del self._pid_watches[pid]
+            watch(pid, status)
         newtime = time.time() * 1000
         diff = int(newtime - origtime)
         if diff < 0: diff = 0
-        for i,(ms, callback) in enumerate(self._timeouts):
+        new_timeouts = []
+        for i,(source_id, ms, callback) in enumerate(self._timeouts):
             remaining_ms = ms - diff
             if remaining_ms <= 0:
-                callback()
+                result = callback()
+                if result:
+                    new_timeouts.append((source_id, ms, callback))
             else:
-                self._timeouts[i] = (remaining_ms, callback)
+                new_timeouts.append((source_id, remaining_ms, callback))
+        self._timeouts = new_timeouts
 
     def run(self):
         self._running = True
