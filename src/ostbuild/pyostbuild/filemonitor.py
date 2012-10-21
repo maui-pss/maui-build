@@ -30,6 +30,7 @@ class FileMonitor(object):
         self._timeout = 1000
         self._timeout_installed = False
         self._loop = mainloop.Mainloop.get(None)
+        self._counter = 0
 
     @classmethod
     def get(cls):
@@ -49,16 +50,38 @@ class FileMonitor(object):
         if path not in self._paths:
             self._paths[path] = []
             self._path_modtimes[path] = self._stat(path)
-        self._paths[path].append(callback)
+        self._counter += 1
+        self._paths[path].append((self._counter, callback))
         if not self._timeout_installed:
             self._timeout_installed = True
             self._loop.timeout_add(self._timeout, self._check_files)
+        return self._counter
+
+    def remove(self, cb_id):
+        found = False
+        for path in self._paths:
+            cbs = self._paths[path]
+            idx = -1
+            for i,(iter_cb_id, callback) in enumerate(cbs):
+                if iter_cb_id == cb_id:
+                    idx = i
+                    break
+            if idx != -1:
+                cbs.pop(idx)
+                found = True
+                break
+        assert found
 
     def _check_files(self):
+        cbs = []
         for (path,callbacks) in self._paths.iteritems():
             mtime = self._stat(path)
             orig_mtime = self._path_modtimes[path]
             if (mtime is not None) and (orig_mtime is None or (mtime > orig_mtime)):
                 self._path_modtimes[path] = mtime
-                for cb in callbacks:
-                    cb()
+                for (counter, cb) in callbacks:
+                    cbs.append(cb)
+        for cb in cbs:
+            cb()
+        self._timeout_installed = len(self._paths) > 0
+        return self._timeout_installed
