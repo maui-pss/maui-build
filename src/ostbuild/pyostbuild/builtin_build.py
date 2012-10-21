@@ -29,6 +29,7 @@ from .subprocess_helpers import run_sync, run_sync_get_output
 from .subprocess_helpers import run_sync_monitor_log_file
 from . import ostbuildrc
 from . import buildutil
+from . import task
 from . import fileutil
 from . import kvfile
 from . import odict
@@ -198,29 +199,6 @@ class OstbuildBuild(builtins.Builtin):
             result.append(csum.hexdigest())
         return result
 
-    def _create_task_workdir(self, taskname):
-        workdir = os.path.join(self.workdir, 'tasks')
-        fileutil.ensure_dir(workdir)
-        serialfile = os.path.join(workdir, 'serial')
-        if not os.path.isfile(serialfile):
-            serial = 0
-        else:
-            f = open(serialfile)
-            serial = int(f.read().strip())
-            f.close()
-
-        serial += 1
-        
-        f = open(serialfile, 'w')
-        f.write('%d\n' % (serial, ))
-        f.close()
-
-        taskdir = os.path.join(workdir, '%s/%d' % (taskname, serial))
-        if os.path.isdir(taskdir):
-            shutil.rmtree(taskdir)
-        fileutil.ensure_dir(taskdir)
-        return taskdir
-
     def _build_one_component(self, component, architecture):
         basename = component['name']
 
@@ -291,12 +269,12 @@ class OstbuildBuild(builtins.Builtin):
             else:
                 log("Need rebuild of %s: %s" % (buildname, rebuild_reason, ) )
 
-        workdir = self._create_task_workdir(buildname)
+        taskdir = task.TaskDir(os.path.join(self.workdir, 'tasks'))
+        build_taskset = taskdir.get(buildname)
+        workdir = build_taskset.start()
 
         temp_metadata_path = os.path.join(workdir, '_ostbuild-meta.json')
-        f = open(temp_metadata_path, 'w')
-        json.dump(expanded_component, f, indent=4, sort_keys=True)
-        f.close()
+        fileutil.write_json_file_atomic(temp_metadata_path, expanded_component)
 
         checkoutdir = os.path.join(self.workdir, 'checkouts')
         component_src = os.path.join(checkoutdir, buildname)
@@ -320,8 +298,7 @@ class OstbuildBuild(builtins.Builtin):
         component_resultdir = os.path.join(workdir, 'results')
         fileutil.ensure_dir(component_resultdir)
 
-        self._write_status({'status': 'building',
-                            'target': build_ref})
+        self._write_status('Building ' +  build_ref)
 
         rootdir = self._compose_buildroot(workdir, basename, architecture)
 
@@ -363,14 +340,11 @@ class OstbuildBuild(builtins.Builtin):
         if not success:
             self._analyze_build_failure(architecture, component, component_src,
                                         current_vcs_version, previous_vcs_version)
-            self._write_status({'status': 'failed',
-                                'target': build_ref})
+            self._write_status('Failed building ' + build_ref)
             fatal("Exiting due to build failure in component:%s arch:%s" % (component, architecture))
 
         recorded_meta_path = os.path.join(component_resultdir, '_ostbuild-meta.json')
-        recorded_meta_f = open(recorded_meta_path, 'w')
-        json.dump(expanded_component, recorded_meta_f, indent=4, sort_keys=True)
-        recorded_meta_f.close()
+        fileutil.write_json_file_atomic(recorded_meta_path, expanded_component)
 
         args = ['ostree', '--repo=' + self.repo,
                 'commit', '-b', build_ref, '-s', 'Build',
@@ -462,9 +436,7 @@ class OstbuildBuild(builtins.Builtin):
         os.unlink(contents_tmppath)
 
         contents_path = os.path.join(compose_rootdir, 'contents.json')
-        f = open(contents_path, 'w')
-        json.dump(self.snapshot, f, indent=4, sort_keys=True)
-        f.close()
+        fileutil.write_json_file_atomic(contents_path, self.snapshot)
 
         treename = 'trees/%s' % (target['name'], )
         
@@ -479,16 +451,11 @@ class OstbuildBuild(builtins.Builtin):
         os.unlink(related_tmppath)
         shutil.rmtree(compose_rootdir)
 
-    def _write_status(self, data):
+    def _write_status(self, description):
         if not self.args.status_json_path:
             return
-        (fd, temppath) = tempfile.mkstemp(suffix='.tmp', prefix='status-json-',
-                                          dir=os.path.dirname(self.args.status_json_path))
-        os.close(fd)
-        f = open(temppath, 'w')
-        json.dump(data, f, indent=4, sort_keys=True)
-        f.close()
-        os.rename(temppath, self.args.status_json_path)
+        fileutil.write_json_file_atomic(self.args.status_json_path,
+                                        {'description': description})
 
     def _initialize_repo(self):
         """Set up an OSTree repository in $workdir/repo.
@@ -542,7 +509,7 @@ and the manifest input."""
 
         log("Using source snapshot: %s" % (os.path.basename(self.snapshot_path), ))
 
-        self._write_status({'state': 'build-starting'})
+        self._write_status('Starting')
 
         self.buildopts = BuildOptions()
         self.buildopts.force_rebuild = args.force_rebuild
@@ -603,7 +570,7 @@ and the manifest input."""
         for (component, architecture) in components_to_build:
             archname = '%s/%s' % (component['name'], architecture)
             build_rev = self._build_one_component(component, architecture)
-            self._write_status({'status': 'scanning'})
+            self._write_status('Scanning')
             component_build_revs[archname] = build_rev
 
         targets_list = []
@@ -623,8 +590,7 @@ and the manifest input."""
                                   'runtime': runtime_ref,
                                   'devel': buildroot_ref}
 
-                self._write_status({'status': 'composing',
-                                    'target': target['name']})
+                self._write_status('Composing ' + target['name'])
 
                 if target_component_type == 'runtime':
                     target_components = runtime_components
@@ -651,6 +617,6 @@ and the manifest input."""
             log("Composing %r from %d components" % (target['name'], len(target['contents'])))
             self._compose_one_target(target, component_build_revs)
 
-        self._write_status({'status': 'complete'})
+        self._write_status('Complete')
 
 builtins.register(OstbuildBuild)
