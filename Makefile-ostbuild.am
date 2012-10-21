@@ -35,6 +35,7 @@ utilsdir = $(libdir)/ostbuild
 pyostbuilddir=$(libdir)/ostbuild/pyostbuild
 pyostbuild_PYTHON =					\
 	src/ostbuild/pyostbuild/buildutil.py		\
+	src/ostbuild/pyostbuild/builtin_autobuilder.py	\
 	src/ostbuild/pyostbuild/builtin_build.py	\
 	src/ostbuild/pyostbuild/builtin_checkout.py	\
 	src/ostbuild/pyostbuild/builtin_deploy_qemu.py	\
@@ -50,6 +51,7 @@ pyostbuild_PYTHON =					\
 	src/ostbuild/pyostbuild/builtin_source_diff.py	\
 	src/ostbuild/pyostbuild/builtins.py		\
 	src/ostbuild/pyostbuild/filemonitor.py		\
+	src/ostbuild/pyostbuild/task.py		\
 	src/ostbuild/pyostbuild/fileutil.py		\
 	src/ostbuild/pyostbuild/__init__.py		\
 	src/ostbuild/pyostbuild/jsondb.py		\

@@ -178,6 +178,8 @@ class Builtin(object):
     def parse_prefix(self, prefix):
         if prefix is not None:
             self.prefix = prefix
+        else:
+            self.prefix = self.get_prefix()
 
     def parse_snapshot(self, prefix, path):
         self.parse_prefix(prefix)
