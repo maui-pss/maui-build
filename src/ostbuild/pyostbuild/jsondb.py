@@ -70,6 +70,11 @@ class JsonDB(object):
             return None
         return os.path.join(self._dirpath, files[0][3])
 
+    def parse_version(self, name):
+        match = self._version_csum_re.search(name)
+        assert match is not None
+        return '%s.%s' % (match.group(1), match.group(2))
+
     def store(self, obj):
         files = self._get_all()
         if len(files) == 0:
@@ -85,6 +90,7 @@ class JsonDB(object):
         f = open(tmppath, 'w')
         json.dump(obj, f, indent=4, sort_keys=True)
         f.close()
+        os.chmod(tmppath, 0644)
 
         csum = hashlib.sha256()
         f = open(tmppath)
