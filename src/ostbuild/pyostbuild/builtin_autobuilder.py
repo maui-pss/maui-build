@@ -205,7 +205,11 @@ class OstbuildAutobuilder(builtins.Builtin):
                 updated.append(name)
             path = os.path.join(self.updated_modules_dir, name)
             os.unlink(path)
+        latest_snapshot = self.get_src_snapshot_db().get_latest()
         for name in updated:
+            if (latest_snapshot is not None
+                and self.find_component_in_snapshot(name, latest_snapshot) is None):
+                continue
             log("Queuing fetch of %s from push notification" % (name, ))
             self._updated_modules_queue[name] = 1
         self._process_updated_modules_dir()
