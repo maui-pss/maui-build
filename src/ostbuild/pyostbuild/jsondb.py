@@ -64,11 +64,27 @@ class JsonDB(object):
             return None
         return json.load(open(path))
 
+    def load_from_path(self, path):
+        return json.load(open(os.path.join(self._dirpath, os.path.basename(path))))
+
     def get_latest_path(self):
         files = self._get_all()
         if len(files) == 0:
             return None
         return os.path.join(self._dirpath, files[0][3])
+
+    def get_previous_path(self, path):
+        name = os.path.basename(path)
+        match = self._version_csum_re.search(name)
+        assert match is not None
+        (target_major, target_minor) = (int(match.group(1)), int(match.group(2)))
+        files = self._get_all()
+        prev = None
+        for (major, minor, csum, fname) in reversed(files):
+            if target_major == major and target_minor == minor:
+                break
+            prev = fname
+        return prev
 
     def parse_version(self, name):
         match = self._version_csum_re.search(name)

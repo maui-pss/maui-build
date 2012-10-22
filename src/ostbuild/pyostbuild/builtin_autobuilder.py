@@ -35,6 +35,7 @@ from . import kvfile
 from . import filemonitor
 from . import jsondb
 from . import odict
+from . import snapshot
 from . import vcs
 from . import task
 
@@ -51,9 +52,26 @@ class OstbuildAutobuilder(builtins.Builtin):
         self.source_snapshot_path = None
         self.build_needed = True
         self.last_build_succeeded = True
+        self._build_diff_cache = {}
 
     def _status_is_success(self, estatus):
         return os.WIFEXITED(estatus) and os.WEXITSTATUS(estatus) == 0
+
+    def _get_build_diff_for_task(self, task):
+        if hasattr(task, 'build_diff'):
+            return task.build_diff
+        db = self.get_src_snapshot_db()
+        meta_path = os.path.join(task.path, 'meta.json')
+        f = open(meta_path)
+        meta = json.load(f)
+        f.close()
+        snapshot_path = meta['version-path']
+        prev_snapshot_path = db.get_previous_path(snapshot_path)
+        if prev_snapshot_path is None:
+            task.build_diff = None
+        else:
+            task.build_diff = snapshot.snapshot_diff(db.load_from_path(snapshot_path),
+                                                     db.load_from_path(prev_snapshot_path))
 
     def _on_resolve_exited(self, pid, status):
         self.resolve_proc = None
@@ -131,7 +149,8 @@ class OstbuildAutobuilder(builtins.Builtin):
         self.loop.watch_pid(self.build_proc.pid, self._on_build_exited)
         self._write_status()
 
-    def _taskhistory_to_json(self, history):
+    def _buildhistory_to_json(self):
+        history = self._build_taskset.get_history()
         MAXITEMS = 5
         entries = []
         for item in history[-MAXITEMS:]:
@@ -144,6 +163,7 @@ class OstbuildAutobuilder(builtins.Builtin):
                 f = open(meta_path)
                 data['meta'] = json.load(f)
                 f.close()
+            data['diff'] = self._get_build_diff_for_task(item)
         return entries
 
     def _write_status(self):
@@ -156,12 +176,10 @@ class OstbuildAutobuilder(builtins.Builtin):
         else:
             status['version'] = ''
         
-        status['resolve'] = self._taskhistory_to_json(self._resolve_taskset.get_history())
-        build_history = self._build_taskset.get_history()
-        status['build'] = self._taskhistory_to_json(build_history)
+        status['build'] = self._buildhistory_to_json()
         
         if self.build_proc is not None:
-            active_build = build_history[-1]
+            active_build = self._build_taskset.get_history()[-1]
             active_build_json = status['build'][-1]
             status_path = os.path.join(active_build.path, 'status.json')
             if os.path.isfile(status_path):

@@ -32,6 +32,7 @@ from . import buildutil
 from . import task
 from . import fileutil
 from . import kvfile
+from . import snapshot
 from . import odict
 from . import vcs
 
@@ -508,6 +509,15 @@ and the manifest input."""
         self.parse_snapshot(args.prefix, args.src_snapshot)
 
         log("Using source snapshot: %s" % (os.path.basename(self.snapshot_path), ))
+
+        db = self.get_src_snapshot_db()
+        prev_snapshot = db.get_previous_path(self.snapshot_path)
+        if prev_snapshot is not None:
+            (removed, modified, added) = snapshot.snapshot_diff(db.load_from_path(self.snapshot_path),
+                                                                db.load_from_path(prev_snapshot))
+            log("Removed components: %r" % (removed, ))
+            log("Modified components: %r" % (modified, ))
+            log("Added components: %r" % (added, ))
 
         self._write_status('Starting')
 

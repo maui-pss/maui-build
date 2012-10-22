@@ -63,6 +63,7 @@ pyostbuild_PYTHON =					\
 	src/ostbuild/pyostbuild/ostbuildrc.py		\
 	src/ostbuild/pyostbuild/privileged_subproc.py	\
 	src/ostbuild/pyostbuild/warningfilter.py	\
+	src/ostbuild/pyostbuild/snapshot.py		\
 	src/ostbuild/pyostbuild/subprocess_helpers.py	\
 	src/ostbuild/pyostbuild/vcs.py			\
 	$(NULL)
