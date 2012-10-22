@@ -53,6 +53,9 @@ class OstbuildAutobuilder(builtins.Builtin):
         self.build_needed = True
         self.last_build_succeeded = True
         self._build_diff_cache = {}
+        self._updated_modules_queue = {}
+        self._resolve_is_full = False
+        self._resolve_timeout = 0
 
     def _status_is_success(self, estatus):
         return os.WIFEXITED(estatus) and os.WEXITSTATUS(estatus) == 0
@@ -83,8 +86,9 @@ class OstbuildAutobuilder(builtins.Builtin):
         changed = self.prev_source_snapshot_path != self.source_snapshot_path
         if changed:
             log("New version is %s" % (self.source_snapshot_path, ))
-        log("scheduling next resolve for %d seconds " % (self.resolve_poll_secs, ))
-        self.loop.timeout_add(self.resolve_poll_secs*1000, self._fetch)
+        if self._resolve_is_full:
+            log("scheduling next full resolve for %d seconds " % (self.resolve_poll_secs, ))
+            self._resolve_timeout = self.loop.timeout_add(self.resolve_poll_secs*1000, self._fetch)
         if not self.build_needed:
             self.build_needed = self.prev_source_snapshot_path != self.source_snapshot_path
         if self.build_needed and self.build_proc is None:
@@ -92,11 +96,13 @@ class OstbuildAutobuilder(builtins.Builtin):
         else:
             self._write_status()
 
-    def _fetch(self):
-        self._run_resolve(True)
+        self._process_updated_modules_dir()
+
+    def _fetch(self, components=[]):
+        self._run_resolve(fetch=True, components=components)
         return False
 
-    def _run_resolve(self, fetch=False):
+    def _run_resolve(self, fetch=False, components=[]):
         assert self.resolve_proc is None
         workdir = self._resolve_taskset.start()
         f = open(os.path.join(workdir, 'log'), 'w')
@@ -104,6 +110,8 @@ class OstbuildAutobuilder(builtins.Builtin):
         if fetch:
             args.append('--fetch')
             args.append('--fetch-keep-going')
+            args.extend(components)
+        self._resolve_is_full = len(components) == 0
         self.resolve_proc = subprocess.Popen(args, stdin=open('/dev/null'), stdout=f, stderr=f)
         f.close()
         log("started resolve: pid %d workdir: %s" % (self.resolve_proc.pid, workdir))
@@ -190,11 +198,30 @@ class OstbuildAutobuilder(builtins.Builtin):
 
         fileutil.write_json_file_atomic(self.status_path, status)
 
+    def _on_updated_modules_dir_changed(self):
+        updated = []
+        for name in os.listdir(self.updated_modules_dir):
+            if name not in self._updated_modules_queue:
+                updated.append(name)
+            path = os.path.join(self.updated_modules_dir, name)
+            os.unlink(path)
+        for name in updated:
+            log("Queuing fetch of %s from push notification" % (name, ))
+            self._updated_modules_queue[name] = 1
+        self._process_updated_modules_dir()
+    
+    def _process_updated_modules_dir(self):
+        if (len(self._updated_modules_queue) > 0
+            and self.resolve_proc is None):
+            self._fetch(self._updated_modules_queue)
+            self._updated_modules_queue = {}
+
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
         parser.add_argument('--prefix')
         parser.add_argument('--resolve-poll', type=int, default=10*60)
         parser.add_argument('--manifest', required=True)
+        parser.add_argument('--updated-modules-dir')
         
         args = parser.parse_args(argv)
         self.manifest = args.manifest
@@ -211,9 +238,14 @@ class OstbuildAutobuilder(builtins.Builtin):
         self._build_taskset = taskdir.get('%s-build' % (self.prefix, ))
 
         self.status_path = os.path.join(self.workdir, 'autobuilder-%s.json' % (self.prefix, ))
-        
+
         self._run_resolve()
         self._run_build()
+
+        if args.updated_modules_dir:
+            self.updated_modules_dir = args.updated_modules_dir
+            filemonitor.FileMonitor.get().add(args.updated_modules_dir,
+                                              self._on_updated_modules_dir_changed)
 
         self.loop.run()
 
