@@ -472,10 +472,18 @@ and the manifest input."""
         checkoutdir = os.path.join(self.workdir, 'checkouts', basemeta['name'])
         fileutil.ensure_parent_dir(checkoutdir)
 
+        if os.path.islink(checkoutdir):
+            os.unlink(checkoutdir)
+
         (keytype, uri) = buildutil.parse_src_key(basemeta['src'])
-        vcs.get_vcs_checkout(self.mirrordir, keytype, uri, checkoutdir,
-                             basemeta['revision'],
-                             overwrite=False)
+        if keytype == 'local':
+            if os.path.isdir(checkoutdir):
+                shutil.rmtree(checkoutdir)
+            os.symlink(uri, checkoutdir)
+        else:
+            vcs.get_vcs_checkout(self.mirrordir, keytype, uri, checkoutdir,
+                                 basemeta['revision'],
+                                 overwrite=False)
 
         builddir = os.path.join(self.workdir, 'build-' + basemeta['name'])
 
