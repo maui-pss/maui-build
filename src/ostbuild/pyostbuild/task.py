@@ -44,6 +44,9 @@ class TaskHistoryEntry(object):
         self.major = int(match.group(1))
         self.minor = int(match.group(2))
         self.timestamp = None
+        self.logfile_path = None
+        self.logfile_stream = None
+        self.start_timestamp = None
         if state is None:
             statuspath = os.path.join(self.path, 'status')
             if os.path.isfile(statuspath):
@@ -55,6 +58,7 @@ class TaskHistoryEntry(object):
                 self.state = 'interrupted'
         else:
             self.state = state
+            self.start_timestamp = int(time.time())
 
     def finish(self, success):
         statuspath = os.path.join(self.path, 'status')
@@ -65,6 +69,8 @@ class TaskHistoryEntry(object):
             success_str = 'failed'
         self.state = success_str
         self.timestamp = int(time.time())
+        self.logfile_stream.write('Task %s in %d seconds\n' % (success_str, self.timestamp - self.start_timestamp))
+        self.logfile_stream.close()
         f.write(success_str)
         f.close()
 
@@ -109,8 +115,11 @@ class TaskSet(object):
                 lastversion = -1 
         history_path = os.path.join(self.path, '%d.%d' % (yearver, lastversion + 1))
         fileutil.ensure_dir(history_path)
-        self._history.append(TaskHistoryEntry(history_path, state='running'))
-        return history_path
+        entry = TaskHistoryEntry(history_path, state='running')
+        self._history.append(entry)
+        entry.logfile_path = os.path.join(history_path, 'log')
+        entry.logfile_stream = open(entry.logfile_path, 'w')
+        return entry
 
     def finish(self, success):
         assert self._running

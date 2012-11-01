@@ -272,7 +272,8 @@ class OstbuildBuild(builtins.Builtin):
 
         taskdir = task.TaskDir(os.path.join(self.workdir, 'tasks'))
         build_taskset = taskdir.get(buildname)
-        workdir = build_taskset.start()
+        t = build_taskset.start()
+        workdir = t.path
 
         temp_metadata_path = os.path.join(workdir, '_ostbuild-meta.json')
         fileutil.write_json_file_atomic(temp_metadata_path, expanded_component)
@@ -293,8 +294,6 @@ class OstbuildBuild(builtins.Builtin):
         run_sync(child_args)
 
         os.unlink(temp_metadata_path)
-
-        log_path = os.path.join(workdir, 'compile.log')
 
         component_resultdir = os.path.join(workdir, 'results')
         fileutil.ensure_dir(component_resultdir)
@@ -333,12 +332,11 @@ class OstbuildBuild(builtins.Builtin):
         env_copy = dict(buildutil.BUILD_ENV)
         env_copy['PWD'] = chroot_sourcedir
 
-        log("Logging to %s" % (log_path, ))
-        f = open(log_path, 'w')
-        
-        success = run_sync_monitor_log_file(child_args, log_path, env=env_copy,
-                                            fatal_on_error=False)
+        success = run_sync(child_args, stdout=t.logfile_stream,
+                           stderr=t.logfile_stream, env=env_copy,
+                           fatal_on_error=False)
         if not success:
+            build_taskset.finish(False)
             self._analyze_build_failure(architecture, component, component_src,
                                         current_vcs_version, previous_vcs_version)
             self._write_status('Failed building ' + build_ref)
@@ -363,7 +361,9 @@ class OstbuildBuild(builtins.Builtin):
             f.close()
             args.append('--statoverride=' + statoverride_path)
 
-        run_sync(args, cwd=component_resultdir)
+        run_sync(args, stdout=t.logfile_stream,
+                 stderr=t.logfile_stream,
+                 cwd=component_resultdir)
         if statoverride_path is not None:
             os.unlink(statoverride_path)
 
@@ -373,6 +373,10 @@ class OstbuildBuild(builtins.Builtin):
             else:
                 shutil.rmtree(component_src)
             shutil.rmtree(component_resultdir)
+
+        shutil.rmtree(tmpdir)
+
+        build_taskset.finish(True)
 
         return run_sync_get_output(['ostree', '--repo=' + self.repo,
                                     'rev-parse', build_ref])

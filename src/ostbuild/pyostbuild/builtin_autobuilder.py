@@ -104,8 +104,9 @@ class OstbuildAutobuilder(builtins.Builtin):
 
     def _run_resolve(self, fetch=False, components=[]):
         assert self.resolve_proc is None
-        workdir = self._resolve_taskset.start()
-        f = open(os.path.join(workdir, 'log'), 'w')
+        t = self._resolve_taskset.start()
+        workdir = t.path
+        f = t.logfile_stream
         args = ['ostbuild', 'resolve', '--manifest=' + self.manifest]
         if fetch:
             args.append('--fetch')
@@ -137,9 +138,10 @@ class OstbuildAutobuilder(builtins.Builtin):
         assert self.build_proc is None
         assert self.build_needed
         self.build_needed = False
-        workdir = self._build_taskset.start()
+        t = self._build_taskset.start()
+        workdir = t.path
+        f = t.logfile_stream
         statusjson = os.path.join(workdir, 'status.json')
-        f = open(os.path.join(workdir, 'log'), 'w')
         args = ['ostbuild', 'build', '--skip-vcs-matches',
                 '--src-snapshot=' + self.source_snapshot_path,
                 '--status-json-path=' + statusjson]
