@@ -58,9 +58,9 @@ class OstbuildDeployRoot(builtins.Builtin):
 
         helper = privileged_subproc.PrivilegedSubprocess()
         sys_repo = os.path.join(self.ostree_dir, 'repo')
-        shadow_path = os.path.join(self.workdir, 'shadow-repo')
+        work_repo = os.path.join(self.workdir, 'repo')
         child_args = ['ostree', '--repo=' + sys_repo,
-                      'pull-local', shadow_path]
+                      'pull-local', work_repo]
         child_args.extend(['trees/' + x for x in targets])
         helper.spawn_sync(child_args)
         
