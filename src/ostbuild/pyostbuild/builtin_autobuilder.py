@@ -245,7 +245,7 @@ class OstbuildAutobuilder(builtins.Builtin):
 
         self.status_path = os.path.join(self.workdir, 'autobuilder-%s.json' % (self.prefix, ))
 
-        self._run_resolve()
+        self._fetch()
         self._run_build()
 
         if args.updated_modules_dir:
