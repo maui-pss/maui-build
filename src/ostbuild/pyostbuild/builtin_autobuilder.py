@@ -77,6 +77,7 @@ class OstbuildAutobuilder(builtins.Builtin):
                                                      db.load_from_path(prev_snapshot_path))
 
     def _on_resolve_exited(self, pid, status):
+        assert self.resolve_proc is not None
         self.resolve_proc = None
         success = self._status_is_success(status)
         self._resolve_taskset.finish(success)
