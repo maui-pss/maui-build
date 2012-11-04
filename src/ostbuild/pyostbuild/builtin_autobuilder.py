@@ -114,7 +114,6 @@ class OstbuildAutobuilder(builtins.Builtin):
             args.extend(components)
         self._resolve_is_full = len(components) == 0
         self.resolve_proc = subprocess.Popen(args, stdin=open('/dev/null'), stdout=f, stderr=f)
-        f.close()
         log("started resolve: pid %d workdir: %s" % (self.resolve_proc.pid, workdir))
         self.loop.watch_pid(self.resolve_proc.pid, self._on_resolve_exited)
         self._write_status()
