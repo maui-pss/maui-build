@@ -52,6 +52,7 @@ class OstbuildAutobuilder(builtins.Builtin):
         self.source_snapshot_path = None
         self.build_needed = True
         self.last_build_succeeded = True
+        self._autoupdate_self = False
         self._build_diff_cache = {}
         self._updated_modules_queue = {}
         self._resolve_is_full = False
@@ -87,6 +88,8 @@ class OstbuildAutobuilder(builtins.Builtin):
         changed = self.prev_source_snapshot_path != self.source_snapshot_path
         if changed:
             log("New version is %s" % (self.source_snapshot_path, ))
+            if self._autoupdate_self:
+                run_sync(['git', 'pull', '-r'])
         if self._resolve_is_full:
             log("scheduling next full resolve for %d seconds " % (self.resolve_poll_secs, ))
             self._resolve_timeout = self.loop.timeout_add(self.resolve_poll_secs*1000, self._fetch)
@@ -227,11 +230,13 @@ class OstbuildAutobuilder(builtins.Builtin):
         parser.add_argument('--prefix')
         parser.add_argument('--resolve-poll', type=int, default=10*60)
         parser.add_argument('--manifest', required=True)
+        parser.add_argument('--autoupdate-self', action='store_true')
         parser.add_argument('--updated-modules-dir')
         
         args = parser.parse_args(argv)
         self.manifest = args.manifest
         self.resolve_poll_secs = args.resolve_poll
+        self._autoupdate_self = args.autoupdate_self
         
         self.parse_config()
         self.parse_prefix(args.prefix)
