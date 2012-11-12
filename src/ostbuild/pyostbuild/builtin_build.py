@@ -144,8 +144,16 @@ class OstbuildBuild(builtins.Builtin):
 
         return cached_root
 
-    def _analyze_build_failure(self, architecture, component, component_srcdir,
+    def _analyze_build_failure(self, t, architecture, component, component_srcdir,
                                current_vcs_version, previous_vcs_version):
+        # Dump last bit of log
+        print "LOGFILE: " + t.logfile_path
+        f = open(t.logfile_path)
+        lines = f.readlines()
+        lines = lines[-250:]
+        for line in lines:
+            print "| " + line.strip()
+        f.close()
         if (current_vcs_version is not None and previous_vcs_version is not None):
             git_args = ['git', 'log', '--format=short']
             git_args.append(previous_vcs_version + '...' + current_vcs_version)
@@ -337,7 +345,7 @@ class OstbuildBuild(builtins.Builtin):
                            fatal_on_error=False)
         if not success:
             build_taskset.finish(False)
-            self._analyze_build_failure(architecture, component, component_src,
+            self._analyze_build_failure(t, architecture, component, component_src,
                                         current_vcs_version, previous_vcs_version)
             self._write_status('Failed building ' + build_ref)
             fatal("Exiting due to build failure in component:%s arch:%s" % (component, architecture))
