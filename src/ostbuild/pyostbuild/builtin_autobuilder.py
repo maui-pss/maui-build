@@ -88,8 +88,6 @@ class OstbuildAutobuilder(builtins.Builtin):
         changed = self.prev_source_snapshot_path != self.source_snapshot_path
         if changed:
             log("New version is %s" % (self.source_snapshot_path, ))
-            if self._autoupdate_self:
-                run_sync(['git', 'pull', '-r'])
         if self._resolve_is_full:
             log("scheduling next full resolve for %d seconds " % (self.resolve_poll_secs, ))
             self._resolve_timeout = self.loop.timeout_add(self.resolve_poll_secs*1000, self._fetch)
@@ -116,6 +114,8 @@ class OstbuildAutobuilder(builtins.Builtin):
             args.append('--fetch')
             args.append('--fetch-keep-going')
             args.extend(components)
+            if self._autoupdate_self:
+                run_sync(['git', 'pull', '-r'])
         self._resolve_is_full = len(components) == 0
         self.resolve_proc = subprocess.Popen(args, stdin=open('/dev/null'), stdout=f, stderr=f)
         log("started resolve: pid %d workdir: %s" % (self.resolve_proc.pid, workdir))
