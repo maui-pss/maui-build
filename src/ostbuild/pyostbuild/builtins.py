@@ -114,6 +114,10 @@ class Builtin(object):
         for component in snapshot['components']:
             if component['name'] == name:
                 return component
+        if snapshot['base']['name'] == name:
+            return snapshot['base']
+        if snapshot['patches']['name'] == name:
+            return snapshot['patches']
         return None
 
     def get_component(self, name, in_snapshot=None):
