@@ -26,9 +26,10 @@ import hashlib
 import json
 
 class JsonDB(object):
-    def __init__(self, dirpath, prefix):
+    def __init__(self, dirpath, prefix, max_versions=5):
         self._dirpath = dirpath
         self._prefix = prefix
+        self._max_versions = max_versions
         self._version_csum_re = re.compile(r'-(\d+)\.(\d+)-([0-9a-f]+).json$')
 
     def _cmp_match_by_version(self, a, b):
@@ -128,6 +129,11 @@ class JsonDB(object):
                                             latest_version[1] + 1, digest)
         target_path = os.path.join(self._dirpath, target_name)
         os.rename(tmppath, target_path)
+
+        if (len(files) + 1) > self._max_versions:
+            for f in files[(self._max_versions-1):]:
+                os.unlink(os.path.join(self._dirpath, f[3]))
+
         return (target_path, True)
                 
                 
