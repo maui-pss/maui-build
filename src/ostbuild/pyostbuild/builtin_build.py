@@ -211,6 +211,15 @@ class OstbuildBuild(builtins.Builtin):
             result.append(csum.hexdigest())
         return result
 
+    def _save_component_build(self, buildname, expanded_component):
+        build_ref = 'components/%s' % (buildname, )
+        cachedata = dict(expanded_component)
+        cachedata['ostree'] = run_sync_get_output(['ostree', '--repo=' + self.repo,
+                                                   'rev-parse', build_ref])
+        self._component_build_cache[buildname] = cachedata
+        fileutil.write_json_file_atomic(self._component_build_cache_path, self._component_build_cache)
+        return cachedata['ostree']
+
     def _build_one_component(self, component, architecture):
         basename = component['name']
 
@@ -223,14 +232,18 @@ class OstbuildBuild(builtins.Builtin):
 
         skip_rebuild = self.args.compose_only
 
-        previous_build_version = run_sync_get_output(['ostree', '--repo=' + self.repo,
-                                                      'rev-parse', build_ref],
-                                                     stderr=open('/dev/null', 'w'),
-                                                     none_on_error=True)
-        previous_vcs_version = None
-        previous_metadata = None
-
-        if previous_build_version is not None:
+        previous_metadata = self._component_build_cache.get(buildname)
+        was_in_build_cache = (previous_metadata is not None)
+        if was_in_build_cache:
+            previous_build_version = previous_metadata['ostree']
+        else:
+            previous_build_version = run_sync_get_output(['ostree', '--repo=' + self.repo,
+                                                          'rev-parse', build_ref],
+                                                         stderr=open('/dev/null', 'w'),
+                                                         none_on_error=True)
+        if previous_metadata is not None:
+            previous_vcs_version = previous_metadata.get('revision')
+        elif previous_build_version is not None:
             previous_metadata_text = run_sync_get_output(['ostree', '--repo=' + self.repo,
                                                           'cat', previous_build_version,
                                                           '/_ostbuild-meta.json'])
@@ -240,6 +253,7 @@ class OstbuildBuild(builtins.Builtin):
             log("Previous build of %s is ostree:%s " % (buildname, previous_build_version))
         else:
             log("No previous build for '%s' found" % (buildname, ))
+            previous_vcs_version = None
             if skip_rebuild:
                 fatal("--compose-only specified but no previous build of %s found" % (buildname, ))
 
@@ -274,7 +288,9 @@ class OstbuildBuild(builtins.Builtin):
             rebuild_reason = self._needs_rebuild(previous_metadata, expanded_component)
             if rebuild_reason is None:
                 if not force_rebuild:
-                    log("Reusing cached build at %s" % (previous_vcs_version)) 
+                    log("Reusing cached build of %s at %s" % (buildname, previous_vcs_version)) 
+                    if not was_in_build_cache:
+                        return self._save_component_build(buildname, expanded_component)
                     return previous_build_version
                 else:
                     log("Build forced regardless") 
@@ -389,10 +405,11 @@ class OstbuildBuild(builtins.Builtin):
 
         shutil.rmtree(tmpdir)
 
+        ostree_revision = self._save_component_build(buildname, expanded_component)
+
         build_taskset.finish(True)
 
-        return run_sync_get_output(['ostree', '--repo=' + self.repo,
-                                    'rev-parse', build_ref])
+        return ostree_revision
 
     def _compose_one_target(self, target, component_build_revs):
         base = target['base']
@@ -611,6 +628,12 @@ and the manifest input."""
         for component in components:
             for architecture in architectures:
                 components_to_build.append((component, architecture))
+
+        self._component_build_cache_path = os.path.join(self.workdir, 'component-builds.json')
+        if os.path.exists(self._component_build_cache_path):
+            self._component_build_cache = json.load(open(self._component_build_cache_path))
+        else:
+            self._component_build_cache = {}
 
         log("%d components to build" % (len(components_to_build), ))
         for (component, architecture) in components_to_build:
