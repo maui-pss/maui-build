@@ -81,11 +81,15 @@ class JsonDB(object):
         (target_major, target_minor) = (int(match.group(1)), int(match.group(2)))
         files = self._get_all()
         prev = None
+        found = False
         for (major, minor, csum, fname) in reversed(files):
             if target_major == major and target_minor == minor:
+                found = True
                 break
             prev = fname
-        return prev
+        if found:
+            return prev
+        return None
 
     def parse_version(self, name):
         match = self._version_csum_re.search(name)
