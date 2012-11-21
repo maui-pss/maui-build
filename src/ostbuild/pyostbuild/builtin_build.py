@@ -282,7 +282,8 @@ class OstbuildBuild(builtins.Builtin):
             patchdir = None
 
         force_rebuild = (self.buildopts.force_rebuild or
-                         basename in self.force_build_components)
+                         basename in self.force_build_components or
+                         expanded_component['src'].startswith('local:'))
 
         if previous_metadata is not None:
             rebuild_reason = self._needs_rebuild(previous_metadata, expanded_component)
