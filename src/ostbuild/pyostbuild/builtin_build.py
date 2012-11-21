@@ -565,7 +565,7 @@ and the manifest input."""
         db = self.get_src_snapshot_db()
         prev_snapshot = db.get_previous_path(self.snapshot_path)
         if prev_snapshot is not None:
-            (removed, modified, added) = snapshot.snapshot_diff(db.load_from_path(self.snapshot_path),
+            (added, modified, removed) = snapshot.snapshot_diff(db.load_from_path(self.snapshot_path),
                                                                 db.load_from_path(prev_snapshot))
             log("Removed components: %r" % (removed, ))
             log("Modified components: %r" % (modified, ))
