@@ -57,6 +57,21 @@ class OstbuildBuild(builtins.Builtin):
         output = run_sync_get_output(args)
         return output.split('\n')
 
+    def _clean_stale_buildroots(self, buildroot_cachedir, keep_root):
+        roots = os.listdir(buildroot_cachedir)
+        root_mtimes = {}
+        for root in roots:
+            path = os.path.join(buildroot_cachedir, root)
+            root_mtimes[root] = os.lstat(path).st_mtime
+        roots.sort(lambda a,b: cmp(root_mtimes[a], root_mtimes[b]))
+        remaining = roots[:-2]
+        for root in remaining:
+            path = os.path.join(buildroot_cachedir, root)
+            if path == keep_root:
+                continue
+            log("Removing old cached buildroot %s" % (root, ))
+            shutil.rmtree(path)
+
     def _compose_buildroot(self, workdir, component_name, architecture):
         starttime = time.time()
 
@@ -121,6 +136,7 @@ class OstbuildBuild(builtins.Builtin):
         cached_root = os.path.join(buildroot_cachedir, new_root_cacheid)
         if os.path.isdir(cached_root):
             log("Reusing cached buildroot: %s" % (cached_root, ))
+            self._clean_stale_buildroots(buildroot_cachedir, os.path.basename(cached_root))
             os.unlink(tmppath)
             return cached_root
 
@@ -141,6 +157,8 @@ class OstbuildBuild(builtins.Builtin):
         fileutil.ensure_dir(os.path.join(builddir_tmp, 'source', component_name))
         fileutil.ensure_dir(os.path.join(builddir_tmp, 'results'))
         os.rename(cached_root_tmp, cached_root)
+
+        self._clean_stale_buildroots(buildroot_cachedir, os.path.basename(cached_root))
 
         endtime = time.time()
         log("Composed buildroot; %d seconds elapsed" % (int(endtime - starttime),))
