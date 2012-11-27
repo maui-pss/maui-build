@@ -156,22 +156,17 @@ def ensure_vcs_mirror(mirrordir, keytype, uri, branch, fetch=False,
     current_vcs_version = run_sync_get_output(['git', 'rev-parse', branch], cwd=mirror)
     current_vcs_version = current_vcs_version.strip()
 
-    if fetch:
+    changed = current_vcs_version != last_fetch_contents
+    if changed:
+        log("last fetch %r differs from branch %r" % (last_fetch_contents, current_vcs_version))
+        for (sub_checksum, sub_name, sub_url) in _list_submodules(mirrordir, mirror, keytype, uri, branch):
+            ensure_vcs_mirror(mirrordir, keytype, sub_url, sub_checksum, fetch=fetch)
+    
+    if changed:
         f = open(last_fetch_path, 'w')
         f.write(current_vcs_version + '\n')
         f.close()
 
-    if current_vcs_version != last_fetch_contents:
-        log("last fetch %r differs from branch %r" % (last_fetch_contents, current_vcs_version))
-        check_submodules = True
-    else:
-        check_submodules = did_update
-    if check_submodules:
-        for (sub_checksum, sub_name, sub_url) in _list_submodules(mirrordir, mirror, keytype, uri, branch):
-            ensure_vcs_mirror(mirrordir, keytype, sub_url, sub_checksum, fetch=fetch)
-        f = open(last_fetch_path, 'w')
-        f.write(current_vcs_version + '\n')
-        f.close()
     return mirror
 
 def fetch(mirrordir, keytype, uri, branch, keep_going=False):
