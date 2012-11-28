@@ -40,8 +40,8 @@ def _fixup_submodule_references(mirrordir, cwd):
         (sub_checksum, sub_name) = line.split(' ', 1)
         sub_url = run_sync_get_output(['git', 'config', '-f', '.gitmodules',
                                        'submodule.%s.url' % (sub_name, )], cwd=cwd)
-        mirrordir = get_mirrordir(mirrordir, 'git', sub_url)
-        run_sync(['git', 'config', 'submodule.%s.url' % (sub_name, ), 'file://' + mirrordir], cwd=cwd)
+        local_mirror = get_mirrordir(mirrordir, 'git', sub_url)
+        run_sync(['git', 'config', 'submodule.%s.url' % (sub_name, ), 'file://' + local_mirror], cwd=cwd)
     return have_submodules
 
 def get_vcs_checkout(mirrordir, keytype, uri, dest, branch, overwrite=True,
