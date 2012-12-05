@@ -115,6 +115,11 @@ class OstbuildBuild(builtins.Builtin):
 
         sha = hashlib.sha256()
 
+        uid = os.getuid()
+        gid = os.getgid()
+        etc_passwd = 'root:x:0:0:root:/root:/bin/bash\nbuilduser:x:%u:%u:builduser:/:/bin/bash\n' % (uid, gid)
+        etc_group = 'root:x:0:root\nbuilduser:x:%u:builduser\n' % (gid, )
+
         (fd, tmppath) = tempfile.mkstemp(suffix='.txt', prefix='ostbuild-buildroot-')
         f = os.fdopen(fd, 'w')
         for (branch, subpath) in checkout_trees:
@@ -130,6 +135,9 @@ class OstbuildBuild(builtins.Builtin):
             sha.update(buf)
             buf = f.read(8192)
         f.close()
+
+        sha.update(etc_passwd)
+        sha.update(etc_group)
 
         new_root_cacheid = sha.hexdigest()
 
@@ -156,6 +164,12 @@ class OstbuildBuild(builtins.Builtin):
         builddir_tmp = os.path.join(cached_root_tmp, 'ostbuild')
         fileutil.ensure_dir(os.path.join(builddir_tmp, 'source', component_name))
         fileutil.ensure_dir(os.path.join(builddir_tmp, 'results'))
+        f = open(os.path.join(cached_root_tmp, 'etc', 'passwd'), 'w')
+        f.write(etc_passwd)
+        f.close()
+        f = open(os.path.join(cached_root_tmp, 'etc', 'group'), 'w')
+        f.write(etc_group)
+        f.close()
         os.rename(cached_root_tmp, cached_root)
 
         self._clean_stale_buildroots(buildroot_cachedir, os.path.basename(cached_root))
