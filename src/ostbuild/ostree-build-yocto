@@ -27,14 +27,16 @@ die () {
 }
 
 usage () {
-    echo "$0: SRCDIR BUILDDIR REPO"
+    echo "$0: SRCDIR BUILDDIR ARCHITECTURE REPO"
 }
 
 srcdir=$1
 test -n "${srcdir}" || (usage; exit 1)
 builddir=$2
 test -n "${builddir}" || (usage; exit 1)
-repo_path=$3
+architecture=$3
+test -n "${architecture}" || (usage; exit 1)
+repo_path=$4
 test -n "${repo_path}" || (usage; exit 1)
 
 src_gitrev=$(cd ${srcdir} && git rev-parse HEAD)
@@ -60,7 +62,11 @@ if ! grep -q meta-maui ${builddir}/conf/bblayers.conf; then
     echo "BBLAYERS += \"${srcdir}/meta-maui\"" >> ${builddir}/conf/bblayers.conf
 fi
 
-sed -i 's|^MACHINE ?= "qemux86"|#MACHINE ?= "qemux86"|g' ${builddir}/conf/local.conf
+case "$architecture" in
+    i686) MACHINE="atom-pc";;
+    x86_64) MACHINE="qemux86-64";;
+    *) echo "Error: Unhandled architecture '$architecture'"; exit 1;;
+esac
 
 mkdir -p ${builddir}/conf
 localconf=${builddir}/conf/local.conf
@@ -71,11 +77,13 @@ PARALLEL_MAKE = "-j ${numcpus}"
 BB_NUMBER_THREADS = "${numcpus}"
 LAYER_CONF_VERSION = "6"
 CONF_VERSION = "1"
-MACHINE = "qemux86-64"
+MACHINE = "${MACHINE}"
 DISTRO = "mauidistro"
 USER_CLASSES = ""
 PACKAGE_CLASSES = "package_rpm"
 PATCHRESOLVE = "noop"
+SSTATE_DIR = "${SSTATE_DIR}"
+DL_DIR = "${DL_DIR}"
 INHERIT += "rm_work"
 EOF
     mv ${localconf}.tmp ${localconf}

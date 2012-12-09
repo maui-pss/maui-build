@@ -483,7 +483,7 @@ and the manifest input."""
         if not os.path.isdir(os.path.join(self.repo, 'objects')):
             run_sync(['ostree', '--repo=' + self.repo, 'init', '--archive'])
 
-    def _build_base(self):
+    def _build_base(self, architecture):
         """Build the Yocto base system."""
         basemeta = self.snapshot['base']
         checkoutdir = os.path.join(self.workdir, 'checkouts', basemeta['name'])
@@ -502,14 +502,23 @@ and the manifest input."""
                                  basemeta['revision'],
                                  overwrite=False)
 
-        builddir = os.path.join(self.workdir, 'build-' + basemeta['name'])
+        builddir_name = 'build-%s-%s' % (basemeta['name'], architecture)
+        builddir = os.path.join(self.workdir, builddir_name)
+
+        # Just keep reusing the old working directory downloads and sstate
+        old_builddir = os.path.join(self.workdir, 'build-%s' % (basemeta['name'], ))
+        sstate_dir = os.path.join(old_builddir, 'sstate-cache')
+        downloads = os.path.join(old_builddir, 'downloads')
 
         cmd = ['linux-user-chroot', '--unshare-pid', '/',
                os.path.join(LIBDIR, 'ostbuild', 'ostree-build-yocto'),
-               checkoutdir, builddir, self.repo]
+               checkoutdir, builddir, architecture, self.repo]
         # We specifically want to kill off any environment variables jhbuild
         # may have set.
-        run_sync(cmd, env=buildutil.BUILD_ENV)
+        env = dict(buildutil.BUILD_ENV)
+        env['DL_DIR'] = downloads
+        env['SSTATE_DIR'] = sstate_dir
+        run_sync(cmd, env=env)
         
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
@@ -557,7 +566,6 @@ and the manifest input."""
         self.cached_patchdir_revision = None
 
         self._initialize_repo()
-        self._build_base()
 
         components = self.snapshot['components']
 
@@ -565,6 +573,9 @@ and the manifest input."""
         base_prefix = '%s/%s' % (self.snapshot['base']['name'], prefix)
 
         architectures = self.snapshot['architectures']
+
+        for architecture in architectures:
+            self._build_base(architecture)
 
         component_to_arches = {}
 
