@@ -189,13 +189,27 @@ def main(args):
     args.extend(configargs)
     run_sync(args, cwd=builddir)
 
+    qmakefile_path = None
+    for name in os.listdir(os.getcwd()):
+        if os.path.splitext(name)[1] == '.pro':
+            qmakefile_path = os.path.join(os.getcwd(), name)
+            break
+    if qmakefile_path is None:
+        log("No .pro file found")
+
     makefile_path = None
     for name in ['Makefile', 'makefile', 'GNUmakefile']:
         makefile_path = os.path.join(builddir, name)
         if os.path.exists(makefile_path):
             break
     if makefile_path is None:
-        fatal("No Makefile found")
+        if qmakefile_path is not None:
+            run_sync(['qmake', '-makefile', qmakefile_path], cwd=builddir)
+            makefile_path = os.path.join(builddir, 'Makefile')
+            if not os.path.exists(makefile_path):
+                fatal("No Makefile found")
+        else:
+            fatal("No Makefile found")
 
     args = list(makeargs)
     user_specified_jobs = False
@@ -218,7 +232,10 @@ def main(args):
 
     tempdir = tempfile.mkdtemp(prefix='ostbuild-destdir-%s' % (metadata['name'].replace('/', '_'), ))
     tempfiles.append(tempdir)
-    args = ['make', 'install', 'DESTDIR=' + tempdir]
+    if qmakefile_path is None:
+        args = ['make', 'install', 'DESTDIR=' + tempdir]
+    else:
+        args = ['make', 'install', 'INSTALL_ROOT=' + tempdir]
     run_sync(args, cwd=builddir)
     
     runtime_path = os.path.join(ostbuild_resultdir, 'runtime')
