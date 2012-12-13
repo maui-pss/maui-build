@@ -86,7 +86,9 @@ _DOC_DIRS = ['usr/share/doc',
 _DEVEL_DIRS = ['usr/include',
                'usr/share/aclocal',
                'usr/share/pkgconfig',
-               'usr/lib/pkgconfig']
+               'usr/lib/pkgconfig',
+               'usr/share/cmake',
+               'usr/lib/cmake']
 
 tempfiles = []
 
