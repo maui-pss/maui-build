@@ -145,8 +145,17 @@ def main(args):
 
     configargs.extend(metadata.get('config-opts', []))
 
+    qmakefile_path = None
+    for name in os.listdir(os.getcwd()):
+        if os.path.splitext(name)[1] == '.pro':
+            qmakefile_path = os.path.join(os.getcwd(), name)
+            log("Found qmake project " + qmakefile_path)
+            break
+    if qmakefile_path is None:
+        log("No .pro file found")
+
+    configure_path = 'configure'
     if metadata.get('rm-configure', False):
-        configure_path = 'configure'
         if os.path.exists(configure_path):
             os.unlink(configure_path)
 
@@ -157,20 +166,25 @@ def main(args):
             if os.path.exists(name):
                 log("Using bootstrap script '%s'" % (name, ))
                 autogen_script = name
-        if autogen_script is None:
+        if autogen_script is None and not qmakefile_path:
             fatal("No configure or autogen script detected; unknown buildsystem")
+
+    qmake_buildsys = qmakefile_path and not os.path.exists(configure_path)
 
     if autogen_script is not None:
         env = dict(os.environ)
         env['NOCONFIGURE'] = '1'
         run_sync(['./' + autogen_script], env=env)
-    else:
+    elif not qmake_buildsys:
         log("Using existing 'configure' script")
-            
+
     builddir = '_build'
 
     use_builddir = True
-    doesnot_support_builddir = _has_buildapi_configure_variable('no-builddir')
+    if qmake_buildsys:
+        doesnot_support_builddir = False
+    else:
+        doesnot_support_builddir = _has_buildapi_configure_variable('no-builddir')
     if doesnot_support_builddir:
         log("Found no-builddir Build API variable; copying source tree to _build")
         if os.path.isdir('_build'):
@@ -183,27 +197,22 @@ def main(args):
         log("Using build directory %r" % (builddir, ))
         if not os.path.isdir(builddir):
             os.mkdir(builddir)
-    
-    if use_builddir:
-        args = ['../configure']
-    else:
-        args = ['./configure']
-    args.extend(configargs)
-    run_sync(args, cwd=builddir)
 
-    qmakefile_path = None
-    for name in os.listdir(os.getcwd()):
-        if os.path.splitext(name)[1] == '.pro':
-            qmakefile_path = os.path.join(os.getcwd(), name)
-            break
-    if qmakefile_path is None:
-        log("No .pro file found")
+    if not qmake_buildsys:
+        if use_builddir:
+            args = ['../configure']
+        else:
+            args = ['./configure']
+        args.extend(configargs)
+        run_sync(args, cwd=builddir)
 
     makefile_path = None
     for name in ['Makefile', 'makefile', 'GNUmakefile']:
         makefile_path = os.path.join(builddir, name)
         if os.path.exists(makefile_path):
             break
+        else:
+            makefile_path = None
     if makefile_path is None:
         if qmakefile_path is not None:
             run_sync(['qmake', '-makefile', qmakefile_path], cwd=builddir)
@@ -219,7 +228,7 @@ def main(args):
         if arg == '-j':
             user_specified_jobs = True
     
-    if not user_specified_jobs:
+    if makefile_path and not user_specified_jobs:
         has_notparallel = False
         for line in open(makefile_path):
             if line.startswith('.NOTPARALLEL'):
