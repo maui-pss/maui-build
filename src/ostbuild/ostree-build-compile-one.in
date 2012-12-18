@@ -22,8 +22,7 @@ import sys
 
 # This is a private directory, we don't want to pollute the global
 # namespace.
-path = os.path.join('/ostbuild')
-sys.path.insert(0, path)
+sys.path.insert(0, '/ostbuild')
 
 from pyostbuild.buildsystem_buildapi import BuildApiBuildSystem
 from pyostbuild.buildsystem_cmake import CMakeBuildSystem
