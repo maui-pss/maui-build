@@ -38,7 +38,8 @@ _DEVEL_DIRS = ['usr/include',
                'usr/share/pkgconfig',
                'usr/lib/pkgconfig',
                'usr/share/cmake',
-               'usr/lib/cmake']
+               'usr/lib/cmake',
+               'usr/lib/qt5/mkspecs']
 
 class BuildSystem(object):
     default_make_jobs = ['-j', '%d' % (cpu_count() * 2, )]
