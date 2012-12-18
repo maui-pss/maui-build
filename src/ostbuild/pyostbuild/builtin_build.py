@@ -366,8 +366,12 @@ class OstbuildBuild(builtins.Builtin):
         fileutil.ensure_dir(tmpdir)
 
         src_compile_one_path = os.path.join(LIBDIR, 'ostbuild', 'ostree-build-compile-one')
+        src_compile_one_mods_path = os.path.join(LIBDIR, 'ostbuild', 'pyostbuild')
         dest_compile_one_path = os.path.join(rootdir, 'ostree-build-compile-one')
+        dest_compile_one_mods_path = os.path.join(rootdir, 'ostbuild', 'pyostbuild')
         shutil.copy(src_compile_one_path, dest_compile_one_path)
+        shutil.rmtree(dest_compile_one_mods_path)
+        shutil.copytree(src_compile_one_mods_path, dest_compile_one_mods_path)
         os.chmod(dest_compile_one_path, 0755)
         
         chroot_sourcedir = os.path.join('/ostbuild', 'source', basename)

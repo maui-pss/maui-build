@@ -7,5 +7,6 @@ config.h.in
 config.log
 config.status
 configure
-ostbuild
+/ostbuild
+/ostree-build-compile-one
 stamp-h1

@@ -21,13 +21,20 @@ ostbuild: src/ostbuild/ostbuild.in Makefile
 	    -e s,@pkgdatadir\@,$(pkgdatadir), \
 	    -e s,@PYTHON\@,$(PYTHON), \
 	    $< > $@.tmp && mv $@.tmp $@
-EXTRA_DIST += ostbuild/ostbuild.in
+
+ostree-build-compile-one: src/ostbuild/ostree-build-compile-one.in Makefile
+	sed -e s,@libdir\@,$(libdir), \
+	    -e s,@datarootdir\@,$(datarootdir), \
+	    -e s,@pkgdatadir\@,$(pkgdatadir), \
+	    -e s,@PYTHON\@,$(PYTHON), \
+	    $< > $@.tmp && mv $@.tmp $@
+EXTRA_DIST += ostbuild/ostbuild.in ostbuild/ostree-build-compile-one.in
 
 if BUILDSYSTEM
 bin_SCRIPTS += ostbuild 
 
 utils_SCRIPTS = \
-	src/ostbuild/ostree-build-compile-one \
+	ostree-build-compile-one \
 	src/ostbuild/ostree-build-yocto \
 	$(NULL)
 utilsdir = $(libdir)/ostbuild
@@ -35,6 +42,9 @@ utilsdir = $(libdir)/ostbuild
 pyostbuilddir=$(libdir)/ostbuild/pyostbuild
 pyostbuild_PYTHON =					\
 	src/ostbuild/pyostbuild/buildutil.py		\
+	src/ostbuild/pyostbuild/buildsystem.py		\
+	src/ostbuild/pyostbuild/buildsystem_buildapi.py	\
+	src/ostbuild/pyostbuild/buildsystem_qmake.py	\
 	src/ostbuild/pyostbuild/builtin_autobuilder.py	\
 	src/ostbuild/pyostbuild/builtin_build.py	\
 	src/ostbuild/pyostbuild/builtin_checkout.py	\
