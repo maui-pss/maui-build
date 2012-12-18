@@ -42,18 +42,27 @@ class QMakeBuildSystem(BuildSystem):
         return False
 
     def do_build(self, args):
-        self.log("The QMake build system doesn't support builddir; copying source tree to " + self.builddir)
-        if os.path.isdir(self.builddir):
-            shutil.rmtree(self.builddir)
-        shutil.copytree('.', self.builddir, symlinks=True,
-                        ignore=shutil.ignore_patterns('_build'))
+        use_builddir = self.metadata.get('shadow-build', False)
+        if use_builddir:
+            self.log("Using build directory %r" % (self.builddir, ))
+            if not os.path.isdir(self.builddir):
+                os.mkdir(self.builddir)
+        else:
+            self.log("Shadow build disable, copying source tree to %s..." % self.builddir)
+            if os.path.isdir(self.builddir):
+                shutil.rmtree(self.builddir)
+            shutil.copytree('.', self.builddir, symlinks=True,
+                            ignore=shutil.ignore_patterns('_build'))
 
         makefile_path = None
 
         if self.has_configure:
             configargs = ['--prefix=' + PREFIX]
             configargs.extend(self.metadata.get('config-opts', []))
-            args = ['./configure']
+            if use_builddir:
+                args = ['../configure']
+            else:
+                args = ['./configure']
             args.extend(configargs)
             self.run_sync(args, cwd=self.builddir)
         else:
