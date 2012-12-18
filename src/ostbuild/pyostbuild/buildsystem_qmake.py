@@ -18,7 +18,7 @@
 
 # This implement a qmake build system
 
-import os, shutil
+import os, shutil, tempfile
 from .buildsystem import BuildSystem, PREFIX
 
 class QMakeBuildSystem(BuildSystem):

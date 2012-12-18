@@ -20,7 +20,7 @@
 # This implements the GNOME build API:
 # http://people.gnome.org/~walters/docs/build-api.txt
 
-import os, shutil
+import os, shutil, tempfile
 from .buildsystem import BuildSystem, PREFIX
 
 class BuildApiBuildSystem(BuildSystem):

@@ -16,7 +16,7 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-import os, sys ,stat, subprocess, tempfile, re, shutil
+import os, sys, stat, subprocess, re, shutil
 from StringIO import StringIO
 import json
 from multiprocessing import cpu_count
