@@ -370,7 +370,8 @@ class OstbuildBuild(builtins.Builtin):
         dest_compile_one_path = os.path.join(rootdir, 'ostree-build-compile-one')
         dest_compile_one_mods_path = os.path.join(rootdir, 'ostbuild', 'pyostbuild')
         shutil.copy(src_compile_one_path, dest_compile_one_path)
-        shutil.rmtree(dest_compile_one_mods_path)
+        if os.path.exists(dest_compile_one_mods_path):
+            shutil.rmtree(dest_compile_one_mods_path)
         shutil.copytree(src_compile_one_mods_path, dest_compile_one_mods_path)
         os.chmod(dest_compile_one_path, 0755)
         

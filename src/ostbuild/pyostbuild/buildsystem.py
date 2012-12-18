@@ -234,7 +234,7 @@ class BuildSystem(object):
             dest_path = os.path.join(runtime_path, filename)
             self._install_and_unlink(src_path, dest_path)
 
-        for tmpname in tempfiles:
+        for tmpname in self.tempfiles:
             assert os.path.isabs(tmpname)
             if os.path.isdir(tmpname):
                 shutil.rmtree(tmpname)
