@@ -26,12 +26,13 @@ path = os.path.join('/ostbuild')
 sys.path.insert(0, path)
 
 from pyostbuild.buildsystem_buildapi import BuildApiBuildSystem
+from pyostbuild.buildsystem_cmake import CMakeBuildSystem
 from pyostbuild.buildsystem_qmake import QMakeBuildSystem
 from pyostbuild.ostbuildlog import fatal
 
 def main(args):
     buildsys = None
-    for b in (QMakeBuildSystem, BuildApiBuildSystem):
+    for b in (QMakeBuildSystem, CMakeBuildSystem, BuildApiBuildSystem):
         obj = b()
         if obj.detect():
             buildsys = obj
