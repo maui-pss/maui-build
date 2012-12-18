@@ -78,6 +78,8 @@ class QMakeBuildSystem(BuildSystem):
         for arg in args:
             if arg == '-j':
                 user_specified_jobs = True
+        if not user_specified_jobs:
+            args.extend(self.default_make_jobs)
         self.run_sync(args, cwd=self.builddir)
 
         self.tempdir = tempfile.mkdtemp(prefix='ostbuild-destdir-%s' % (self.metadata['name'].replace('/', '_'), ))
