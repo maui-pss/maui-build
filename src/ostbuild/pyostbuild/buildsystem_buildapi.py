@@ -24,7 +24,7 @@ import os, shutil, tempfile
 from .buildsystem import BuildSystem, PREFIX
 
 class BuildApiBuildSystem(BuildSystem):
-    def _has_buildapi_configure_variable(name):
+    def _has_buildapi_configure_variable(self, name):
         var = '#buildapi-variable-%s' % (name, )
         for line in open('configure'):
             if line.find(var) >= 0:
@@ -73,7 +73,7 @@ class BuildApiBuildSystem(BuildSystem):
             self.run_sync(['./' + autogen_script], env=env)
 
         use_builddir = True
-        doesnot_support_builddir = _has_buildapi_configure_variable('no-builddir')
+        doesnot_support_builddir = self._has_buildapi_configure_variable('no-builddir')
         if doesnot_support_builddir:
             self.log("Found no-builddir Build API variable; copying source tree to " + self.builddir)
             if os.path.isdir(self.builddir):
