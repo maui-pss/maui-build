@@ -96,6 +96,10 @@ ln -sf ${repo_path} ${IMAGEDIR}/repo
 echo "Building ${src_gitrev}"
 bitbake maui-contents-{runtime,devel}
 
+for basetype in runtime devel; do
+    ln -sf ${builddir}/tmp-eglibc/deploy/images/maui-contents-${basetype}-${MACHINE}.tar.gz maui-contents-${basetype}-${architecture}.tar.gz
+done
+
 echo ${src_gitrev} > ${built_gitrev_path}.tmp
 mv ${built_gitrev_path}.tmp ${built_gitrev_path}
 exit 0

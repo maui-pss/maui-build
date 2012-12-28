@@ -574,7 +574,16 @@ and the manifest input."""
         env['DL_DIR'] = downloads
         env['SSTATE_DIR'] = sstate_dir
         run_sync(cmd, env=env)
-        
+
+        component_types = ['runtime', 'devel']
+        for component_type in component_types:
+            treename = 'bases/yocto/%s-%s-%s' % (self.prefix, architecture, component_type)
+            tar_path = os.path.join(builddir, 'maui-contents-%s-%s.tar.gz' % (component_type, architecture))
+            cmd = ['ostree', '--repo=' + self.repo, 'commit', '-s', 'Build', '--skip-if-unchanged',
+                   '-b', treename, '--tree=tar=' + tar_path]
+            run_sync(cmd, env=env)
+            os.remove(tar_path)
+
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
         parser.add_argument('--prefix')
