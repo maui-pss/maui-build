@@ -560,6 +560,19 @@ and the manifest input."""
         builddir_name = 'build-%s-%s' % (basemeta['name'], architecture)
         builddir = os.path.join(self.workdir, builddir_name)
 
+        built_rev_path = os.path.join(builddir, 'built-revision')
+        if os.path.exist(built_rev_path):
+            import re
+            built_rev_file = open(built_rev_path, "r")
+            built_rev = built_rev_file.read()
+            built_rev = re.sub(r'[ \n]', '', built_rev)
+            built_rev_file.close()
+            if built_rev == basemeta['revision']:
+                log("Already built %s at %s" % (builddir_name, built_rev))
+                return
+            else:
+                log("%s was %s, now at revision %s" % (builddir_name, built_rev, basemeta['revision']))
+
         # Just keep reusing the old working directory downloads and sstate
         old_builddir = os.path.join(self.workdir, 'build-%s' % (basemeta['name'], ))
         sstate_dir = os.path.join(old_builddir, 'sstate-cache')
@@ -583,6 +596,10 @@ and the manifest input."""
                    '-b', treename, '--tree=tar=' + tar_path]
             run_sync(cmd, env=env)
             os.remove(tar_path)
+
+        built_rev_file = open(built_rev_path, "w")
+        built_rev_file.write(basemeta['revision'] + '\n')
+        built_rev_file.close()
 
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)

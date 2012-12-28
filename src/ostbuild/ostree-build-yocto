@@ -39,23 +39,6 @@ test -n "${architecture}" || (usage; exit 1)
 repo_path=$4
 test -n "${repo_path}" || (usage; exit 1)
 
-src_gitrev=$(cd ${srcdir} && git rev-parse HEAD)
-built_gitrev_path=${builddir}/built-revision
-if test -f ${built_gitrev_path}; then
-    built_gitrev=$(cat ${built_gitrev_path})
-else
-    built_gitrev=
-fi
-
-if test x${src_gitrev} = x${built_gitrev}; then
-    echo "Already built ${src_gitrev}"
-    exit 0
-else
-    if test -n "${built_gitrev}"; then
-	echo "Yocto build ${src_gitrev} differs from previous ${built_gitrev}"
-    fi
-fi
-
 . "${srcdir}/oe-init-build-env" "${builddir}"
 
 if ! grep -q meta-maui ${builddir}/conf/bblayers.conf; then
@@ -93,13 +76,8 @@ IMAGEDIR=${builddir}/tmp-eglibc/deploy/images
 mkdir -p "${IMAGEDIR}"
 ln -sf ${repo_path} ${IMAGEDIR}/repo
 
-echo "Building ${src_gitrev}"
 bitbake maui-contents-{runtime,devel}
 
 for basetype in runtime devel; do
     ln -sf ${builddir}/tmp-eglibc/deploy/images/maui-contents-${basetype}-${MACHINE}.tar.gz maui-contents-${basetype}-${architecture}.tar.gz
 done
-
-echo ${src_gitrev} > ${built_gitrev_path}.tmp
-mv ${built_gitrev_path}.tmp ${built_gitrev_path}
-exit 0
