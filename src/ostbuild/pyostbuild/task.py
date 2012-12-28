@@ -89,17 +89,26 @@ class TaskSet(object):
         self._history = []
         self._running = False
         self._running_version = None
+        self._maxVersions = 10
 
         self._load()
 
+    def _cleanOldEntries(self):
+        while len(self._history) > self._maxVersions:
+            task = self._history.pop(0)
+            shutil.rmtree(task.path)
+
     def _load(self):
+        history = []
         for item in os.listdir(self.path):
             match = VERSION_RE.match(item)
             if match is None:
                 continue
             history_path = os.path.join(self.path, item)
-            self._history.append(TaskHistoryEntry(history_path))
-        self._history.sort()
+            history.append(TaskHistoryEntry(history_path))
+        history.sort()
+        self._history = history
+        self._cleanOldEntries()
 
     def start(self):
         assert not self._running
@@ -126,6 +135,7 @@ class TaskSet(object):
         last = self._history[-1]
         last.finish(success)
         self._running = False
+        self._cleanOldEntries()
 
     def get_history(self):
         return self._history
