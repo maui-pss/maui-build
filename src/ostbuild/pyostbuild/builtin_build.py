@@ -59,13 +59,7 @@ class OstbuildBuild(builtins.Builtin):
 
     def _clean_stale_buildroots(self, buildroot_cachedir, keep_root):
         roots = os.listdir(buildroot_cachedir)
-        root_mtimes = {}
         for root in roots:
-            path = os.path.join(buildroot_cachedir, root)
-            root_mtimes[root] = os.lstat(path).st_mtime
-        roots.sort(lambda a,b: cmp(root_mtimes[a], root_mtimes[b]))
-        remaining = roots[:-2]
-        for root in remaining:
             path = os.path.join(buildroot_cachedir, root)
             if path == keep_root:
                 continue
