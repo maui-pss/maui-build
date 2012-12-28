@@ -555,7 +555,7 @@ and the manifest input."""
         builddir = os.path.join(self.workdir, builddir_name)
 
         built_rev_path = os.path.join(builddir, 'built-revision')
-        if os.path.exist(built_rev_path):
+        if os.path.exists(built_rev_path):
             import re
             built_rev_file = open(built_rev_path, "r")
             built_rev = built_rev_file.read()
