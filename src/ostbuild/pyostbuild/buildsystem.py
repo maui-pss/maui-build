@@ -42,6 +42,7 @@ _DEVEL_DIRS = ['usr/include',
                'usr/lib/qt5/mkspecs']
 
 class BuildSystem(object):
+    name = None
     default_make_jobs = ['-j', '%d' % (cpu_count() + 1), 
                          '-l', '%d' % (cpu_count() * 2)]
     ostbuild_resultdir = '_ostbuild-results'

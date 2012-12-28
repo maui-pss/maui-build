@@ -22,6 +22,7 @@ import os, shutil, tempfile
 from .buildsystem import BuildSystem, PREFIX
 
 class CMakeBuildSystem(BuildSystem):
+    name = "cmake"
     cmakefile_path = None
 
     def detect(self):

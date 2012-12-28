@@ -22,6 +22,7 @@ import os, shutil, tempfile
 from .buildsystem import BuildSystem, PREFIX
 
 class QMakeBuildSystem(BuildSystem):
+    name = "qmake"
     qmakefile_path = None
     has_configure = False
 

@@ -24,6 +24,8 @@ import os, shutil, tempfile
 from .buildsystem import BuildSystem, PREFIX
 
 class BuildApiBuildSystem(BuildSystem):
+    name = "buildapi"
+
     def _has_buildapi_configure_variable(self, name):
         var = '#buildapi-variable-%s' % (name, )
         for line in open('configure'):
