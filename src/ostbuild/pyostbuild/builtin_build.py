@@ -60,10 +60,10 @@ class OstbuildBuild(builtins.Builtin):
     def _clean_stale_buildroots(self, buildroot_cachedir, keep_root):
         roots = os.listdir(buildroot_cachedir)
         for root in roots:
-            path = os.path.join(buildroot_cachedir, root)
-            if path == keep_root:
+            if root == keep_root:
                 continue
             log("Removing old cached buildroot %s" % (root, ))
+            path = os.path.join(buildroot_cachedir, root)
             shutil.rmtree(path)
 
     def _compose_buildroot(self, workdir, component_name, architecture):
