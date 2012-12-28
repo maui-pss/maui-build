@@ -49,6 +49,7 @@ class BuildSystem(object):
     ostbuild_meta_path = '_ostbuild-meta.json'
     metadata = None
     builddir = '_build'
+    args = []
     makeargs = ['make']
     tempdir = None
     tempfiles = []
@@ -150,10 +151,8 @@ class BuildSystem(object):
             logfn("pid %d exited with code %d" % (proc.pid, returncode))
         return returncode
 
-    def build(self, args):
-        #
-        # Pre-build phase
-        #
+    def __init__(self, args):
+        self.args = args
 
         uname = os.uname()
         kernel = uname[0].lower()
@@ -163,7 +162,7 @@ class BuildSystem(object):
         self.chdir = None
         self.opt_install = False
 
-        for arg in args:
+        for arg in self.args:
             if arg.startswith('--ostbuild-resultdir='):
                 self.ostbuild_resultdir = arg[len('--ostbuild-resultdir='):]
             elif arg.startswith('--ostbuild-meta='):
@@ -177,10 +176,15 @@ class BuildSystem(object):
         self.metadata = json.load(f)
         f.close()
 
+    def build(self):
+        #
+        # Pre-build phase
+        #
+
         self.starttime = time.time()
 
         # Call the method that subclasses will override
-        self.do_build(args)
+        self.do_build()
 
         #
         # Post-build phase

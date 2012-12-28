@@ -39,7 +39,7 @@ class BuildApiBuildSystem(BuildSystem):
                 return True
         return False
 
-    def do_build(self, args):
+    def do_build(self):
         configargs = ['--build=' + self.build_target,
                       '--prefix=' + PREFIX,
                       '--libdir=' + os.path.join(PREFIX, 'lib'),

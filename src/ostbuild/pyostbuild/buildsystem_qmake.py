@@ -42,7 +42,7 @@ class QMakeBuildSystem(BuildSystem):
                 return True
         return False
 
-    def do_build(self, args):
+    def do_build(self):
         use_builddir = self.metadata.get('shadow-build', False)
         if use_builddir:
             self.log("Using build directory %r" % (self.builddir, ))

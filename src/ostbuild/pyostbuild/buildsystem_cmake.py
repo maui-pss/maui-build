@@ -34,7 +34,7 @@ class CMakeBuildSystem(BuildSystem):
                 return True
         return False
 
-    def do_build(self, args):
+    def do_build(self):
         self.log("Using build directory %r" % (self.builddir, ))
         if not os.path.isdir(self.builddir):
             os.mkdir(self.builddir)
@@ -42,7 +42,7 @@ class CMakeBuildSystem(BuildSystem):
         configargs = ['-DCMAKE_INSTALL_PREFIX=' + PREFIX]
         configargs.extend(self.metadata.get('config-opts', []))
         build_type_found = False
-        for arg in args:
+        for arg in configargs:
             if arg[:18] == '-DCMAKE_BUILD_TYPE':
                 build_type_found = True
                 break

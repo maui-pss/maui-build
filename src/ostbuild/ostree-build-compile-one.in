@@ -32,7 +32,13 @@ from pyostbuild.ostbuildlog import fatal
 def main(args):
     buildsys = None
     for b in (QMakeBuildSystem, CMakeBuildSystem, BuildApiBuildSystem):
-        obj = b()
+        obj = b(args)
+
+        # Respect build system forced by metadata
+        if obj.metadata.get('build-system', None) and obj.metadata.get('build-system', None) != obj.name:
+            continue
+
+        # Detect if this is the right build system
         if obj.detect():
             buildsys = obj
             break
@@ -40,6 +46,6 @@ def main(args):
     if not buildsys:
         fatal("Unsupported build system!")
 
-    buildsys.build(args)
+    buildsys.build()
 
 main(sys.argv[1:])
