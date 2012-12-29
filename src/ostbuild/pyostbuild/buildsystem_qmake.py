@@ -49,7 +49,7 @@ class QMakeBuildSystem(BuildSystem):
             if not os.path.isdir(self.builddir):
                 os.mkdir(self.builddir)
         else:
-            self.log("Shadow build disable, copying source tree to %s..." % self.builddir)
+            self.log("Shadow build disabled, copying source tree to %s..." % self.builddir)
             if os.path.isdir(self.builddir):
                 shutil.rmtree(self.builddir)
             shutil.copytree('.', self.builddir, symlinks=True,
