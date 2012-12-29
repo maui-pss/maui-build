@@ -54,69 +54,30 @@ class BuildSystem(object):
     tempdir = None
     tempfiles = []
 
-    def _get_env_for_cwd(self, cwd=None, env=None):
-        # This dance is necessary because we want to keep the PWD
-        # environment variable up to date.  Not doing so is a recipie
-        # for triggering edge conditions in pwd lookup.
-        if (cwd is not None) and (env is None or ('PWD' in env)):
-            if env is None:
-                env_copy = os.environ.copy()
+    def __init__(self, args):
+        self.args = args
+
+        uname = os.uname()
+        kernel = uname[0].lower()
+        machine = uname[4]
+        self.build_target = '%s-%s' % (machine, kernel)
+
+        self.chdir = None
+        self.opt_install = False
+
+        for arg in self.args:
+            if arg.startswith('--ostbuild-resultdir='):
+                self.ostbuild_resultdir = arg[len('--ostbuild-resultdir='):]
+            elif arg.startswith('--ostbuild-meta='):
+                self.ostbuild_meta_path = arg[len('--ostbuild-meta='):]
+            elif arg.startswith('--chdir='):
+                os.chdir(arg[len('--chdir='):])
             else:
-                env_copy = env.copy()
-            if ('PWD' in env_copy) and (not cwd.startswith('/')):
-                env_copy['PWD'] = os.path.join(env_copy['PWD'], cwd)
-            else:
-                env_copy['PWD'] = cwd
-        else:
-            env_copy = env
-        return env_copy
-
-    def _install_and_unlink(self, src, dest):
-        statsrc = os.lstat(src)
-        dirname = os.path.dirname(dest)
-        if not os.path.isdir(dirname):
-            os.makedirs(dirname)
-
-        # Ensure that all installed files are at least rw-rw-r--;
-        # we don't support private/hidden files.
-        # Directories also need u+x, i.e. they're rwxrw-r--
-        if not stat.S_ISLNK(statsrc.st_mode):
-            minimal_mode = (stat.S_IRUSR | stat.S_IWUSR |
-                            stat.S_IRGRP | stat.S_IWGRP |
-                            stat.S_IROTH)
-            if stat.S_ISDIR(statsrc.st_mode):
-                minimal_mode |= stat.S_IXUSR
-            os.chmod(src, statsrc.st_mode | minimal_mode)
-
-        if stat.S_ISDIR(statsrc.st_mode):
-            if not os.path.isdir(dest):
-                os.mkdir(dest)
-            for filename in os.listdir(src):
-                src_child = os.path.join(src, filename)
-                dest_child = os.path.join(dest, filename)
-    
-                self._install_and_unlink(src_child, dest_child)
-            os.rmdir(src)
-        else:
-            basename = os.path.basename(src)
-            ignored = False
-            for r in _IGNORE_FILENAME_REGEXPS:
-                if r.match(basename):
-                    ignored = True
-                    break
-            if ignored:
-                self.log("Not installing %s" % (src, ))
-                os.unlink(src)
-                return
-            try:
-                os.rename(src, dest)
-            except OSError, e:
-                if stat.S_ISLNK(statsrc.st_mode):
-                    linkto = os.readlink(src)
-                    os.symlink(linkto, dest)
-                else:
-                    shutil.copy2(src, dest)
-                os.unlink(src)
+                self.makeargs.append(arg)
+        
+        f = open(self.ostbuild_meta_path)
+        self.metadata = json.load(f)
+        f.close()
 
     def detect(self):
         return False
@@ -150,31 +111,6 @@ class BuildSystem(object):
         if logfn is not None:
             logfn("pid %d exited with code %d" % (proc.pid, returncode))
         return returncode
-
-    def __init__(self, args):
-        self.args = args
-
-        uname = os.uname()
-        kernel = uname[0].lower()
-        machine = uname[4]
-        self.build_target = '%s-%s' % (machine, kernel)
-
-        self.chdir = None
-        self.opt_install = False
-
-        for arg in self.args:
-            if arg.startswith('--ostbuild-resultdir='):
-                self.ostbuild_resultdir = arg[len('--ostbuild-resultdir='):]
-            elif arg.startswith('--ostbuild-meta='):
-                self.ostbuild_meta_path = arg[len('--ostbuild-meta='):]
-            elif arg.startswith('--chdir='):
-                os.chdir(arg[len('--chdir='):])
-            else:
-                self.makeargs.append(arg)
-        
-        f = open(self.ostbuild_meta_path)
-        self.metadata = json.load(f)
-        f.close()
 
     def build(self):
         #
@@ -254,3 +190,67 @@ class BuildSystem(object):
 
         self.log("Compilation succeeded; %d seconds elapsed" % (int(self.endtime - self.starttime),))
         self.log("Results placed in %s" % (self.ostbuild_resultdir, ))
+
+    def _get_env_for_cwd(self, cwd=None, env=None):
+        # This dance is necessary because we want to keep the PWD
+        # environment variable up to date.  Not doing so is a recipie
+        # for triggering edge conditions in pwd lookup.
+        if (cwd is not None) and (env is None or ('PWD' in env)):
+            if env is None:
+                env_copy = os.environ.copy()
+            else:
+                env_copy = env.copy()
+            if ('PWD' in env_copy) and (not cwd.startswith('/')):
+                env_copy['PWD'] = os.path.join(env_copy['PWD'], cwd)
+            else:
+                env_copy['PWD'] = cwd
+        else:
+            env_copy = env
+        return env_copy
+
+    def _install_and_unlink(self, src, dest):
+        statsrc = os.lstat(src)
+        dirname = os.path.dirname(dest)
+        if not os.path.isdir(dirname):
+            os.makedirs(dirname)
+
+        # Ensure that all installed files are at least rw-rw-r--;
+        # we don't support private/hidden files.
+        # Directories also need u+x, i.e. they're rwxrw-r--
+        if not stat.S_ISLNK(statsrc.st_mode):
+            minimal_mode = (stat.S_IRUSR | stat.S_IWUSR |
+                            stat.S_IRGRP | stat.S_IWGRP |
+                            stat.S_IROTH)
+            if stat.S_ISDIR(statsrc.st_mode):
+                minimal_mode |= stat.S_IXUSR
+            os.chmod(src, statsrc.st_mode | minimal_mode)
+
+        if stat.S_ISDIR(statsrc.st_mode):
+            if not os.path.isdir(dest):
+                os.mkdir(dest)
+            for filename in os.listdir(src):
+                src_child = os.path.join(src, filename)
+                dest_child = os.path.join(dest, filename)
+    
+                self._install_and_unlink(src_child, dest_child)
+            os.rmdir(src)
+        else:
+            basename = os.path.basename(src)
+            ignored = False
+            for r in _IGNORE_FILENAME_REGEXPS:
+                if r.match(basename):
+                    ignored = True
+                    break
+            if ignored:
+                self.log("Not installing %s" % (src, ))
+                os.unlink(src)
+                return
+            try:
+                os.rename(src, dest)
+            except OSError, e:
+                if stat.S_ISLNK(statsrc.st_mode):
+                    linkto = os.readlink(src)
+                    os.symlink(linkto, dest)
+                else:
+                    shutil.copy2(src, dest)
+                os.unlink(src)
