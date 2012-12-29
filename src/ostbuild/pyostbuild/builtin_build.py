@@ -194,7 +194,7 @@ class OstbuildBuild(builtins.Builtin):
             log("No previous build; skipping source diff")
 
     def _needs_rebuild(self, previous_metadata, new_metadata):
-        build_keys = ['config-opts', 'src', 'revision']
+        build_keys = ['build-system', 'config-opts', 'src', 'revision']
         for k in build_keys:
             if (k not in new_metadata):
                 return 'key %r removed from new_metadata' % (k, )
