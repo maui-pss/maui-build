@@ -37,6 +37,8 @@ class QMakeBuildSystem(BuildSystem):
                 for name in os.listdir(os.getcwd()):
                     if name == 'configure':
                         self.has_configure = True
+                        self.log("A configure script was found despite this being " \
+                                 "a qmake project, running configure instead...")
                         break
 
                 return True
