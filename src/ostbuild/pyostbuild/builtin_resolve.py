@@ -42,7 +42,7 @@ class OstbuildResolve(builtins.Builtin):
 
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
-        parser.add_argument('--manifest', required=True,
+        parser.add_argument('--manifest',
                             help="Path to manifest file")
         parser.add_argument('--fetch-patches', action='store_true',
                             help="Git fetch the patches")
@@ -64,6 +64,9 @@ class OstbuildResolve(builtins.Builtin):
             fatal("Can't specify components without --fetch")
         
         self.parse_config()
+
+        if not args.manifest:
+            args.manifest = os.path.expanduser(ostbuildrc.get_key('manifest'))
 
         self.snapshot = json.load(open(args.manifest))
         self.prefix = self.snapshot['prefix']
