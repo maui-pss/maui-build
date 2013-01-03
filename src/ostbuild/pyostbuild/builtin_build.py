@@ -194,7 +194,7 @@ class OstbuildBuild(builtins.Builtin):
             log("No previous build; skipping source diff")
 
     def _needs_rebuild(self, previous_metadata, new_metadata):
-        build_keys = ['build-system', 'config-opts', 'src', 'revision']
+        build_keys = ['config-opts', 'src', 'revision']
         for k in build_keys:
             if (k not in new_metadata):
                 return 'key %r removed from new_metadata' % (k, )
@@ -206,7 +206,17 @@ class OstbuildBuild(builtins.Builtin):
 
             if (k not in new_metadata) or (previous_metadata[k] != new_metadata[k]):
                 return 'key %r differs' % (k, )
-            
+
+        if 'build-system' in previous_metadata:
+            if 'build-system' not in new_metadata:
+                return 'build-system differ'
+            old_build_system = previous_metadata['build-system']
+            new_build_system = new_metadata['build-system']
+            if old_build_system != new_build_system:
+                return 'build-system differ'
+        elif 'build-system' in new_metadata:
+            return 'build-system differ'
+ 
         if 'patches' in previous_metadata:
             if 'patches' not in new_metadata:
                 return 'patches differ'
@@ -222,6 +232,7 @@ class OstbuildBuild(builtins.Builtin):
                 len(old_sha256sums) != len(new_sha256sums) or
                 old_sha256sums != new_sha256sums):
                 return 'patch sha256sums differ'
+
         return None
 
     def _compute_sha256sums_for_patches(self, patchdir, component):
