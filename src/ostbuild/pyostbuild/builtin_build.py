@@ -565,6 +565,9 @@ and the manifest input."""
         builddir_name = 'build-%s-%s' % (basemeta['name'], architecture)
         builddir = os.path.join(self.workdir, builddir_name)
 
+        force_rebuild = (basemeta['name'] in self.force_build_components or
+                         basemeta['src'].startsWith('local:'))
+
         built_rev_path = os.path.join(builddir, 'built-revision')
         if os.path.exists(built_rev_path):
             import re
@@ -572,7 +575,9 @@ and the manifest input."""
             built_rev = built_rev_file.read()
             built_rev = re.sub(r'[ \n]', '', built_rev)
             built_rev_file.close()
-            if built_rev == basemeta['revision']:
+            if force_rebuild:
+                log("%s forced rebuild" % builddir_name)
+            elif built_rev == basemeta['revision']:
                 log("Already built %s at %s" % (builddir_name, built_rev))
                 return
             else:
