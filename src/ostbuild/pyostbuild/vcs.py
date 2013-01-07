@@ -25,9 +25,18 @@ from . import buildutil
 from .ostbuildlog import log, fatal
 
 def get_mirrordir(mirrordir, keytype, uri, prefix=''):
-    assert keytype == 'git'
-    parsed = urlparse.urlsplit(uri)
-    return os.path.join(mirrordir, prefix, keytype, parsed.scheme, parsed.netloc, parsed.path[1:])
+    colon = uri.index("://")
+    if colon >= 0:
+        scheme = uri[0:colon]
+        rest = uri[colon+3:]
+    else:
+        scheme = 'file'
+        if os.path.exists(uri):
+            rest = uri[1:]
+        else:
+            rest = uri
+    if prefix: prefix += '/'
+    return os.path.join(mirrordir, prefix, keytype, scheme, rest)
 
 def _fixup_submodule_references(mirrordir, cwd):
     submodules_status_text = run_sync_get_output(['git', 'submodule', 'status'], cwd=cwd)
