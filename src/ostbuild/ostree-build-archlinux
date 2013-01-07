@@ -1,0 +1,194 @@
+#!/bin/bash
+# Copyright (C) 2013 Pier Luigi Fiorini <pierluigi.fiorini@gmail.com>
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the
+# Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+# Boston, MA 02111-1307, USA.
+
+set -e
+umask 022
+
+die () {
+    echo "$*" 1>&2
+    exit 1
+}
+
+usage () {
+    echo "$0: SRCDIR BUILDDIR ARCHITECTURE REPO"
+}
+
+srcdir=$1
+test -n "${srcdir}" || (usage; exit 1)
+builddir=$2
+test -n "${builddir}" || (usage; exit 1)
+architecture=$3
+test -n "${architecture}" || (usage; exit 1)
+repo_path=$4
+test -n "${repo_path}" || (usage; exit 1)
+
+case "$architecture" in
+    i686) ;;
+    x86_64) ;;
+    *) echo "Error: Unhandled architecture '$architecture'"; exit 1;;
+esac
+
+pacmanconf=/tmp/pacman-$$.conf
+
+cat > $pacmanconf <<EOF
+[options]
+HoldPkg     = pacman glibc
+SyncFirst   = pacman
+Architecture = ${architecture}
+CheckSpace
+
+[core]
+SigLevel = PackageRequired
+Include = /etc/pacman.d/mirrorlist
+
+[extra]
+SigLevel = PackageRequired
+Include = /etc/pacman.d/mirrorlist
+
+[maui]
+SigLevel = TrustAll
+Server = file:///home/plfiorini/chroot/mauirepo
+EOF
+
+IMAGEDIR=${builddir}/images
+mkdir -p "${IMAGEDIR}"
+ln -sf ${repo_path} ${IMAGEDIR}/repo
+
+WORKDIR=${builddir}/work
+DEPLOY_DIR_IMAGE=${builddir}/deploy
+mkdir -p "${WORKDIR}" "${DEPLOY_DIR_IMAGE}"
+
+# List of packages for the runtime image
+runtime_pkgs="bash bzip2 coreutils diffutils e2fsprogs file filesystem findutils gawk gcc-libs \
+    gettext glibc grep gzip heirloom-mailx inetutils iproute2 iputils less licenses linux man-db \
+    man-pages libgcrypt mdadm nss-myhostname pciutils perl ppp procps-ng psmisc sed shadow sysfsutils \
+    tar texinfo usbutils util-linux which gdbm libexif libogg libvorbis libtiff speex alsa-lib alsa-utils \
+    perl-xml-parser icu acl attr python python2 ncurses openssh openssl curl llvm nss-altfiles-git"
+
+# List of packages for the devel image (in addition to the files for the runtime image)
+devel_pkgs="autoconf automake binutils bison fakeroot flex gawk gcc gettext libtool m4 make \
+    patch pkg-config valgrind elfutils ccache zip"
+
+# Remove any previous build of images
+rm -fr "${IMAGEDIR}/maui-contents-runtime-${architecture}"
+rm -fr "${IMAGEDIR}/maui-contents-devel-${architecture}"
+
+# Create the images
+mkdir -p "${IMAGEDIR}/maui-contents-runtime-${architecture}"
+pacstrap -c -d -M -C $pacmanconf "${IMAGEDIR}/maui-contents-runtime-${architecture}" \
+    ${runtime_pkgs} || die "Unable to create runtime image"
+mkdir -p "${IMAGEDIR}/maui-contents-devel-${architecture}"
+pacstrap -c -d -M -C $pacmanconf "${IMAGEDIR}/maui-contents-devel-${architecture}" \
+    ${runtime_pkgs} ${devel_pkgs} || die "Unable to create devel image"
+
+# Remove development files from the runtime image
+pushd "${IMAGEDIR}/maui-contents-runtime-${architecture}" >/dev/null
+rm -rf usr/include usr/share/aclocal usr/share/pkgconfig usr/lib/pkgconfig usr/share/cmake usr/lib/cmake usr/lib/qt5/mkspecs
+popd >/dev/null
+
+# Remove uless stuff from both images
+for basetype in runtime devel; do
+    image="${IMAGEDIR}/maui-contents-${basetype}-${architecture}"
+
+    # Remove sysvinit scripts and pacman configuration
+    pushd "${image}" >/dev/null
+    rm -rf etc/rc.d etc/pacman.conf etc/pacman.d var/lib/pacman var/cache/pacman
+    popd >/dev/null
+
+    # Empty out the default passwd file
+    rm -f "${image}/etc/{passwd,group,shadow,gshadow}"
+
+    # root has no password by default
+    cat > "${image}/etc/passwd" <<EOF
+root::0:0:root:/:/bin/sh
+EOF
+    cat > "${image}/etc/group" << EOF
+root:x:0:root
+EOF
+    touch "${image}/etc/{,g}shadow"
+    chmod 0600 "${image}/etc/{,g}shadow"
+
+    # Delete backup files
+    rm -f "${image}/etc/{passwd,group,shadow,gshadow}-"
+
+    # Add nss-altfiles to /etc/nsswitch.conf
+    sed -i -e '/^passwd:/cpasswd: files altfiles' \
+           -e '/^group:/cgroup: files altfiles' \
+           "${image}/etc/nsswitch.conf"
+
+    # Ensure we're setup for systemd
+    echo "session optional pam_systemd.so" >> "${image}/etc/pam.d/common-session"
+
+    # Adjustments for /etc -> {/var,/run} here
+    ln -sf /run/resolv.conf "${image}/etc/resolv.conf"
+
+    # Clear out the default fstab; everything we need right now is mounted
+    # in the initramfs.
+    cat < /dev/null > "${image}/etc/fstab"
+
+    # Python 2 is the default python interpreter
+    ln -sf /usr/bin/python2 "${image}/usr/bin/python"
+
+    if [ "${basetype}" = "devel" ]; then
+        # Pretend we have automake 1.12
+        ln -sf /usr/bin/automake-1.13 "${image}/usr/bin/automake-1.12"
+        ln -sf /usr/bin/aclocal-1.13 "${image}/usr/bin/aclocal-1.12"
+    fi
+
+    # Remove .la files
+    find "${image}" -type f -name "*.la" -delete
+
+    # Create mounts
+    toproot_bind_mounts="home root tmp"
+    ostree_bind_mounts="var"
+    osdirs="dev proc mnt media run sys sysroot"
+    readonly_bind_mounts="boot bin etc lib sbin usr"
+    rm -rf "${WORKDIR}/maui-contents"
+    mkdir -p "${WORKDIR}/maui-contents"
+    for d in $toproot_bind_mounts $ostree_bind_mounts $osdirs; do
+        mkdir "${WORKDIR}/maui-contents/${d}"
+    done
+    for d in $readonly_bind_mounts; do
+        mv "${image}/${d}" "${WORKDIR}/maui-contents"
+    done
+    rm -rf "${image}"
+    mv "${WORKDIR}/maui-contents" "${image}"
+
+    # Ok, let's globally fix permissions; everything is root owned,
+    # all directories are u=rwx,og=rx, except for /root, and /tmp is sticky
+    chown -R -h 0:0 "${image}"
+    find "${image}" -type d -exec chmod u=rwx,og=rx "{}" \;
+    chmod a=rwxt "${image}/tmp"
+    chmod go-rwx "${image}/root"
+
+    # Create a .tar.gz archive
+    image_name=maui-contents-${basetype}-${architecture}.tar.gz
+    dest="${WORKDIR}/${image_name}"
+    (cd "${image}" && tar -zc -f "${dest}" .)
+
+    mv ${dest} "${DEPLOY_DIR_IMAGE}/${image_name}"
+    echo "ostree --repo=build/repo commit -s Build --skip-if-unchanged -b bases/yocto/maui-0.1-x86_64-${basetype} --tree=tar=\"${DEPLOY_DIR_IMAGE}/${image_name}\""
+done
+
+# Remove temporary files
+rm -f $pacmanconf
+rm -fr "${IMAGEDIR}/maui-contents-runtime-${architecture}"
+rm -fr "${IMAGEDIR}/maui-contents-devel-${architecture}"
+
+# ostree --repo=build/repo commit -s Build --skip-if-unchanged -b bases/yocto/maui-0.1-x86_64-runtime --tree=tar=/home/plfiorini/Progetti/Maui/maui-ostree/maui-contents-runtime-x86_64.tar.gz 
+# ostree --repo=build/repo commit -s Build --skip-if-unchanged -b bases/yocto/maui-0.1-x86_64-devel --tree=tar=/home/plfiorini/Progetti/Maui/maui-ostree/maui-contents-devel-x86_64.tar.gz 
