@@ -39,6 +39,7 @@ _DEVEL_DIRS = ['usr/include',
                'usr/lib/pkgconfig',
                'usr/share/cmake',
                'usr/lib/cmake',
+               'usr/lib/qt5/cmake',
                'usr/lib/qt5/mkspecs']
 
 class BuildSystem(object):
