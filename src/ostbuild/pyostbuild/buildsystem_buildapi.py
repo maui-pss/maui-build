@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-# Copyright (C) 2012 Pier Luigi Fiorini <pierluigi.fiorini@gmail.com>
-# Copyright (C) 2011, 2012 Colin Walters <walters@verbum.org>
+# Copyright (C) 2012-2013 Pier Luigi Fiorini <pierluigi.fiorini@gmail.com>
+# Copyright (C) 2011-2012 Colin Walters <walters@verbum.org>
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public

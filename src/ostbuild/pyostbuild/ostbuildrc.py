@@ -1,3 +1,4 @@
+# Copyright (C) 2012-2013 Pier Luigi Fiorini <pierluigi.fiorini@gmail.com>
 # Copyright (C) 2011 Colin Walters <walters@verbum.org>
 #
 # This library is free software; you can redistribute it and/or
