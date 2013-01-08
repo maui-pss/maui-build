@@ -1,5 +1,5 @@
 AC_PREREQ([2.63])
-AC_INIT([maui-ostree], [2012.3], [pierluigi.fiorini@gmail.com], [maui-ostree], [http://www.maui-project.org])
+AC_INIT([maui-ostree], [2013.1], [pierluigi.fiorini@gmail.com], [maui-ostree], [http://www.maui-project.org])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_AUX_DIR([build-aux])
