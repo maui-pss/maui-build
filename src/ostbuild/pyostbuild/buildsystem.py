@@ -143,7 +143,7 @@ class BuildSystem(object):
 
         # Move symbolic links for shared libraries as well
         # as static libraries.  And delete all .la files.
-        libdir = os.path.join(tempdir, 'usr/lib')
+        libdir = os.path.join(self.tempdir, 'usr/lib')
         for dirpath, subdirs, files in os.walk(libdir):
             for filename in files:
                 subpath = os.path.join(dirpath, filename)
