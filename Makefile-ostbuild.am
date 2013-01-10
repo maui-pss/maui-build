@@ -30,7 +30,6 @@ ostree-build-compile-one: src/ostbuild/ostree-build-compile-one.in Makefile
 	    $< > $@.tmp && mv $@.tmp $@
 EXTRA_DIST += ostbuild/ostbuild.in ostbuild/ostree-build-compile-one.in
 
-if BUILDSYSTEM
 bin_SCRIPTS += ostbuild 
 
 utils_SCRIPTS = \
@@ -76,4 +75,3 @@ pyostbuild_PYTHON =					\
 	src/ostbuild/pyostbuild/subprocess_helpers.py	\
 	src/ostbuild/pyostbuild/vcs.py			\
 	$(NULL)
-endif
