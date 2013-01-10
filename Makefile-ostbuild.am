@@ -30,7 +30,7 @@ ostree-build-compile-one: src/ostbuild/ostree-build-compile-one.in Makefile
 	    $< > $@.tmp && mv $@.tmp $@
 EXTRA_DIST += ostbuild/ostbuild.in ostbuild/ostree-build-compile-one.in
 
-bin_SCRIPTS += ostbuild 
+bin_SCRIPTS += ostbuild $(srcdir)/src/ostbuild/ostbuild-qemu-pull-deploy
 
 utils_SCRIPTS = \
 	ostree-build-compile-one \

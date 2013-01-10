@@ -1,0 +1,61 @@
+#!/bin/bash
+#
+# Copyright (C) 2013 Pier Luigi Fiorini <pierluigi.fiorini@gmail.com>
+# Copyright (C) 2012 Colin Walters <walters@verbum.org>
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the
+# Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+# Boston, MA 02111-1307, USA.
+
+set -e
+set -x
+
+srcrepo=$1
+shift
+osname=$1
+shift
+target=$1
+shift
+
+test -n "$target" || (echo 1>&2 "usage: $0: SRCREPO OSNAME TARGET"; exit 1)
+    
+qemu_path=ostree-qemu.img
+mountpoint=ostree-qemu-mnt
+
+mkdir -p ${mountpoint}
+
+if ! test -f ${qemu_path}; then
+    tmppath=${qemu_path}.tmp
+    rm -f ${tmppath}
+    qemu-img create ${tmppath} 8G
+    mkfs.ext4 -q -F ${tmppath}
+
+    umount ${mountpoint} 2>/dev/null || true
+    mount -o loop ${tmppath} ${mountpoint}
+    ostree admin init-fs ${mountpoint} || (umount ${mountpoint} 2>/dev/null; exit 1)
+    umount ${mountpoint}
+    mv ${tmppath} ${qemu_path}
+fi
+
+ostreedir=${mountpoint}/ostree
+repopath=${ostreedir}/repo
+
+mount -o loop ${qemu_path} ${mountpoint}
+
+ostree admin --ostree-dir=${ostreedir} os-init ${osname} || (umount ${mountpoint} 2>/dev/null; exit 1)
+ostree --repo=${repopath} pull-local ${srcrepo} ${target} || (umount ${mountpoint} 2>/dev/null; exit 1)
+ostree admin --ostree-dir=${ostreedir} deploy --no-kernel ${osname} ${target} || (umount ${mountpoint} 2>/dev/null; exit 1)
+ostree admin --ostree-dir=${ostreedir} prune ${osname} ${target} || (umount ${mountpoint} 2>/dev/null; exit 1)
+
+umount ${mountpoint}
