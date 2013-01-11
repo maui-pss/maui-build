@@ -15,11 +15,61 @@ install the **Essential** packages as explained in the [Required Packages for th
 
 You can also read the [quick start](https://www.yoctoproject.org/docs/current/yocto-project-qs/yocto-project-qs.html) guide to learn more about Yocto.
 
-To compile *ostbuild* you also need the following packages installed:
+Install also the following packages installed:
 
  * autoconf
  * automake
  * python 2.x
+
+You also need to build and install *linux-user-chroot* and *ostree*, follow the next sections for more information.
+
+### Download and install linux-user-chroot
+
+Install the following additional packages:
+
+ * libtool
+
+Here's how you download and install *linux-user-chroot*:
+
+```sh
+mkdir ~/git
+cd ~/git
+git clone git://git.gnome.org/linux-user-chroot
+cd linux-user-chroot
+./autogen.sh --prefix=/usr --enable-newnet-helper
+make
+sudo make install
+sudo chmod +s /usr/bin/linux-user-chroot{,-newnet}
+```
+
+### Download and install ostree:
+
+Install the following additional packages:
+
+ * zlib1g-dev
+ * libarchive-dev
+ * libattr1-dev
+ * libglib2.0-dev
+ * libsoup2.4-dev
+ * xsltproc
+ * gtk-doc-tools
+
+Here's how you download and install *ostree*:
+
+```sh
+mkdir ~/git
+cd ~/git
+git clone git://git.gnome.org/ostree
+cd ostree
+git submodule init
+git submodule update
+./autogen.sh --prefix=/usr --with-libarchive --enable-documentation --enable-kernel-updates --enable-grub2-hook
+make
+sudo make install
+sudo mkdir /ostree
+gcc -static -o ostree-init src/switchroot/ostree-switch-root.c
+sudo cp ostree-init /ostree
+```
 
 ## Download the manifest
 
