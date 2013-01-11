@@ -37,8 +37,11 @@ from . import snapshot
 from . import odict
 from . import vcs
 
-OPT_COMMON_CFLAGS = {'i686': '-O2 -g -m32 -march=i686 -mtune=atom -fasynchronous-unwind-tables',
-                     'x86_64': '-O2 -g -m64 -mtune=generic'}
+OPT_COMMON_CFLAGS = {'i686': '-O2 -pipe -g -m32 -march=i686 -mtune=atom -fasynchronous-unwind-tables',
+                     'x86_64': '-O2 -pipe -g -m64 -march=x86-64 -mtune=generic'}
+
+OPT_COMMON_LDFLAGS = {'i686': '-Wl,-O1,--sort-common,--as-needed,-z,relro',
+                      'x86_64': '-Wl,-O1,--sort-common,--as-needed,-z,relro'}
 
 class BuildOptions(object):
     pass
@@ -406,6 +409,7 @@ class OstbuildBuild(builtins.Builtin):
         env_copy['PWD'] = chroot_sourcedir
         env_copy['CFLAGS'] = OPT_COMMON_CFLAGS[architecture]
         env_copy['CXXFLAGS'] = OPT_COMMON_CFLAGS[architecture]
+        env_copy['LDFLAGS'] = OPT_COMMON_LDFLAGS[architecture]
 
         success = run_sync(child_args, stdout=t.logfile_stream,
                            stderr=t.logfile_stream, env=env_copy,
