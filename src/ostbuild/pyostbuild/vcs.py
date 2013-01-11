@@ -58,7 +58,7 @@ def get_vcs_checkout(mirrordir, keytype, uri, dest, branch, overwrite=True,
                      quiet=False):
     module_mirror = get_mirrordir(mirrordir, keytype, uri)
     assert keytype == 'git'
-    checkoutdir_parent=os.path.dirname(dest)
+    checkoutdir_parent = os.path.dirname(os.path.realpath(dest))
     if not os.path.isdir(checkoutdir_parent):
         os.makedirs(checkoutdir_parent)
     tmp_dest = dest + '.tmp'

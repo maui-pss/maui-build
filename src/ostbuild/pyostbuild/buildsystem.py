@@ -155,7 +155,7 @@ class BuildSystem(object):
                          and os.path.islink(filename))
                         or filename.endswith('.a')):
                         continue
-                dest = os.path.join(devel_path, libdirname, filename)
+                dest = os.path.join(devel_path, libdir, filename)
                 self._install_and_unlink(subpath, dest)
 
         for dirname in _DEVEL_DIRS:
