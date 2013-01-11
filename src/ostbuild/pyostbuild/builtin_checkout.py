@@ -46,6 +46,7 @@ class OstbuildCheckout(builtins.Builtin):
         parser.add_argument('--metadata-path')
         parser.add_argument('--snapshot')
         parser.add_argument('--checkoutdir')
+        parser.add_argument('--no-patches', action='store_true')
         parser.add_argument('-a', '--active-tree', action='store_true')
         parser.add_argument('--clean', action='store_true')
         parser.add_argument('component') 
@@ -100,7 +101,7 @@ class OstbuildCheckout(builtins.Builtin):
             else:
                 vcs.clean(keytype, checkoutdir)
 
-        if 'patches' in component:
+        if 'patches' in component and not args.no_patches:
             if args.patches_path is None:
                 patchdir = vcs.checkout_patches(self.mirrordir,
                                                 self.patchdir,
