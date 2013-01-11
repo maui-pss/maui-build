@@ -15,11 +15,12 @@ install the **Essential** packages as explained in the [Required Packages for th
 
 You can also read the [quick start](https://www.yoctoproject.org/docs/current/yocto-project-qs/yocto-project-qs.html) guide to learn more about Yocto.
 
-Install also the following packages installed:
+Install also the following packages:
 
  * autoconf
  * automake
- * python 2.x
+ * python (2.x version, it must be the default python interpreter)
+ * fontconfig (for fc-cache)
 
 You also need to build and install *linux-user-chroot* and *ostree*, follow the next sections for more information.
 
@@ -42,7 +43,7 @@ sudo make install
 sudo chmod +s /usr/bin/linux-user-chroot{,-newnet}
 ```
 
-### Download and install ostree:
+### Download and install ostree
 
 Install the following additional packages:
 
@@ -87,7 +88,7 @@ git clone -b maui-0.1 git://github.com/mauios/maui.git
 From the ostbuild checkout directory type:
 
 ```sh
-./autogen.sh
+./autogen.sh --enable-maintainer-mode
 make
 sudo make install
 ```
@@ -113,6 +114,8 @@ Now resolve the components and build:
 ostbuild resolve --fetch
 ostbuild build --prefix=maui-0.1
 ```
+
+Every time the manifest file changes you have to time the above commands.
 
 ## Remarks
 
