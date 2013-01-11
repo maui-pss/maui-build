@@ -21,6 +21,7 @@
 import os
 import sys
 import subprocess
+import tempfile
 import functools
 
 from .ostbuildlog import log, fatal
@@ -48,8 +49,11 @@ def run_sync_get_output(args, cwd=None, env=None, stdout=None, stderr=None, none
                         log_success=False, log_initiation=False):
     if log_initiation:
         log("running: %s" % (subprocess.list2cmdline(args),))
+
     env_copy = _get_env_for_cwd(cwd, env)
+
     f = open('/dev/null', 'r')
+
     if stderr is None:
         stderr_target = sys.stderr
     else:
@@ -57,6 +61,39 @@ def run_sync_get_output(args, cwd=None, env=None, stdout=None, stderr=None, none
     proc = subprocess.Popen(args, stdin=f, stdout=subprocess.PIPE, stderr=stderr_target,
                             close_fds=True, cwd=cwd, env=env_copy)
     f.close()
+    output = proc.communicate()[0].strip()
+    if proc.returncode != 0 and not none_on_error:
+        logfn = fatal
+    elif log_success:
+        logfn = log
+    else:
+        logfn = None
+    if logfn is not None:
+        logfn("cmd '%s' (cwd=%s) exited with code %d, %d bytes of output" % (subprocess.list2cmdline(args),
+                                                                             cwd, proc.returncode, len(output)))
+    if proc.returncode == 0:
+        return output
+    return None
+
+def run_sync_with_input_get_output(args, input, cwd=None, env=None, stderr=None,
+                                   none_on_error=False, log_success=False, log_initiation=False):
+    if log_initiation:
+        log("running: %s" % (subprocess.list2cmdline(args),))
+
+    env_copy = _get_env_for_cwd(cwd, env)
+
+    stdin_target = tempfile.NamedTemporaryFile(delete=False)
+    stdin_target.write(input)
+
+    if stderr is None:
+        stderr_target = sys.stderr
+    else:
+        stderr_target = stderr
+
+    proc = subprocess.Popen(args, stdin=stdin_target, stdout=subprocess.PIPE, stderr=stderr_target,
+                            close_fds=True, cwd=cwd, env=env_copy)
+    stdin_target.close()
+    os.unlink(stdin_target.name)
     output = proc.communicate()[0].strip()
     if proc.returncode != 0 and not none_on_error:
         logfn = fatal
