@@ -32,7 +32,7 @@ class OstbuildQaSmokeTest(builtins.Builtin):
 
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
-        parser.add_argument("--diskpath")
+        parser.add_argument("diskpath")
 
         args = parser.parse_args(argv)
 
