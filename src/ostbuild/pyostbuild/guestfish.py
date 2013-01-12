@@ -24,6 +24,9 @@ from .subprocess_helpers import run_sync_with_input_get_output
 
 class LibGuestfs(object):
     def __init__(self, diskpath, use_lock_file=True, partition_opts=["-i"], read_write=False):
+        if os.geteuid() != 0:
+            fatal("guestfish needs elevated privileges otherwise it will not work")
+
         self._diskpath = diskpath
         self._use_lock_file = use_lock_file
         self._partition_opts = partition_opts
