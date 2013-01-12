@@ -26,7 +26,7 @@ from .guestfish import GuestFish, GuestMount
 
 class OstbuildQaPullDeploy(builtins.Builtin):
     name = "qa-pull-deploy"
-    short_description = "Generate a disk image"
+    short_description = "Extract data from shadow repository to a disk image repository"
 
     def __init__(self):
         builtins.Builtin.__init__(self)
