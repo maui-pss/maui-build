@@ -41,7 +41,7 @@ class OstbuildGitMirror(builtins.Builtin):
         parser = argparse.ArgumentParser(description=self.short_description)
         parser.add_argument('--prefix')
         parser.add_argument('--manifest')
-        parser.add_argument('--src-snapshot')
+        parser.add_argument('--snapshot')
         parser.add_argument('--start-at',
                             help="Start at the given component")
         parser.add_argument('--fetch-skip-secs', type=int, default=0,

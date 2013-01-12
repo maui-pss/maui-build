@@ -608,7 +608,7 @@ and the manifest input."""
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
         parser.add_argument('--prefix')
-        parser.add_argument('--src-snapshot')
+        parser.add_argument('--snapshot')
         parser.add_argument('--patches-path')
         parser.add_argument('--status-json-path',
                             help="Write data to this JSON file as build progresses")
