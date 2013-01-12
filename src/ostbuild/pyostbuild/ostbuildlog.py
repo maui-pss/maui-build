@@ -31,9 +31,9 @@ def log(msg, prefix=None):
     sys.stdout.flush()
 
 def error(msg):
-    log(msg, prefix="FATAL: ")
+    log(msg, prefix="ERROR: ")
 
 def fatal(msg):
-    error(msg)
+    log(msg, prefix="FATAL: ")
     sys.exit(1)
 
