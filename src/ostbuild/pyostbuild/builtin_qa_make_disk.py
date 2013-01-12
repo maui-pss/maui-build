@@ -16,7 +16,7 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-import os, shutil
+import os, argparse, shutil
 
 from . import builtins
 from .ostbuildlog import log, fatal
@@ -33,16 +33,19 @@ class OstbuildQaMakeDisk(builtins.Builtin):
 
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
-        parser.add_argument("--diskpath")
+        parser.add_argument("diskpath")
 
         args = parser.parse_args(argv)
 
-        path = args.diskpath
-        if os.path.exist(path):
+        path = os.path.realpath(args.diskpath)
+        if os.path.exists(path):
             raise Exception("Path %s already exist" % path)
 
-        tmppath = os.path.realpath(os.path.join(self.diskpath, "..", os.path.basename(self.diskpath) + ".tmp"))
-        shutil.rmtree(tmppath)
+        tmppath = os.path.join(os.path.dirname(path), os.path.basename(path) + ".tmp")
+        if os.path.exists(tmppath):
+            if not os.path.isfile(tmppath):
+                raise Exception("%s already exist and is not a file, cannot delete it" % tmppath)
+            os.unlink(tmppath)
 
         size_mb = 8 * 1024
         bootsize_mb = 200
@@ -55,7 +58,7 @@ class OstbuildQaMakeDisk(builtins.Builtin):
             "blockdev-getsize64 /dev/vda\n" \
             "blockdev-getss /dev/vda\n"
         gf = GuestFish(tmppath, partition_opts=[], read_write=True)
-        lines = gf.run(make_disk_cmd).rstrip().split("\n")
+        lines = gf.run(make_disk_cmd).split("\n")
         if len(lines) != 2:
             raise Exception("guestfish returned unexpected output lines (%d), expected 2" % len(lines))
 
@@ -65,7 +68,7 @@ class OstbuildQaMakeDisk(builtins.Builtin):
 
         bootsize_sectors = bootsize_mb * 1024 / disk_sectorsize * 1024
         swapsize_sectors = swapsize_mb * 1024 / disk_sectorsize * 1024
-        rootsize_sectors = disk_bytesize / dist_sectorsize - bootsize_sectors - swapsize_sectors - 64
+        rootsize_sectors = disk_bytesize / disk_sectorsize - bootsize_sectors - swapsize_sectors - 64
         boot_offset = 64
         swap_offset = boot_offset + bootsize_sectors
         root_offset = swap_offset + swapsize_sectors

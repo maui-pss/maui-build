@@ -16,10 +16,10 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-import os, shutil
+import os, argparse, shutil
 
 from . import builtins
-from .ostbuildlog import log, fatal
+from .ostbuildlog import log, error, fatal
 from .subprocess_helpers import run_sync, run_sync_get_output
 from .subprocess_helpers import run_sync_monitor_log_file
 from .guestfish import GuestFish, GuestMount
@@ -63,20 +63,21 @@ class OstbuildQaPullDeploy(builtins.Builtin):
         if not target:
             raise ValueError("Invalid target '%s'" % (target, ))
 
-        mntdir = self._mntdir
-        bootdir = os.path.join(mntdir, "boot")
-        ostreedir = os.path.join(mntdir, "ostree")
+        import copy
+
+        bootdir = os.path.join(self._mntdir, "boot")
+        ostreedir = os.path.join(self._mntdir, "ostree")
         ostree_osdir = os.path.join(ostreedir, "deploy", osname)
 
         admin_args = ["ostree", "admin", "--ostree-dir=" + ostreedir, "--boot-dir=" + bootdir]
 
         env_copy = os.environ.copy()
-        env_copy["LIBGSYSTEM_ENABLE_GUESTFS_FUSE_WORKAROUND"] = 1
+        env_copy["LIBGSYSTEM_ENABLE_GUESTFS_FUSE_WORKAROUND"] = "1"
 
-        procdir = os.path.join(mntdir, "proc")
-        if not os.path.exist(procdir):
-            args = admin_args.copy()
-            args.extend(["init-fs", mntdir])
+        procdir = os.path.join(self._mntdir, "proc")
+        if not os.path.exists(procdir):
+            args = copy.copy(admin_args)
+            args.extend(["init-fs", self._mntdir])
             run_sync(args, env=env_copy)
 
         # *** NOTE ***
@@ -89,32 +90,33 @@ class OstbuildQaPullDeploy(builtins.Builtin):
         # to crack the FS open afterwards and modify config files
         # or the like.
         shutil.rmtree(ostree_osdir)
+        os.makedirs(ostree_dir, 0755)
 
-        args = admin_args.copy()
+        args = copy.copy(admin_args)
         args.extend(["os-init", osname])
         run_sync(args, env=env_copy)
 
         run_sync(["ostree", "--repo=" + os.path.join(ostreedir, "repo"), "pull-local",
                   srcrepo, target], env=env_copy)
 
-        args = admin_args.copy()
+        args = copy.copy(admin_args)
         args.extend(["deploy", "--no-kernel", osname, target])
         run_sync(args, env=env_copy)
 
-        args = admin_args.copy()
+        args = copy.copy(admin_args)
         args.extend(["update-kernel", "--no-bootloader", osname])
         run_sync(args, env=env_copy)
 
-        args = admin_args.copy()
+        args = copy.copy(admin_args)
         args.extend(["prune", osname])
         run_sync(args, env=env_copy)
 
-        deploy_kernel_path = self._find_current_kernel(mntdir, osname)
+        deploy_kernel_path = self._find_current_kernel(self._mntdir, osname)
         boot_kernel_path = os.path.join(bootdir, "ostree", os.path.basename(deploy_kernel_path))
         if not os.path.exist(boot_kernel_path):
             fatal("%s doesn't exist" % boot_kernel_path)
         kernel_release = self._parse_kernel_release(deploy_kernel_path)
-        initramfs_path = self._get_initramfs_path(mntdir, kernel_release)
+        initramfs_path = self._get_initramfs_path(self._mntdir, kernel_release)
 
         default_fstab = "LABEL=maui-root / ext4 defaults 1 1\n" \
             "LABEL=maui-boot /boot ext4 defaults 1 2\n" \
@@ -124,7 +126,7 @@ class OstbuildQaPullDeploy(builtins.Builtin):
         fstab_file.write(default_fstab)
         fstab_file.close()
 
-        grub_dir = os.path.join(mntdir, "boot", "grub")
+        grub_dir = os.path.join(self._mntdir, "boot", "grub")
         os.mkdir(grub_dir, 0755)
         boot_relative_kernel_path = os.path.relpath(boot_kernel_path, bootdir)
         boot_relative_initramfs_path = os.path.relpath(initramfs_path, bootdir)
@@ -152,12 +154,16 @@ class OstbuildQaPullDeploy(builtins.Builtin):
 
         self._workdir = os.getcwd()
         self._mntdir = os.path.join(self._workdir, "mnt")
-        os.makedirs(self._mntdir, 0755)
+        if not os.path.exists(self._mntdir):
+            os.makedirs(self._mntdir, 0755)
 
         gfmnt = GuestMount(diskpath, partition_opts=["-m", "/dev/sda3", "-m", "/dev/sda1:/boot"], read_write=True)
         gfmnt.mount(self._mntdir)
         try:
             self._do_pull_deploy(osname=args.osname, srcrepo=args.srcrepo, target=args.target)
+        except Exception, e:
+            error(str(e))
+            error(e.message)
         finally:
             gfmnt.umount()
 

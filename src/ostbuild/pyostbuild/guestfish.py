@@ -80,8 +80,8 @@ class GuestMount(LibGuestfs):
 
         try:
             self._mounted = False
-            run_sync(args)
-            self._mounted = True
+            if run_sync(args):
+                self._mounted = True
         except:
             self.unlock()
 
@@ -110,7 +110,7 @@ class GuestMount(LibGuestfs):
         for i in range(0, 30):
             if run_sync(["kill", "-0", pid_str], stderr=None):
                 log("Awaiting termination of guestfish, pid=%s timeout=%ss" % (pid_str, str(30 - i)))
-                sleep(1)
+                time.sleep(1)
             else:
                 guestfish_exited = True
                 break
