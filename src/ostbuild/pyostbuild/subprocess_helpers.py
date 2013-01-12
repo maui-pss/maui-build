@@ -82,19 +82,14 @@ def run_sync_with_input_get_output(args, input, cwd=None, env=None, stderr=None,
 
     env_copy = _get_env_for_cwd(cwd, env)
 
-    stdin_target = tempfile.NamedTemporaryFile(delete=False)
-    stdin_target.write(input)
-
     if stderr is None:
         stderr_target = sys.stderr
     else:
         stderr_target = stderr
 
-    proc = subprocess.Popen(args, stdin=stdin_target, stdout=subprocess.PIPE, stderr=stderr_target,
+    proc = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=stderr_target,
                             close_fds=True, cwd=cwd, env=env_copy)
-    stdin_target.close()
-    os.unlink(stdin_target.name)
-    output = proc.communicate()[0].strip()
+    output = proc.communicate(input=input)[0].strip()
     if proc.returncode != 0 and not none_on_error:
         logfn = fatal
     elif log_success:
