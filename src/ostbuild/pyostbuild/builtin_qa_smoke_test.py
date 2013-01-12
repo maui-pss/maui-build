@@ -19,7 +19,7 @@
 import os
 
 from . import builtins
-from .ostbuildlog import log
+from .ostbuildlog import log, fatal
 from .subprocess_helpers import run_sync
 from .fileutil import find_program_in_path
 
@@ -47,7 +47,7 @@ class OstbuildQaSmokeTest(builtins.Builtin):
                     continue
                 qemu_path_string = path
         if not qemu_path_string:
-            raise Exception("Unable to find qemu-kvm")
+            fatal("Unable to find qemu-kvm")
 
         log("Starting qemu...")
         run_sync([qemu_path_string, "-vga", "std", "m", "768M", "-usb", "-usbdevice", "tablet",
