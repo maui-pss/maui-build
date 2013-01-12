@@ -29,8 +29,8 @@ class LibGuestfs(object):
         self._partition_opts = partition_opts
         self._read_write = read_write
         if self._use_lock_file:
-            self._lockfile_path = os.path.realpath(os.path.join(self.diskpath, "..",
-                                      os.path.basename(diskpath) + ".guestfish-lock"))
+            self._lockfile_path = os.path.realpath(os.path.join(self._diskpath, "..",
+                                      os.path.basename(self._diskpath) + ".guestfish-lock"))
         else:
             self._lockfile_path = None
 
@@ -57,7 +57,9 @@ class GuestFish(LibGuestfs):
         self.lock()
         args = ["guestfish"]
         args.extend(self.arguments())
-        result = run_sync_with_input_get_output(args, input)
+        result = run_sync_with_input_get_output(args, input,
+                                                log_initiation=True,
+                                                log_success=True)
         self.unlock()
         return result
 
