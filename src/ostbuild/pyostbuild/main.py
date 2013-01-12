@@ -27,11 +27,9 @@ from . import builtin_autobuilder
 from . import builtin_build
 from . import builtin_checkout
 from . import builtin_deploy_root
-from . import builtin_deploy_qemu
 from . import builtin_git_mirror
 from . import builtin_import_tree
 from . import builtin_prefix
-from . import builtin_privhelper_deploy_qemu
 from . import builtin_qa_make_disk
 from . import builtin_qa_pull_deploy
 from . import builtin_qa_smoke_test

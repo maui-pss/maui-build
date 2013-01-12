@@ -48,10 +48,8 @@ pyostbuild_PYTHON =						\
 	src/ostbuild/pyostbuild/builtin_autobuilder.py		\
 	src/ostbuild/pyostbuild/builtin_build.py		\
 	src/ostbuild/pyostbuild/builtin_checkout.py		\
-	src/ostbuild/pyostbuild/builtin_deploy_qemu.py		\
 	src/ostbuild/pyostbuild/builtin_deploy_root.py		\
 	src/ostbuild/pyostbuild/builtin_import_tree.py		\
-	src/ostbuild/pyostbuild/builtin_privhelper_deploy_qemu.py	\
 	src/ostbuild/pyostbuild/builtin_qa_make_disk.py		\
 	src/ostbuild/pyostbuild/builtin_qa_pull_deploy.py	\
 	src/ostbuild/pyostbuild/builtin_qa_smoke_test.py	\
