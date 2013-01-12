@@ -37,14 +37,14 @@ class OstbuildQaPullDeploy(builtins.Builtin):
             child = os.path.join(deploy_bootdir, "item")
             if os.path.basename(child)[:8] == "vmlinuz-":
                 return child
-        raise Exception("Couldn't find vmlinuz- in %s" % deploy_bootdir)
+        fatal("Couldn't find vmlinuz- in %s" % deploy_bootdir)
 
     def _parse_kernel_release(self, kernel_path):
         name = os.path.basename(kernel_path)
         try:
             index = name.index("-")
         except ValueError:
-            raise Exception("Invalid kernel name %s" % kernel_path)
+            fatal("Invalid kernel name %s" % kernel_path)
         return name[index+1:]
 
     def _get_initramfs_path(self, mntdir, kernel_release):
@@ -52,7 +52,7 @@ class OstbuildQaPullDeploy(builtins.Builtin):
         initramfs_name = "initramfs-%s.img" % kernel_release
         path = os.path.join(bootdir, "ostree", initramfs_name)
         if not os.path.exist(path):
-            raise Exception("Couldn't find initramfs %s" % path)
+            fatal("Couldn't find initramfs %s" % path)
         return path
 
     def _do_pull_deploy(self, osname=None, srcrepo=None, target=None):
@@ -112,7 +112,7 @@ class OstbuildQaPullDeploy(builtins.Builtin):
         deploy_kernel_path = self._find_current_kernel(mntdir, osname)
         boot_kernel_path = os.path.join(bootdir, "ostree", os.path.basename(deploy_kernel_path))
         if not os.path.exist(boot_kernel_path):
-            raise Exception("%s doesn't exist" % boot_kernel_path)
+            fatal("%s doesn't exist" % boot_kernel_path)
         kernel_release = self._parse_kernel_release(deploy_kernel_path)
         initramfs_path = self._get_initramfs_path(mntdir, kernel_release)
 
@@ -141,10 +141,10 @@ class OstbuildQaPullDeploy(builtins.Builtin):
 
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
-        parser.add_argument("--diskpath")
-        parser.add_argument("--srcrepo")
-        parser.add_argument("--osname")
-        parser.add_argument("--target")
+        parser.add_argument("diskpath")
+        parser.add_argument("srcrepo")
+        parser.add_argument("osname")
+        parser.add_argument("target")
 
         args = parser.parse_args(argv)
 
