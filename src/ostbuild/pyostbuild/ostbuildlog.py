@@ -30,7 +30,10 @@ def log(msg, prefix=None):
     sys.stdout.write(fullmsg)
     sys.stdout.flush()
 
-def fatal(msg):
+def error(msg):
     log(msg, prefix="FATAL: ")
+
+def fatal(msg):
+    error(msg)
     sys.exit(1)
 
