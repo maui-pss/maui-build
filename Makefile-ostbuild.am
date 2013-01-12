@@ -62,6 +62,7 @@ pyostbuild_PYTHON =					\
 	src/ostbuild/pyostbuild/task.py		\
 	src/ostbuild/pyostbuild/fileutil.py		\
 	src/ostbuild/pyostbuild/__init__.py		\
+	src/ostbuild/pyostbuild/guestfish.py		\
 	src/ostbuild/pyostbuild/jsondb.py		\
 	src/ostbuild/pyostbuild/kvfile.py		\
 	src/ostbuild/pyostbuild/main.py			\

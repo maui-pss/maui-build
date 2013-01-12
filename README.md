@@ -20,7 +20,8 @@ Install also the following packages:
  * autoconf
  * automake
  * python (2.x version, it must be the default python interpreter)
- * fontconfig (for fc-cache)
+ * fontconfig (for fc-cache, needed during the Yocto build)
+ * guestfish (to make disks)
 
 You also need to build and install *linux-user-chroot* and *ostree*, follow the next sections for more information.
 
