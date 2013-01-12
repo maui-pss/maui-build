@@ -15,13 +15,22 @@ install the **Essential** packages as explained in the [Required Packages for th
 
 You can also read the [quick start](https://www.yoctoproject.org/docs/current/yocto-project-qs/yocto-project-qs.html) guide to learn more about Yocto.
 
-Install also the following packages:
+Also install the following packages:
 
  * autoconf
  * automake
  * python (2.x version, it must be the default python interpreter)
  * fontconfig (for fc-cache, needed during the Yocto build)
- * guestfish (to make disks)
+ * guestfish
+ * guestfsd
+ * guestmount
+ * libguestfs-tools
+
+To run ```ostbuild qa-make-disk``` or ```ostbuild qa-pull-deploy``` on Ubuntu 12.10 you will need to make a symbolic link to the right libguestfs path:
+
+```sh
+sudo ln -s /usr/lib/guestfs /usr/lib/x86_64-linux-gnu/guestf
+```
 
 You also need to build and install *linux-user-chroot* and *ostree*, follow the next sections for more information.
 
