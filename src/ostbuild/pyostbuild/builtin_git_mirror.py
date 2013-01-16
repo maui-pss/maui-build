@@ -60,7 +60,7 @@ class OstbuildGitMirror(builtins.Builtin):
             self.snapshot['components'] = components
             self.snapshot['patches'] = buildutil.resolve_component_meta(self.snapshot, self.snapshot['patches'])
         else:
-            self.parse_snapshot(args.prefix, args.src_snapshot)
+            self.parse_snapshot(args.prefix, args.snapshot)
 
         if len(args.components) == 0:
             components = []

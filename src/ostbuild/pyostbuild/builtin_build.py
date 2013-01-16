@@ -625,7 +625,7 @@ and the manifest input."""
         self.args = args
         
         self.parse_config()
-        self.parse_snapshot(args.prefix, args.src_snapshot)
+        self.parse_snapshot(args.prefix, args.snapshot)
 
         log("Using source snapshot: %s" % (os.path.basename(self.snapshot_path), ))
 
