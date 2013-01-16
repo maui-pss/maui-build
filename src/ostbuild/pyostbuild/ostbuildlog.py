@@ -18,15 +18,15 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-import os
-import sys
+import os, sys, time
 
 def log(msg, prefix=None):
     if prefix is None:
-        prefix_target = ''
+        prefix_target = ""
     else:
         prefix_target = prefix
-    fullmsg = '%s: %s%s\n' % (os.path.basename(sys.argv[0]), prefix_target, msg)
+    asctime = time.asctime(time.localtime())
+    fullmsg = "%s %s: %s%s\n" % (asctime, os.path.basename(sys.argv[0]), prefix_target, msg)
     sys.stdout.write(fullmsg)
     sys.stdout.flush()
 
@@ -36,4 +36,3 @@ def error(msg):
 def fatal(msg):
     log(msg, prefix="FATAL: ")
     sys.exit(1)
-
