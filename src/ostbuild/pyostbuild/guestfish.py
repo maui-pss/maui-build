@@ -116,7 +116,7 @@ class GuestMount(LibGuestfs):
                 break
 
         if not guestfish_exited:
-            raise Exception("guestfish failed to exit")
+            fatal("guestfish failed to exit")
         self._mounted = false
 
         self.unlock()
