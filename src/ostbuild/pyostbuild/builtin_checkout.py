@@ -33,43 +33,12 @@ from . import vcs
 
 class OstbuildCheckout(builtins.Builtin):
     name = "checkout"
-    short_description = "Check out specified modules"
+    short_description = "Check out git repository"
 
     def __init__(self):
         builtins.Builtin.__init__(self)
 
-    def execute(self, argv):
-        parser = argparse.ArgumentParser(description=self.short_description)
-        parser.add_argument('--overwrite', action='store_true')
-        parser.add_argument('--prefix')
-        parser.add_argument('--patches-path')
-        parser.add_argument('--metadata-path')
-        parser.add_argument('--snapshot')
-        parser.add_argument('--checkoutdir')
-        parser.add_argument('--no-patches', action='store_true')
-        parser.add_argument('-a', '--active-tree', action='store_true')
-        parser.add_argument('--clean', action='store_true')
-        parser.add_argument('component') 
-
-        args = parser.parse_args(argv)
-        self.args = args
-        
-        self.parse_config()
-
-        if args.active_tree:
-            self.parse_active_branch()
-        else:
-            self.parse_snapshot(args.prefix, args.snapshot)
-
-        component_name = args.component
-
-        found = False
-        if args.metadata_path is not None:
-            f = open(args.metadata_path)
-            component = json.load(f)
-            f.close()
-        else:
-            component = self.get_expanded_component(component_name)
+    def _checkout_one_component(self, component, args):
         (keytype, uri) = buildutil.parse_src_key(component['src'])
 
         is_local = (keytype == 'local')
@@ -89,7 +58,7 @@ class OstbuildCheckout(builtins.Builtin):
             if args.checkoutdir:
                 checkoutdir = args.checkoutdir
             else:
-                checkoutdir = os.path.join(os.getcwd(), component_name)
+                checkoutdir = os.path.join(os.getcwd(), component['name'])
                 fileutil.ensure_parent_dir(checkoutdir)
             vcs.get_vcs_checkout(self.mirrordir, keytype, uri, checkoutdir,
                                  component['revision'],
@@ -118,5 +87,44 @@ class OstbuildCheckout(builtins.Builtin):
         f.close()
         
         log("Checked out: %r" % (checkoutdir, ))
+
+    def execute(self, argv):
+        parser = argparse.ArgumentParser(description=self.short_description)
+        parser.add_argument('--overwrite', action='store_true')
+        parser.add_argument('--prefix')
+        parser.add_argument('--patches-path')
+        parser.add_argument('--metadata-path')
+        parser.add_argument('--snapshot')
+        parser.add_argument('--checkoutdir')
+        parser.add_argument('--no-patches', action='store_true')
+        parser.add_argument('-a', '--active-tree', action='store_true')
+        parser.add_argument('--clean', action='store_true')
+        parser.add_argument('component') 
+
+        args = parser.parse_args(argv)
+        self.args = args
         
+        self.parse_config()
+
+        if args.active_tree:
+            self.parse_active_branch()
+        else:
+            self.parse_snapshot(args.prefix, args.snapshot)
+
+        component_name = args.component
+
+        if component_name == '*':
+            for name in self.get_all_component_names():
+                component = self.get_expanded_component(name)
+                self._checkout_one_component(component, args)
+        else:
+            if args.metadata_path is not None:
+                f = open(args.metadata_path)
+                component = json.load(f)
+                f.close()
+            else:
+                component = self.get_expanded_component(component_name)
+
+            self._checkout_one_component(component, args)
+
 builtins.register(OstbuildCheckout)

@@ -81,6 +81,12 @@ class Builtin(object):
         fileutil.ensure_dir(self.snapshot_dir)
         self.patchdir = os.path.join(self.workdir, 'patches')
 
+    def get_all_component_names(self):
+        names = []
+        for component in self.snapshot['components']:
+            names.append(component['name'])
+        return names
+
     def get_component_snapshot(self, name):
         found = False
         for content in self.active_branch_contents['contents']:
