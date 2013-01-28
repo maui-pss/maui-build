@@ -1,3 +1,4 @@
+# vim: et:ts=4:sw=4
 # Copyright (C) 2013 Pier Luigi Fiorini <pierluigi.fiorini@gmail.com>
 # Copyright (C) 2013 Colin Walters <walters@verbum.org>
 #

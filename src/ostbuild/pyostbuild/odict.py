@@ -1,4 +1,5 @@
 # -*- Mode: Python -*-
+# vim: et:ts=4:sw=4
 # GObject-Introspection - a framework for introspecting GObject libraries
 # Copyright (C) 2008  Johan Dahlin
 #

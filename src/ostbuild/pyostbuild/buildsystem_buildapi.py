@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# vim: et:ts=4:sw=4
 # Copyright (C) 2012-2013 Pier Luigi Fiorini <pierluigi.fiorini@gmail.com>
 # Copyright (C) 2011-2012 Colin Walters <walters@verbum.org>
 #
