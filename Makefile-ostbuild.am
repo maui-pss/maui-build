@@ -45,7 +45,6 @@ pyostbuild_PYTHON =						\
 	src/ostbuild/pyostbuild/buildsystem_buildapi.py		\
 	src/ostbuild/pyostbuild/buildsystem_cmake.py		\
 	src/ostbuild/pyostbuild/buildsystem_qmake.py		\
-	src/ostbuild/pyostbuild/builtin_autobuilder.py		\
 	src/ostbuild/pyostbuild/builtin_build.py		\
 	src/ostbuild/pyostbuild/builtin_checkout.py		\
 	src/ostbuild/pyostbuild/builtin_deploy_root.py		\
