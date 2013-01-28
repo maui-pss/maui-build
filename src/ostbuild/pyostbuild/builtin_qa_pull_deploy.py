@@ -34,7 +34,7 @@ class OstbuildQaPullDeploy(builtins.Builtin):
     def _find_current_kernel(self, mntdir, osname):
         deploy_bootdir = os.path.join(mntdir, "ostree", "deploy", osname, "current", "boot")
         for item in os.listdir(deploy_bootdir):
-            child = os.path.join(deploy_bootdir, "item")
+            child = os.path.join(deploy_bootdir, item)
             if os.path.basename(child)[:8] == "vmlinuz-":
                 return child
         fatal("Couldn't find vmlinuz- in %s" % deploy_bootdir)
@@ -51,7 +51,7 @@ class OstbuildQaPullDeploy(builtins.Builtin):
         bootdir = os.path.join(mntdir, "boot")
         initramfs_name = "initramfs-%s.img" % kernel_release
         path = os.path.join(bootdir, "ostree", initramfs_name)
-        if not os.path.exist(path):
+        if not os.path.exists(path):
             fatal("Couldn't find initramfs %s" % path)
         return path
 
@@ -89,8 +89,8 @@ class OstbuildQaPullDeploy(builtins.Builtin):
         # deployment starts clean, and callers can use libguestfs
         # to crack the FS open afterwards and modify config files
         # or the like.
-        shutil.rmtree(ostree_osdir)
-        os.makedirs(ostree_dir, 0755)
+        #shutil.rmtree(ostree_osdir)
+        #os.makedirs(ostree_osdir, 0755)
 
         args = copy.copy(admin_args)
         args.extend(["os-init", osname])
@@ -113,7 +113,7 @@ class OstbuildQaPullDeploy(builtins.Builtin):
 
         deploy_kernel_path = self._find_current_kernel(self._mntdir, osname)
         boot_kernel_path = os.path.join(bootdir, "ostree", os.path.basename(deploy_kernel_path))
-        if not os.path.exist(boot_kernel_path):
+        if not os.path.exists(boot_kernel_path):
             fatal("%s doesn't exist" % boot_kernel_path)
         kernel_release = self._parse_kernel_release(deploy_kernel_path)
         initramfs_path = self._get_initramfs_path(self._mntdir, kernel_release)
@@ -121,13 +121,14 @@ class OstbuildQaPullDeploy(builtins.Builtin):
         default_fstab = "LABEL=maui-root / ext4 defaults 1 1\n" \
             "LABEL=maui-boot /boot ext4 defaults 1 2\n" \
             "LABEL=maui-swap swap swap defaults 0 0\n"
-        fstab_path = os.path.join(ostreedir, "deploy", "maui-ostree", "current-etc", "fstab")
+        fstab_path = os.path.join(ostreedir, "deploy", osname, "current-etc", "fstab")
         fstab_file = open(fstab_path, "w")
         fstab_file.write(default_fstab)
         fstab_file.close()
 
         grub_dir = os.path.join(self._mntdir, "boot", "grub")
-        os.mkdir(grub_dir, 0755)
+        if not os.path.exists(grub_dir):
+            os.mkdir(grub_dir, 0755)
         boot_relative_kernel_path = os.path.relpath(boot_kernel_path, bootdir)
         boot_relative_initramfs_path = os.path.relpath(initramfs_path, bootdir)
         grub_conf_path = os.path.join(grub_dir, "grub.conf")
@@ -162,7 +163,6 @@ class OstbuildQaPullDeploy(builtins.Builtin):
         try:
             self._do_pull_deploy(osname=args.osname, srcrepo=args.srcrepo, target=args.target)
         except Exception, e:
-            error(str(e))
             error(e.message)
         finally:
             gfmnt.umount()
