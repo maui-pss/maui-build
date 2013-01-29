@@ -52,9 +52,9 @@ class OstbuildDeployRoot(builtins.Builtin):
             targets = args.targets
         else:
             targets = []
-            prefix = self.snapshot['prefix']
+            prefix = self.snapshot.data['prefix']
             for target_component_type in ['runtime', 'devel']:
-                for architecture in self.snapshot['architectures']:
+                for architecture in self.snapshot.data['architectures']:
                     name = '%s-%s-%s' % (prefix, architecture, target_component_type)
                     targets.append(name)
 

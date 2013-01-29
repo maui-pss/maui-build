@@ -29,6 +29,7 @@ from . import ostbuildrc
 from . import fileutil
 from . import jsondb
 from .ostbuildlog import log, fatal
+from .snapshot import Snapshot
 from .subprocess_helpers import run_sync, run_sync_get_output
 
 _all_builtins = {}
@@ -82,12 +83,6 @@ class Builtin(object):
         fileutil.ensure_dir(self.snapshot_dir)
         self.patchdir = os.path.join(self.workdir, 'patches')
 
-    def get_all_component_names(self):
-        names = []
-        for component in self.snapshot['components']:
-            names.append(component['name'])
-        return names
-
     def get_component_snapshot(self, name):
         found = False
         for content in self.active_branch_contents['contents']:
@@ -104,20 +99,6 @@ class Builtin(object):
                                     '/_ostbuild-meta.json'])
         return json.loads(text)
 
-    def expand_component(self, component):
-        meta = dict(component)
-        global_patchmeta = self.snapshot.get('patches')
-        if global_patchmeta is not None:
-            component_patch_files = component.get('patches', [])
-            if len(component_patch_files) > 0:
-                patches = dict(global_patchmeta)
-                patches['files'] = component_patch_files
-                meta['patches'] = patches
-        config_opts = list(self.snapshot.get('config-opts', []))
-        config_opts.extend(component.get('config-opts', []))
-        meta['config-opts'] = config_opts
-        return meta
-
     def find_component_in_snapshot(self, name, snapshot):
         for component in snapshot['components']:
             if component['name'] == name:
@@ -127,24 +108,6 @@ class Builtin(object):
         if snapshot['patches']['name'] == name:
             return snapshot['patches']
         return None
-
-    def get_component(self, name, in_snapshot=None):
-        if in_snapshot is None:
-            assert self.snapshot is not None
-            target_snapshot = self.snapshot
-        else:
-            target_snapshot = in_snapshot
-        component = self.find_component_in_snapshot(name, target_snapshot)
-        if (component is None and 
-            'patches' in self.snapshot and
-            self.snapshot['patches']['name'] == name):
-            return self.snapshot['patches']
-        if component is None:
-            fatal("Couldn't find component '%s' in manifest" % (name, ))
-        return component
-
-    def get_expanded_component(self, name):
-        return self.expand_component(self.get_component(name))
 
     def get_prefix(self):
         if self.prefix is None:
@@ -200,16 +163,17 @@ class Builtin(object):
             latest_path = self.get_src_snapshot_db().get_latest_path()
             if latest_path is None:
                 raise Exception("No source snapshot found for prefix %r" % (self.prefix, ))
-            self.snapshot_path = latest_path
+            snapshot_path = latest_path
         else:
-            self.snapshot_path = path
-        self.snapshot = json.load(open(self.snapshot_path))
+            snapshot_path = path
+        snapshot_data = json.load(open(snapshot_path))
+        self.snapshot = Snapshot(snapshot_data, snapshot_path)
         key = '00ostbuild-manifest-version'
-        src_ver = self.snapshot[key]
+        src_ver = self.snapshot.data[key]
         if src_ver != 0:
             fatal("Unhandled %s version \"%d\", expected 0" % (key, src_ver, ))
         if self.prefix is None:
-            self.prefix = self.snapshot['prefix']
+            self.prefix = self.snapshot.data['prefix']
 
     def parse_snapshot_from_current(self):
         if self.ostree_dir is None:

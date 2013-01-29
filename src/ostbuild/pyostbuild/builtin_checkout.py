@@ -115,8 +115,8 @@ class OstbuildCheckout(builtins.Builtin):
         component_name = args.component
 
         if component_name == '*':
-            for name in self.get_all_component_names():
-                component = self.get_expanded_component(name)
+            for name in self.snapshot.get_all_component_names():
+                component = self.snapshot.get_expanded(name)
                 self._checkout_one_component(component, args)
         else:
             if args.metadata_path is not None:
@@ -124,7 +124,7 @@ class OstbuildCheckout(builtins.Builtin):
                 component = json.load(f)
                 f.close()
             else:
-                component = self.get_expanded_component(component_name)
+                component = self.snapshot.get_expanded(component_name)
 
             self._checkout_one_component(component, args)
 

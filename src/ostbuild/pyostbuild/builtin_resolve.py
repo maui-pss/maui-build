@@ -28,6 +28,7 @@ from StringIO import StringIO
 from . import builtins
 from .ostbuildlog import log, fatal
 from .subprocess_helpers import run_sync, run_sync_get_output
+from .snapshot import Snapshot
 from . import ostbuildrc
 from . import vcs
 from . import jsondb
@@ -70,11 +71,12 @@ class OstbuildResolve(builtins.Builtin):
         if not args.manifest:
             args.manifest = os.path.expanduser(ostbuildrc.get_key('manifest'))
 
-        self.snapshot = json.load(open(args.manifest))
-        self.prefix = self.snapshot['prefix']
+        snapshot_data = json.load(open(args.manifest))
+        self.snapshot = Snapshot(snapshot_data, None)
+        self.prefix = self.snapshot.data['prefix']
 
-        components = map(lambda x: buildutil.resolve_component_meta(self.snapshot, x), self.snapshot['components'])
-        self.snapshot['components'] = components
+        components = map(lambda x: buildutil.resolve_component_meta(self.snapshot.data, x), self.snapshot.data['components'])
+        self.snapshot.data['components'] = components
 
         unique_component_names = set()
         for component in components:
@@ -87,8 +89,8 @@ class OstbuildResolve(builtins.Builtin):
         if args.fetch and len(args.components) == 0:
             args.fetch_patches = args.fetch_base = True
 
-        base_meta = buildutil.resolve_component_meta(self.snapshot, self.snapshot['base'])
-        self.snapshot['base'] = base_meta
+        base_meta = buildutil.resolve_component_meta(self.snapshot.data, self.snapshot.data['base'])
+        self.snapshot.data['base'] = base_meta
         (keytype, uri) = vcs.parse_src_key(base_meta['src'])
         mirrordir = vcs.ensure_vcs_mirror(self.mirrordir, keytype, uri, base_meta['branch'])
         if args.fetch_base:
@@ -97,8 +99,8 @@ class OstbuildResolve(builtins.Builtin):
         base_revision = buildutil.get_git_version_describe(mirrordir, base_meta['branch'])
         base_meta['revision'] = base_revision
 
-        global_patches_meta = buildutil.resolve_component_meta(self.snapshot, self.snapshot['patches'])
-        self.snapshot['patches'] = global_patches_meta
+        global_patches_meta = buildutil.resolve_component_meta(self.snapshot.data, self.snapshot.data['patches'])
+        self.snapshot.data['patches'] = global_patches_meta
         (keytype, uri) = vcs.parse_src_key(global_patches_meta['src'])
         mirrordir = vcs.ensure_vcs_mirror(self.mirrordir, keytype, uri, global_patches_meta['branch'])
         if args.fetch_patches:
@@ -126,7 +128,7 @@ class OstbuildResolve(builtins.Builtin):
             component['revision'] = revision
 
         src_db = self.get_src_snapshot_db()
-        (path, modified) = src_db.store(self.snapshot)
+        (path, modified) = src_db.store(self.snapshot.data)
         if modified:
             log("New source snapshot: %s" % (path, ))
             if args.stamp_file:

@@ -74,11 +74,12 @@ class OstbuildBuild(builtins.Builtin):
     def _compose_buildroot(self, workdir, component_name, architecture):
         starttime = time.time()
 
-        buildname = '%s/%s/%s' % (self.snapshot['prefix'], component_name, architecture)
+        prefix = self.snapshot.data['prefix']
+        buildname = '%s/%s/%s' % (prefix, component_name, architecture)
         buildroot_cachedir = os.path.join(self.workdir, 'roots', buildname)
         fileutil.ensure_dir(buildroot_cachedir)
 
-        components = self.snapshot['components']
+        components = self.snapshot.data['components']
         component = None
         build_dependencies = []
         for component in components:
@@ -88,9 +89,7 @@ class OstbuildBuild(builtins.Builtin):
 
         ref_to_rev = {}
 
-        prefix = self.snapshot['prefix']
-
-        arch_buildroot_name = 'bases/%s/%s-%s-devel' % (self.snapshot['base']['name'],
+        arch_buildroot_name = 'bases/%s/%s-%s-devel' % (self.snapshot.data['base']['name'],
                                                         prefix,
                                                         architecture)
 
@@ -254,12 +253,13 @@ class OstbuildBuild(builtins.Builtin):
     def _build_one_component(self, component, architecture):
         basename = component['name']
 
-        buildname = '%s/%s/%s' % (self.snapshot['prefix'], basename, architecture)
+        prefix = self.snapshot.data['prefix']
+        buildname = '%s/%s/%s' % (prefix, basename, architecture)
         build_ref = 'components/%s' % (buildname, )
 
         current_vcs_version = component.get('revision')
 
-        expanded_component = self.expand_component(component)
+        expanded_component = self.snapshot.get_expanded(basename)
 
         skip_rebuild = self.args.compose_only
 
@@ -340,7 +340,7 @@ class OstbuildBuild(builtins.Builtin):
         checkoutdir = os.path.join(self.workdir, 'checkouts')
         component_src = os.path.join(checkoutdir, buildname)
         fileutil.ensure_parent_dir(component_src)
-        child_args = ['ostbuild', 'checkout', '--snapshot=' + self.snapshot_path,
+        child_args = ['ostbuild', 'checkout', '--snapshot=' + self.snapshot.path,
                       '--checkoutdir=' + component_src,
                       '--metadata-path=' + temp_metadata_path]
         if not self.buildopts.no_clean:
@@ -473,8 +473,10 @@ class OstbuildBuild(builtins.Builtin):
                                               'rev-parse', devel_name])
         related_refs[devel_name] = devel_revision
 
-        for name,rev in component_build_revs.iteritems():
-            build_ref = 'components/%s/%s' % (self.snapshot['prefix'], name)
+        prefix = self.snapshot.data['prefix']
+
+        for name, rev in component_build_revs.iteritems():
+            build_ref = 'components/%s/%s' % (prefix, name)
             related_refs[build_ref] = rev
 
         (related_fd, related_tmppath) = tempfile.mkstemp(suffix='.txt', prefix='ostbuild-compose-')
@@ -509,7 +511,7 @@ class OstbuildBuild(builtins.Builtin):
         os.unlink(contents_tmppath)
 
         contents_path = os.path.join(compose_rootdir, 'contents.json')
-        fileutil.write_json_file_atomic(contents_path, self.snapshot)
+        fileutil.write_json_file_atomic(contents_path, self.snapshot.data)
 
         treename = 'trees/%s' % (target['name'], )
         
@@ -540,7 +542,7 @@ and the manifest input."""
 
     def _build_base(self, architecture):
         """Build the Yocto base system."""
-        basemeta = self.snapshot['base']
+        basemeta = self.snapshot.get_expanded(self.snapshot.data['base']['name'])
         checkoutdir = os.path.join(self.workdir, 'checkouts', basemeta['name'])
         fileutil.ensure_parent_dir(checkoutdir)
 
@@ -628,12 +630,12 @@ and the manifest input."""
         self.parse_config()
         self.parse_snapshot(args.prefix, args.snapshot)
 
-        log("Using source snapshot: %s" % (os.path.basename(self.snapshot_path), ))
+        log("Using source snapshot: %s" % (os.path.basename(self.snapshot.path), ))
 
         db = self.get_src_snapshot_db()
-        prev_snapshot = db.get_previous_path(self.snapshot_path)
+        prev_snapshot = db.get_previous_path(self.snapshot.path)
         if prev_snapshot is not None:
-            (added, modified, removed) = snapshot.snapshot_diff(db.load_from_path(self.snapshot_path),
+            (added, modified, removed) = snapshot.snapshot_diff(db.load_from_path(self.snapshot.path),
                                                                 db.load_from_path(prev_snapshot))
             log("Removed components: %r" % (removed, ))
             log("Modified components: %r" % (modified, ))
@@ -653,12 +655,12 @@ and the manifest input."""
 
         self._initialize_repo()
 
-        components = self.snapshot['components']
+        components = self.snapshot.data['components']
 
-        prefix = self.snapshot['prefix']
-        base_prefix = '%s/%s' % (self.snapshot['base']['name'], prefix)
+        prefix = self.snapshot.data['prefix']
+        base_prefix = '%s/%s' % (self.snapshot.data['base']['name'], prefix)
 
-        architectures = self.snapshot['architectures']
+        architectures = self.snapshot.data['architectures']
 
         for architecture in architectures:
             self._build_base(architecture)
@@ -686,7 +688,7 @@ and the manifest input."""
             component_to_arches[name] = component_arches
 
         for name in args.components:
-            component = self.get_component(name)
+            component = self.snapshot.get_component(name)
             self.force_build_components.add(component['name'])
 
         components_to_build = []

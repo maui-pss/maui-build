@@ -27,8 +27,9 @@ import json
 
 from . import builtins
 from .ostbuildlog import log, fatal
-from . import vcs
 from .subprocess_helpers import run_sync, run_sync_get_output
+from .snapshot import Snapshot
+from . import vcs
 from . import buildutil
 
 class OstbuildGitMirror(builtins.Builtin):
@@ -56,19 +57,20 @@ class OstbuildGitMirror(builtins.Builtin):
         args = parser.parse_args(argv)
         self.parse_config()
         if args.manifest:
-            self.snapshot = json.load(open(args.manifest))
-            components = map(lambda x: buildutil.resolve_component_meta(self.snapshot, x), self.snapshot['components'])
-            self.snapshot['components'] = components
-            self.snapshot['patches'] = buildutil.resolve_component_meta(self.snapshot, self.snapshot['patches'])
+            snapshot_data = json.load(open(args.manifest))
+            components = map(lambda x: buildutil.resolve_component_meta(snapshot_data, x), snapshot_data['components'])
+            snapshot_data['components'] = components
+            snapshot_data['patches'] = buildutil.resolve_component_meta(snapshot_data, snapshot_data['patches'])
+            self.snapshot = Snapshot(snapshot_data, None)
         else:
             self.parse_snapshot(args.prefix, args.snapshot)
 
         if len(args.components) == 0:
             components = []
-            for component in self.snapshot['components']:
+            for component in self.snapshot.data['components']:
                 components.append(component['name'])
-            if 'patches' in self.snapshot:
-                components.append(self.snapshot['patches']['name'])
+            if 'patches' in self.snapshot.data:
+                components.append(self.snapshot.data['patches']['name'])
             if args.start_at:
                 idx = components.index(args.start_at)
                 components = components[idx:]
@@ -76,7 +78,7 @@ class OstbuildGitMirror(builtins.Builtin):
             components = args.components
 
         for name in components:
-            component = self.get_component(name)
+            component = self.snapshot.get_component(name)
             src = component['src']
             (keytype, uri) = vcs.parse_src_key(src)
             branch = component.get('branch')

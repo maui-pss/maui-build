@@ -48,4 +48,37 @@ def snapshot_diff(a, b):
         if name not in a_components:
             added.append(name)
     return (added, modified, removed)
-        
+ 
+class Snapshot(object):
+    def __init__(self, data, path):
+        self.data = data
+        self.path = path
+        self._dict = _component_dict(data)
+        self._names = []
+        for name in self._dict:
+            self._names.append(name)
+
+    def expand_component(self, component):
+        meta = dict(component)
+        global_patchmeta = self._dict.get('patches')
+        if global_patchmeta is not None:
+            component_patch_files = component.get('patches', [])
+            if len(component_patch_files) > 0:
+                patches = dict(global_patchmeta)
+                patches['files'] = component_patch_files
+                meta['patches'] = patches
+        config_opts = list(self._dict.get('config-opts', []))
+        config_opts.extend(component.get('config-opts', []))
+        meta['config-opts'] = config_opts
+        return meta
+
+    def get_component(self, name, allow_none=False):
+        if not self._dict.has_key(name) and not allow_none:
+            fatal("No component '%s' in snapshot" % (name, ))
+        return self._dict[name]
+
+    def get_all_component_names(self):
+        return self._names
+
+    def get_expanded(self, name):
+        return self.expand_component(self.get_component(name))

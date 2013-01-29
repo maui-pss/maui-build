@@ -46,7 +46,7 @@ class OstbuildImportTree(builtins.Builtin):
         self.parse_config()
         self.parse_snapshot_from_current()
 
-        log("Loading source from tree %r" % (self.snapshot_path, ))
+        log("Loading source from tree %r" % (self.snapshot.path, ))
 
         related_objects = run_sync_get_output(['ostree', '--repo='+ self.repo,
                                                'show', '--print-related',
@@ -60,7 +60,7 @@ class OstbuildImportTree(builtins.Builtin):
         if args.prefix:
             target_prefix = args.prefix
         else:
-            target_prefix = self.snapshot['prefix']
+            target_prefix = self.snapshot.data['prefix']
 
         (fd, tmppath) = tempfile.mkstemp(suffix='.txt', prefix='ostbuild-import-tree-')
         f = os.fdopen(fd, 'w')
@@ -71,7 +71,7 @@ class OstbuildImportTree(builtins.Builtin):
                 newref = 'components/%s/%s' % (target_prefix, subref)
             elif ref.startswith('bases/'):
                 # hack
-                base_key = '/' + self.snapshot['prefix'] + '-'
+                base_key = '/' + self.snapshot.data['prefix'] + '-'
                 replace_key = '/' + target_prefix + '-'
                 newref = ref.replace(base_key, replace_key)
             else:
@@ -83,13 +83,13 @@ class OstbuildImportTree(builtins.Builtin):
         run_sync(['ostree', '--repo=' + self.repo,
                   'write-refs'], stdin=open(tmppath))
 
-        self.snapshot['prefix'] = target_prefix
+        self.snapshot.data['prefix'] = target_prefix
 
         run_sync(['ostbuild', 'prefix', target_prefix])
         self.prefix = target_prefix
 
         db = self.get_src_snapshot_db()
-        (path, modified) = db.store(self.snapshot)
+        (path, modified) = db.store(self.snapshot.data)
         if modified:
             log("New source snapshot: %s" % (path, ))
         else:
