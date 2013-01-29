@@ -34,7 +34,6 @@ from . import vcs
 from . import jsondb
 from . import buildutil
 from . import kvfile
-from . import odict
 
 class OstbuildResolve(builtins.Builtin):
     name = "resolve"

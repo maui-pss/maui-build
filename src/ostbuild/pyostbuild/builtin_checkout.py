@@ -29,7 +29,6 @@ from .subprocess_helpers import run_sync, run_sync_get_output
 from . import ostbuildrc
 from . import buildutil
 from . import fileutil
-from . import odict
 from . import vcs
 
 class OstbuildCheckout(builtins.Builtin):

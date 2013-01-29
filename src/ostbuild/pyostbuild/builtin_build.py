@@ -35,7 +35,6 @@ from . import task
 from . import fileutil
 from . import kvfile
 from . import snapshot
-from . import odict
 from . import vcs
 
 OPT_COMMON_CFLAGS = {'i686': '-O2 -pipe -g -m32 -march=i686 -mtune=atom -fasynchronous-unwind-tables',
