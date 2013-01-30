@@ -69,10 +69,10 @@ part-add /dev/vda p %d %d
 part-add /dev/vda p %d %d
 part-add /dev/vda p %d %d
 mkfs ext4 /dev/vda1
-set-e2label /dev/vda1 gnostree-boot
-mkswap-L gnostree-swap /dev/vda2
+set-e2label /dev/vda1 maui-boot
+mkswap-L maui-swap /dev/vda2
 mkfs ext4 /dev/vda3
-set-e2label /dev/vda3 gnostree-root
+set-e2label /dev/vda3 maui-root
 mount /dev/vda3 /
 mkdir /boot
 """ % (boot_offset, swap_offset - 1, swap_offset, root_offset - 1, root_offset, end_offset - 1)
