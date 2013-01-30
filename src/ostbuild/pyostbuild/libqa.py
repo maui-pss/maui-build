@@ -17,8 +17,8 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-import os, re
-from .guestfish import GuestFish
+import os, re, shutil
+from .guestfish import GuestFish, GuestMount
 from .ostbuildlog import log, error, fatal
 from .subprocess_helpers import run_sync
 from .fileutil import find_program_in_path
@@ -32,8 +32,8 @@ def new_read_write_mount(diskpath):
     mntdir = "mnt"
     if not os.path.exist(mntdir):
         os.makedirs(mntdir, 0755)
-    gfmnt = GuestFish.GuestMount(diskpath, partition_opts=DEFAULT_GF_PARTITION_OPTS,
-                                           read_write=True)
+    gfmnt = GuestMount(diskpath, partition_opts=DEFAULT_GF_PARTITION_OPTS,
+                                 read_write=True)
     gfmnt.mount(mntdir)
     return [gfmnt, mntdir]
 
@@ -49,7 +49,7 @@ part-init /dev/vda mbr
 blockdev-getsize64 /dev/vda
 blockdev-getss /dev/vda
 """
-    gf = GuestFish.GuestFish(diskpath, partition_opts=[], read_write=True)
+    gf = GuestFish(diskpath, partition_opts=[], read_write=True)
     lines = gf.run(make_disk_cmd)
     if len(lines) != 2:
         fatal("guestfish returned unexpected output lines (%d, expected 2)" % len(lines))
