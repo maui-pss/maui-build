@@ -21,9 +21,7 @@ import os, argparse, shutil
 
 from . import builtins
 from . import libqa
-from .ostbuildlog import log, error, fatal
-from .subprocess_helpers import run_sync, run_sync_get_output
-from .subprocess_helpers import run_sync_monitor_log_file
+from .ostbuildlog import log, error
 from .guestfish import GuestFish, GuestMount
 
 class OstbuildQaPullDeploy(builtins.Builtin):
