@@ -173,18 +173,6 @@ class BuildSystem(object):
                 dest = os.path.join(devel_path, 'usr/lib', filename)
                 self._install_and_unlink(path, dest)
 
-        for dirname in _DEVEL_DIRS:
-            dirpath = os.path.join(self.tempdir, dirname)
-            if os.path.isdir(dirpath):
-                dest = os.path.join(devel_path, dirname)
-                self._install_and_unlink(dirpath, dest)
-
-        for dirname in _DOC_DIRS:
-            dirpath = os.path.join(self.tempdir, dirname)
-            if os.path.isdir(dirpath):
-                dest = os.path.join(doc_path, dirname)
-                self._install_and_unlink(dirpath, dest)
-
         for dirname in _DEBUG_DIRS:
             dirpath = os.path.join(self.tempdir, dirname)
             for subpath, subdirs, files in os.walk(dirpath):
@@ -197,6 +185,18 @@ class BuildSystem(object):
                     self.run_sync(["objdump", "--add-gnu-debuglink=" + debug_path, path])
                     self.run_sync(["chmod", "-x", debug_path])
                     self._install_and_unlink(debug_path, dest)
+
+        for dirname in _DEVEL_DIRS:
+            dirpath = os.path.join(self.tempdir, dirname)
+            if os.path.isdir(dirpath):
+                dest = os.path.join(devel_path, dirname)
+                self._install_and_unlink(dirpath, dest)
+
+        for dirname in _DOC_DIRS:
+            dirpath = os.path.join(self.tempdir, dirname)
+            if os.path.isdir(dirpath):
+                dest = os.path.join(doc_path, dirname)
+                self._install_and_unlink(dirpath, dest)
 
         for filename in os.listdir(self.tempdir):
             src_path = os.path.join(self.tempdir, filename)
