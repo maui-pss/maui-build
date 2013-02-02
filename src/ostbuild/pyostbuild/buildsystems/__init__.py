@@ -159,13 +159,22 @@ class BuildSystem(object):
                     file_mimetype = run_sync_get_output(["file", "-b", "--mime-type", src_path])
                     if file_mimetype.strip() != "application/x-executable":
                         continue
-                    # Strip executable
+                    # Debugging information and artifact destination file name
                     dst_path = src_path + ".debug"
                     dest = os.path.join(debug_path, dst_path)
+                    # Add writing permission first because it might be read-only, this avoids
+                    # objcopy --strip-debug to fail
+                    src_stbuf = os.stat(src_path)
+                    os.chmod(src_path, stat.S_IRUSR | stat.S_IWUSR)
+                    # Strip executable
                     run_sync(["objcopy", "--only-keep-debug", src_path, dst_path])
                     run_sync(["objcopy", "--strip-debug", src_path])
                     run_sync(["objcopy", "--add-gnu-debuglink=" + dst_path, src_path])
-                    run_sync(["chmod", "-x", dst_path])
+                    # Restore permissions and remove executable bits from the debug file
+                    dst_stbuf = os.stat(dst_path)
+                    os.chmod(src_path, src_stbuf.st_mode)
+                    os.chmod(dst_path, dst_stbuf.st_mode ^ (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
+                    # Install debug file into the artifact
                     self._install_and_unlink(dst_path, dest)
 
         for dirname in _DEVEL_DIRS:
