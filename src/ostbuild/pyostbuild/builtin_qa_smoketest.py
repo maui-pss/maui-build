@@ -24,8 +24,8 @@ from .ostbuildlog import log, fatal
 from .subprocess_helpers import run_sync
 from .fileutil import find_program_in_path
 
-class OstbuildQaSmokeTest(builtins.Builtin):
-    name = "qa-smoke-test"
+class OstbuildQaSmoketest(builtins.Builtin):
+    name = "qa-smoketest"
     short_description = "Basic smoke testing via parsing serial console"
 
     def __init__(self):
@@ -55,4 +55,4 @@ class OstbuildQaSmokeTest(builtins.Builtin):
                   "-drive", "file=" + diskpath + ",if=virtio"])
         log("Complete!")
 
-builtins.register(OstbuildQaSmokeTest)
+builtins.register(OstbuildQaSmoketest)

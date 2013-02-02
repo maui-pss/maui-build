@@ -33,7 +33,7 @@ from . import builtin_import_tree
 from . import builtin_prefix
 from . import builtin_qa_make_disk
 from . import builtin_qa_pull_deploy
-from . import builtin_qa_smoke_test
+from . import builtin_qa_smoketest
 from . import builtin_resolve
 from . import builtin_source_diff
 

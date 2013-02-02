@@ -52,7 +52,7 @@ pyostbuild_PYTHON =						\
 	src/ostbuild/pyostbuild/builtin_import_tree.py		\
 	src/ostbuild/pyostbuild/builtin_qa_make_disk.py		\
 	src/ostbuild/pyostbuild/builtin_qa_pull_deploy.py	\
-	src/ostbuild/pyostbuild/builtin_qa_smoke_test.py	\
+	src/ostbuild/pyostbuild/builtin_qa_smoketest.py		\
 	src/ostbuild/pyostbuild/builtin_git_mirror.py		\
 	src/ostbuild/pyostbuild/builtin_prefix.py		\
 	src/ostbuild/pyostbuild/builtin_resolve.py		\
