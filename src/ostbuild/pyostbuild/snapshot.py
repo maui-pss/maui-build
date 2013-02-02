@@ -64,7 +64,7 @@ class Snapshot(object):
         if patch_meta is not None:
             component_patch_files = component.get('patches', [])
             if len(component_patch_files) > 0:
-                patches = dict(global_patchmeta)
+                patches = dict(patch_meta)
                 patches['files'] = component_patch_files
                 meta['patches'] = patches
         config_opts = list(self.data.get('config-opts', []))
