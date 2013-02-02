@@ -22,7 +22,10 @@
 # http://people.gnome.org/~walters/docs/build-api.txt
 
 import os, shutil, tempfile
+
 from . import BuildSystem, PREFIX
+from ..ostbuildlog import log, fatal
+from ..subprocess_helpers import run_sync
 
 class BuildApiBuildSystem(BuildSystem):
     name = "buildapi"
@@ -62,23 +65,23 @@ class BuildApiBuildSystem(BuildSystem):
 
         autogen_script = None
         if not os.path.exists(configure_path):
-            self.log("No 'configure' script found, looking for autogen/bootstrap")
+            log("No 'configure' script found, looking for autogen/bootstrap")
             for name in ['autogen', 'autogen.sh', 'bootstrap']:
                 if os.path.exists(name):
-                    self.log("Using bootstrap script '%s'" % (name, ))
+                    log("Using bootstrap script '%s'" % (name, ))
                     autogen_script = name
             if autogen_script is None:
-                self.fatal("No configure or autogen script detected; unknown buildsystem")
+                fatal("No configure or autogen script detected; unknown buildsystem")
 
         if autogen_script is not None:
             env = dict(os.environ)
             env['NOCONFIGURE'] = '1'
-            self.run_sync(['./' + autogen_script], env=env)
+            run_sync(['./' + autogen_script], env=env)
 
         use_builddir = True
         doesnot_support_builddir = self._has_buildapi_configure_variable('no-builddir')
         if doesnot_support_builddir:
-            self.log("Found no-builddir Build API variable; copying source tree to " + self.builddir)
+            log("Found no-builddir Build API variable; copying source tree to " + self.builddir)
             if os.path.isdir(self.builddir):
                 shutil.rmtree(self.builddir)
             shutil.copytree('.', self.builddir, symlinks=True,
@@ -86,7 +89,7 @@ class BuildApiBuildSystem(BuildSystem):
             use_builddir = False
 
         if use_builddir:
-            self.log("Using build directory %r" % (self.builddir, ))
+            log("Using build directory %r" % (self.builddir, ))
             if not os.path.isdir(self.builddir):
                 os.mkdir(self.builddir)
 
@@ -95,7 +98,7 @@ class BuildApiBuildSystem(BuildSystem):
         else:
             args = ['./configure']
         args.extend(configargs)
-        self.run_sync(args, cwd=self.builddir)
+        run_sync(args, cwd=self.builddir)
 
         makefile_path = None
         for name in ['Makefile', 'makefile', 'GNUmakefile']:
@@ -105,7 +108,7 @@ class BuildApiBuildSystem(BuildSystem):
             else:
                 makefile_path = None
         if makefile_path is None:
-            self.fatal("No Makefile found")
+            fatal("No Makefile found")
 
         args = list(self.makeargs)
         user_specified_jobs = False
@@ -119,15 +122,15 @@ class BuildApiBuildSystem(BuildSystem):
             for line in open(makefile_path):
                 if line.startswith('.NOTPARALLEL'):
                     has_notparallel = True
-                    self.log("Found .NOTPARALLEL")
+                    log("Found .NOTPARALLEL")
 
             if not has_notparallel:
-                self.log("Didn't find NOTPARALLEL, using parallel make by default")
+                log("Didn't find NOTPARALLEL, using parallel make by default")
                 args.extend(self.default_make_jobs)
 
-        self.run_sync(args, cwd=self.builddir)
+        run_sync(args, cwd=self.builddir)
 
         self.tempdir = tempfile.mkdtemp(prefix='ostbuild-destdir-%s' % (self.metadata['name'].replace('/', '_'), ))
         self.tempfiles.append(self.tempdir)
         args = ['make', 'install', 'DESTDIR=' + self.tempdir]
-        self.run_sync(args, cwd=self.builddir)
+        run_sync(args, cwd=self.builddir)

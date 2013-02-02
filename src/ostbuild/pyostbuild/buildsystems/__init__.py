@@ -23,6 +23,9 @@ import json
 from multiprocessing import cpu_count
 import select, time
 
+from ..ostbuildlog import log
+from ..subprocess_helpers import run_sync
+
 PREFIX = '/usr'
 
 # Applied to filenames only
@@ -91,36 +94,6 @@ class BuildSystem(object):
     def detect(self):
         return False
 
-    def log(self, x):
-        sys.stdout.write('ob: ' + x)
-        sys.stdout.write('\n')
-        sys.stdout.flush()
-
-    def fatal(self, x):
-        self.log(x)
-        sys.exit(1)
-
-    def run_sync(self, args, cwd=None, env=None):
-        self.log("running: %s" % (subprocess.list2cmdline(args),))
-
-        env_copy = self._get_env_for_cwd(cwd, env)
-
-        stdin_target = open('/dev/null', 'r')
-        stdout_target = sys.stdout
-        stderr_target = sys.stderr
-
-        proc = subprocess.Popen(args, stdin=stdin_target, stdout=stdout_target, stderr=stderr_target,
-                                close_fds=True, cwd=cwd, env=env_copy)
-        stdin_target.close()
-        returncode = proc.wait()
-        if returncode != 0:
-            logfn = self.fatal
-        else:
-            logfn = None
-        if logfn is not None:
-            logfn("pid %d exited with code %d" % (proc.pid, returncode))
-        return returncode
-
     def build(self):
         #
         # Pre-build phase
@@ -182,10 +155,10 @@ class BuildSystem(object):
                         continue
                     dst_path = src_path + ".debug"
                     dest = os.path.join(debug_path, dst_path)
-                    self.run_sync(["objdump", "--only-keep-debug", src_path, dst_path])
-                    self.run_sync(["objdump", "--strip-debug", src_path])
-                    self.run_sync(["objdump", "--add-gnu-debuglink=" + dst_path, src_path])
-                    self.run_sync(["chmod", "-x", dst_path])
+                    run_sync(["objdump", "--only-keep-debug", src_path, dst_path])
+                    run_sync(["objdump", "--strip-debug", src_path])
+                    run_sync(["objdump", "--add-gnu-debuglink=" + dst_path, src_path])
+                    run_sync(["chmod", "-x", dst_path])
                     self._install_and_unlink(dst_path, dest)
 
         for dirname in _DEVEL_DIRS:
@@ -217,8 +190,8 @@ class BuildSystem(object):
     
         self.endtime = time.time()
 
-        self.log("Compilation succeeded; %d seconds elapsed" % (int(self.endtime - self.starttime),))
-        self.log("Results placed in %s" % (self.ostbuild_resultdir, ))
+        log("Compilation succeeded; %d seconds elapsed" % (int(self.endtime - self.starttime),))
+        log("Results placed in %s" % (self.ostbuild_resultdir, ))
 
     def _get_env_for_cwd(self, cwd=None, env=None):
         # This dance is necessary because we want to keep the PWD
@@ -271,7 +244,7 @@ class BuildSystem(object):
                     ignored = True
                     break
             if ignored:
-                self.log("Not installing %s" % (src, ))
+                log("Not installing %s" % (src, ))
                 os.unlink(src)
                 return
             try:

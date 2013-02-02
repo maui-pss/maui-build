@@ -20,7 +20,10 @@
 # This implement a CMake build system
 
 import os, shutil, tempfile
+
 from . import BuildSystem, PREFIX
+from ..ostbuildlog import log, fatal
+from ..subprocess_helpers import run_sync
 
 class CMakeBuildSystem(BuildSystem):
     name = "cmake"
@@ -31,12 +34,12 @@ class CMakeBuildSystem(BuildSystem):
         for name in os.listdir(os.getcwd()):
             if name == 'CMakeLists.txt':
                 self.cmakefile_path = os.path.join(os.getcwd(), name)
-                self.log("Found CMake project " + self.cmakefile_path)
+                log("Found CMake project " + self.cmakefile_path)
                 return True
         return False
 
     def do_build(self):
-        self.log("Using build directory %r" % (self.builddir, ))
+        log("Using build directory %r" % (self.builddir, ))
         if not os.path.isdir(self.builddir):
             os.mkdir(self.builddir)
 
@@ -52,7 +55,7 @@ class CMakeBuildSystem(BuildSystem):
         configargs.extend(['..'])
         args = ['cmake']
         args.extend(configargs)
-        self.run_sync(args, cwd=self.builddir)
+        run_sync(args, cwd=self.builddir)
 
         makefile_path = None
         for name in ['Makefile', 'makefile', 'GNUmakefile']:
@@ -62,7 +65,7 @@ class CMakeBuildSystem(BuildSystem):
             else:
                 makefile_path = None
         if makefile_path is None:
-            self.fatal("No Makefile found")
+            fatal("No Makefile found")
 
         args = list(self.makeargs)
         user_specified_jobs = False
@@ -71,9 +74,9 @@ class CMakeBuildSystem(BuildSystem):
                 user_specified_jobs = True
         if not user_specified_jobs:
             args.extend(self.default_make_jobs)
-        self.run_sync(args, cwd=self.builddir)
+        run_sync(args, cwd=self.builddir)
 
         self.tempdir = tempfile.mkdtemp(prefix='ostbuild-destdir-%s' % (self.metadata['name'].replace('/', '_'), ))
         self.tempfiles.append(self.tempdir)
         args = ['make', 'install', 'DESTDIR=' + self.tempdir]
-        self.run_sync(args, cwd=self.builddir)
+        run_sync(args, cwd=self.builddir)
