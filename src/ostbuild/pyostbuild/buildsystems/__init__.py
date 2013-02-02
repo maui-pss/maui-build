@@ -157,7 +157,7 @@ class BuildSystem(object):
                         continue
                     # We only want ELF executables
                     file_mimetype = run_sync_get_output(["file", "-b", "--mime-type", src_path])
-                    if file_mimetype.strip() != "application/x-executable":
+                    if file_mimetype.strip() in ("application/x-executable", "application/x-sharedlib"):
                         continue
                     # Debugging information and artifact destination file name
                     dst_path = src_path + ".debug"
