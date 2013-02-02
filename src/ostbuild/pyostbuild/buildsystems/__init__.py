@@ -195,6 +195,7 @@ class BuildSystem(object):
                     self.run_sync(["objdump", "--only-keep-debug", path, debug_path])
                     self.run_sync(["objdump", "--strip-debug", path])
                     self.run_sync(["objdump", "--add-gnu-debuglink=" + debug_path, path])
+                    self.run_sync(["chmod", "-x", debug_path])
                     self._install_and_unlink(debug_path, dest)
 
         for filename in os.listdir(self.tempdir):
