@@ -24,7 +24,7 @@ from multiprocessing import cpu_count
 import select, time
 
 from ..ostbuildlog import log
-from ..subprocess_helpers import run_sync
+from ..subprocess_helpers import run_sync, run_sync_get_output
 
 PREFIX = '/usr'
 
@@ -151,8 +151,14 @@ class BuildSystem(object):
             for subpath, subdirs, files in os.walk(dirpath):
                 for filename in files:
                     src_path = os.path.join(subpath, filename)
+                    # Skip symbolic links
                     if os.path.islink(src_path):
                         continue
+                    # We only want ELF executables
+                    file_mimetype = run_sync_get_output(["file", "-b", "--mime-type", src_path])
+                    if file_mimetype.strip() != "application/x-executable":
+                        continue
+                    # Strip executable
                     dst_path = src_path + ".debug"
                     dest = os.path.join(debug_path, dst_path)
                     run_sync(["objcopy", "--only-keep-debug", src_path, dst_path])
