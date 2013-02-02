@@ -80,5 +80,13 @@ class Snapshot(object):
             fatal("No component '%s' in snapshot" % (name, ))
         return self._dict[name]
 
+    def get_matching_src(self, src, allow_none=False):
+        result = []
+        for name in self._names:
+            component = self.get_component(name)
+            if component['src'] == src:
+                result.append(component)
+        return result
+
     def get_expanded(self, name):
         return self._expand_component(self.get_component(name))
