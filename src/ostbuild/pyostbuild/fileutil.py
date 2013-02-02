@@ -39,10 +39,13 @@ def find_program_in_path(program, env=None):
             break
     return program_path
 
+def write_json_to_stream(stream, data):
+    json.dump(data, stream, indent=4, sort_keys=True)
+
 def write_json_file_atomic(path, data):
     path_tmp = path + '.tmp'
     f = open(path_tmp, 'w')
-    json.dump(data, f, indent=4, sort_keys=True)
+    write_json_to_stream(f, data)
     f.close()
     os.chmod(path_tmp, 0644)
     os.rename(path_tmp, path)
