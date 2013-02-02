@@ -25,18 +25,18 @@ import hashlib
 import json
 from StringIO import StringIO
 
-from . import builtins
-from .ostbuildlog import log, fatal
-from .subprocess_helpers import run_sync, run_sync_get_output
-from .subprocess_helpers import run_sync_monitor_log_file
-from . import ostbuildrc
-from . import buildutil
-from . import task
-from . import fileutil
-from . import jsonutil
-from . import kvfile
-from . import snapshot
-from . import vcs
+from .. import builtins
+from .. import ostbuildrc
+from .. import buildutil
+from .. import task
+from .. import fileutil
+from .. import jsonutil
+from .. import kvfile
+from .. import snapshot
+from .. import vcs
+from ..ostbuildlog import log, fatal
+from ..subprocess_helpers import run_sync, run_sync_get_output
+from ..subprocess_helpers import run_sync_monitor_log_file
 
 OPT_COMMON_CFLAGS = {'i686': '-O2 -pipe -g -m32 -march=i686 -mtune=atom -fasynchronous-unwind-tables',
                      'x86_64': '-O2 -pipe -g -m64 -march=x86-64 -mtune=generic'}

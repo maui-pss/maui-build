@@ -25,12 +25,12 @@ import argparse
 from StringIO import StringIO
 import json
 
-from . import builtins
-from .ostbuildlog import log, fatal
-from .subprocess_helpers import run_sync, run_sync_get_output
-from .snapshot import Snapshot
-from . import vcs
-from . import buildutil
+from .. import builtins
+from .. import vcs
+from .. import buildutil
+from ..ostbuildlog import log, fatal
+from ..subprocess_helpers import run_sync, run_sync_get_output
+from ..snapshot import Snapshot
 
 class OstbuildGitMirror(builtins.Builtin):
     name = "git-mirror"

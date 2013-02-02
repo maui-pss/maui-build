@@ -17,16 +17,16 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-import os
+import os, argparse
 
-from . import builtins
-from .ostbuildlog import log, fatal
-from .subprocess_helpers import run_sync
-from .fileutil import find_program_in_path
+from .. import builtins
+from .. import libqa
+from ..ostbuildlog import log, error
+from ..guestfish import GuestMount
 
-class OstbuildQaSmoketest(builtins.Builtin):
-    name = "qa-smoketest"
-    short_description = "Basic smoke testing via parsing serial console"
+class OstbuildQaPullDeploy(builtins.Builtin):
+    name = "qa-pull-deploy"
+    short_description = "Copy from shadow repository into disk image and deploy it"
 
     def __init__(self):
         builtins.Builtin.__init__(self)
@@ -34,25 +34,30 @@ class OstbuildQaSmoketest(builtins.Builtin):
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
         parser.add_argument("diskpath")
+        parser.add_argument("srcrepo")
+        parser.add_argument("osname")
+        parser.add_argument("target")
+        parser.add_argument("revision")
 
         args = parser.parse_args(argv)
 
-        path = args.diskpath
-        workdir = "."
+        diskpath = args.diskpath
 
-        fallback_paths = ["/usr/libexec/qemu-kvm"]
-        qemu_path_string = find_program_in_path("qemu-kvm")
-        if not qemu_path_string:
-            for path in fallback_paths:
-                if not os.path.exist(path):
-                    continue
-                qemu_path_string = path
-        if not qemu_path_string:
-            fatal("Unable to find qemu-kvm")
+        self._workdir = os.getcwd()
+        self._mntdir = os.path.join(self._workdir, "mnt")
+        if not os.path.exists(self._mntdir):
+            os.makedirs(self._mntdir, 0755)
 
-        log("Starting qemu...")
-        run_sync([qemu_path_string, "-vga", "std", "m", "768M", "-usb", "-usbdevice", "tablet",
-                  "-drive", "file=" + diskpath + ",if=virtio"])
+        gfmnt = GuestMount(diskpath, partition_opts=libqa.DEFAULT_GF_PARTITION_OPTS, read_write=True)
+        gfmnt.mount(self._mntdir)
+        try:
+            libqa.pull_deploy(self._mntdir, args.srcrepo, args.osname, args.target, args.revision)
+        except Exception, e:
+            error(e.message)
+        finally:
+            gfmnt.umount()
+
+        libqa.grub_install(diskpath)
         log("Complete!")
 
-builtins.register(OstbuildQaSmoketest)
+builtins.register(OstbuildQaPullDeploy)

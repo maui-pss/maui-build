@@ -23,13 +23,13 @@ import json
 import urlparse
 from StringIO import StringIO
 
-from . import builtins
-from .ostbuildlog import log, fatal
-from .subprocess_helpers import run_sync, run_sync_get_output
-from . import ostbuildrc
-from . import buildutil
-from . import fileutil
-from . import vcs
+from .. import builtins
+from .. import ostbuildrc
+from .. import buildutil
+from .. import fileutil
+from .. import vcs
+from ..ostbuildlog import log, fatal
+from ..subprocess_helpers import run_sync, run_sync_get_output
 
 class OstbuildCheckout(builtins.Builtin):
     name = "checkout"

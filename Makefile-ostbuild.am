@@ -32,11 +32,11 @@ EXTRA_DIST += ostbuild/ostbuild.in ostbuild/ostree-build-compile-one.in
 
 bin_SCRIPTS += ostbuild src/ostbuild/ostbuild-qemu-pull-deploy
 
+utilsdir = $(libdir)/ostbuild
 utils_SCRIPTS = \
 	ostree-build-compile-one \
 	src/ostbuild/ostree-build-yocto \
 	$(NULL)
-utilsdir = $(libdir)/ostbuild
 
 pyostbuilddir=$(libdir)/ostbuild/pyostbuild
 pyostbuild_PYTHON =						\
@@ -45,19 +45,6 @@ pyostbuild_PYTHON =						\
 	src/ostbuild/pyostbuild/buildsystem_buildapi.py		\
 	src/ostbuild/pyostbuild/buildsystem_cmake.py		\
 	src/ostbuild/pyostbuild/buildsystem_qmake.py		\
-	src/ostbuild/pyostbuild/builtin_build.py		\
-	src/ostbuild/pyostbuild/builtin_build_disks.py		\
-	src/ostbuild/pyostbuild/builtin_checkout.py		\
-	src/ostbuild/pyostbuild/builtin_deploy_root.py		\
-	src/ostbuild/pyostbuild/builtin_import_tree.py		\
-	src/ostbuild/pyostbuild/builtin_qa_make_disk.py		\
-	src/ostbuild/pyostbuild/builtin_qa_pull_deploy.py	\
-	src/ostbuild/pyostbuild/builtin_qa_smoketest.py		\
-	src/ostbuild/pyostbuild/builtin_git_mirror.py		\
-	src/ostbuild/pyostbuild/builtin_prefix.py		\
-	src/ostbuild/pyostbuild/builtin_resolve.py		\
-	src/ostbuild/pyostbuild/builtin_source_diff.py		\
-	src/ostbuild/pyostbuild/builtins.py			\
 	src/ostbuild/pyostbuild/filemonitor.py			\
 	src/ostbuild/pyostbuild/task.py				\
 	src/ostbuild/pyostbuild/fileutil.py			\
@@ -76,4 +63,21 @@ pyostbuild_PYTHON =						\
 	src/ostbuild/pyostbuild/snapshot.py			\
 	src/ostbuild/pyostbuild/subprocess_helpers.py		\
 	src/ostbuild/pyostbuild/vcs.py				\
+	$(NULL)
+
+pyostbuildbuiltinsdir=$(pyostbuilddir)/builtins
+pyostbuildbuiltins_PYTHON =                                     \
+	src/ostbuild/pyostbuild/builtins/__init__.py		\
+	src/ostbuild/pyostbuild/builtins/build.py		\
+	src/ostbuild/pyostbuild/builtins/build_disks.py		\
+	src/ostbuild/pyostbuild/builtins/checkout.py		\
+	src/ostbuild/pyostbuild/builtins/deploy_root.py		\
+	src/ostbuild/pyostbuild/builtins/import_tree.py		\
+	src/ostbuild/pyostbuild/builtins/qa_make_disk.py	\
+	src/ostbuild/pyostbuild/builtins/qa_pull_deploy.py	\
+	src/ostbuild/pyostbuild/builtins/qa_smoketest.py	\
+	src/ostbuild/pyostbuild/builtins/git_mirror.py		\
+	src/ostbuild/pyostbuild/builtins/prefix.py		\
+	src/ostbuild/pyostbuild/builtins/resolve.py		\
+	src/ostbuild/pyostbuild/builtins/source_diff.py		\
 	$(NULL)

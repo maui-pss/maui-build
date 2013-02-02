@@ -25,11 +25,11 @@ import argparse
 from StringIO import StringIO
 import json
 
-from . import builtins
-from .ostbuildlog import log, fatal
-from . import vcs
-from .subprocess_helpers import run_sync, run_sync_get_output
-from . import buildutil
+from .. import builtins
+from .. import vcs
+from .. import buildutil
+from ..ostbuildlog import log, fatal
+from ..subprocess_helpers import run_sync, run_sync_get_output
 
 class OstbuildSourceDiff(builtins.Builtin):
     name = "source-diff"

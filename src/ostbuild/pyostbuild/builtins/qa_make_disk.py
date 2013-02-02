@@ -19,11 +19,11 @@
 
 import os, argparse, shutil
 
-from . import builtins
-from .ostbuildlog import log, fatal
-from .subprocess_helpers import run_sync, run_sync_get_output
-from .subprocess_helpers import run_sync_monitor_log_file
-from .guestfish import GuestFish
+from .. import builtins
+from ..ostbuildlog import log, fatal
+from ..subprocess_helpers import run_sync, run_sync_get_output
+from ..subprocess_helpers import run_sync_monitor_log_file
+from ..guestfish import GuestFish
 
 class OstbuildQaMakeDisk(builtins.Builtin):
     name = "qa-make-disk"

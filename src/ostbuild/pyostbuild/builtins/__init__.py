@@ -1,6 +1,4 @@
 # vim: et:ts=4:sw=4
-#!/usr/bin/python
-#
 # Copyright (C) 2012-2013 Pier Luigi Fiorini <pierluigi.fiorini@gmail.com>
 # Copyright (C) 2011 Colin Walters <walters@verbum.org>
 #
@@ -25,12 +23,12 @@ import stat
 import argparse
 import json
 
-from . import ostbuildrc
-from . import fileutil
-from . import jsondb
-from .ostbuildlog import log, fatal
-from .snapshot import Snapshot
-from .subprocess_helpers import run_sync, run_sync_get_output
+from .. import ostbuildrc
+from .. import fileutil
+from .. import jsondb
+from ..ostbuildlog import log, fatal
+from ..snapshot import Snapshot
+from ..subprocess_helpers import run_sync, run_sync_get_output
 
 _all_builtins = {}
 

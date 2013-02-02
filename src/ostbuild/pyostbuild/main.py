@@ -24,18 +24,18 @@ import sys
 import argparse
 
 from . import builtins
-from . import builtin_build
-from . import builtin_build_disks
-from . import builtin_checkout
-from . import builtin_deploy_root
-from . import builtin_git_mirror
-from . import builtin_import_tree
-from . import builtin_prefix
-from . import builtin_qa_make_disk
-from . import builtin_qa_pull_deploy
-from . import builtin_qa_smoketest
-from . import builtin_resolve
-from . import builtin_source_diff
+from builtins import build
+from builtins import build_disks
+from builtins import checkout
+from builtins import deploy_root
+from builtins import git_mirror
+from builtins import import_tree
+from builtins import prefix
+from builtins import qa_make_disk
+from builtins import qa_pull_deploy
+from builtins import qa_smoketest
+from builtins import resolve
+from builtins import source_diff
 
 def usage(ecode):
     print "Builtins:"

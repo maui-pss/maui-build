@@ -25,15 +25,15 @@ import time
 import urlparse
 from StringIO import StringIO
 
-from . import builtins
-from .ostbuildlog import log, fatal
-from .subprocess_helpers import run_sync, run_sync_get_output
-from .snapshot import Snapshot
-from . import ostbuildrc
-from . import vcs
-from . import jsondb
-from . import buildutil
-from . import kvfile
+from .. import builtins
+from .. import ostbuildrc
+from .. import vcs
+from .. import jsondb
+from .. import buildutil
+from .. import kvfile
+from ..ostbuildlog import log, fatal
+from ..subprocess_helpers import run_sync, run_sync_get_output
+from ..snapshot import Snapshot
 
 class OstbuildResolve(builtins.Builtin):
     name = "resolve"
