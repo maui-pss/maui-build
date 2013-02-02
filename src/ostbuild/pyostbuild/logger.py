@@ -51,7 +51,7 @@ class Logger(object):
         # Color dictionary
         self._colormap = dict(
             info = dict(color="cyan"),
-            action = dict(color="cyan", attrs=["bold"]),
+            action = dict(color="blue", attrs=["bold"]),
             warn = dict(color="yellow", attrs=["bold"]),
             warning = dict(color="yellow", attrs=["bold"]),
             error = dict(color="red"),
