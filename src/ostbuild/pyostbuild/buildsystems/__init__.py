@@ -177,14 +177,16 @@ class BuildSystem(object):
             dirpath = os.path.join(self.tempdir, dirname)
             for subpath, subdirs, files in os.walk(dirpath):
                 for filename in files:
-                    path = os.path.realpath(os.path.join(subpath, filename))
-                    debug_path = path + ".debug"
-                    dest = os.path.join(debug_path, subpath, filename + ".debug")
-                    self.run_sync(["objdump", "--only-keep-debug", path, debug_path])
-                    self.run_sync(["objdump", "--strip-debug", path])
-                    self.run_sync(["objdump", "--add-gnu-debuglink=" + debug_path, path])
-                    self.run_sync(["chmod", "-x", debug_path])
-                    self._install_and_unlink(debug_path, dest)
+                    src_path = os.path.join(subpath, filename)
+                    if os.path.islink(src_path):
+                        continue
+                    dst_path = src_path + ".debug"
+                    dest = os.path.join(debug_path, dst_path)
+                    self.run_sync(["objdump", "--only-keep-debug", src_path, dst_path])
+                    self.run_sync(["objdump", "--strip-debug", src_path])
+                    self.run_sync(["objdump", "--add-gnu-debuglink=" + dst_path, src_path])
+                    self.run_sync(["chmod", "-x", dst_path])
+                    self._install_and_unlink(dst_path, dest)
 
         for dirname in _DEVEL_DIRS:
             dirpath = os.path.join(self.tempdir, dirname)
