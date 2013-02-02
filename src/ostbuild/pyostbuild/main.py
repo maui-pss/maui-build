@@ -25,6 +25,7 @@ import argparse
 
 from . import builtins
 from . import builtin_build
+from . import builtin_build_disks
 from . import builtin_checkout
 from . import builtin_deploy_root
 from . import builtin_git_mirror
