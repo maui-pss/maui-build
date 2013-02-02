@@ -97,7 +97,7 @@ def get_qemu_path():
             qemu_path_string = path
     if not qemu_path_string:
         fatal("Unable to find qemu-kvm")
-    return qemu_path_string:
+    return qemu_path_string
 
 def get_deploy_dirs(mntdir, osname):
     basedir = os.path.abspath(os.path.join(mntdir, "ostree", "deploy", osname))
