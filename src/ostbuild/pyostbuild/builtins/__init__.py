@@ -26,7 +26,7 @@ import json
 from .. import ostbuildrc
 from .. import fileutil
 from .. import jsondb
-from ..ostbuildlog import log, fatal
+from ..logger import Logger
 from ..snapshot import Snapshot
 from ..subprocess_helpers import run_sync, run_sync_get_output
 
@@ -37,6 +37,7 @@ class Builtin(object):
     short_description = None
 
     def __init__(self):
+        self.logger = Logger()
         self._meta_cache = {}
         self.prefix = None
         self.manifest = None
@@ -88,7 +89,7 @@ class Builtin(object):
                 found = True
                 break
         if not found:
-            fatal("Unknown component '%s'" % (name, ))
+            self.logger.fatal("Unknown component '%s'" % (name, ))
         return content
 
     def get_component_meta_from_revision(self, revision):
@@ -111,7 +112,7 @@ class Builtin(object):
         if self.prefix is None:
             path = os.path.expanduser('~/.config/ostbuild-prefix')
             if not os.path.exists(path):
-                fatal("No prefix set; use \"ostbuild prefix\" to set one")
+                self.logger.fatal("No prefix set; use \"ostbuild prefix\" to set one")
             f = open(path)
             self.prefix = f.read().strip()
             f.close()
@@ -169,18 +170,18 @@ class Builtin(object):
         key = '00ostbuild-manifest-version'
         src_ver = self.snapshot.data[key]
         if src_ver != 0:
-            fatal("Unhandled %s version \"%d\", expected 0" % (key, src_ver, ))
+            self.logger.fatal("Unhandled %s version \"%d\", expected 0" % (key, src_ver, ))
         if self.prefix is None:
             self.prefix = self.snapshot.data['prefix']
 
     def parse_snapshot_from_current(self):
         if self.ostree_dir is None:
-            fatal("/ostree directory not found")
+            self.logger.fatal("/ostree directory not found")
         repo_path = os.path.join(self.ostree_dir, 'repo')
         if not os.path.isdir(repo_path):
-            fatal("Repository '%s' doesn't exist" % (repo_path, ))
+            self.logger.fatal("Repository '%s' doesn't exist" % (repo_path, ))
         if self.active_branch is None:
-            fatal("No \"current\" link found")
+            self.logger.fatal("No \"current\" link found")
         tree_path = os.path.join(self.ostree_dir, "trees/", self.active_branch)
         self.parse_snapshot(None, os.path.join(tree_path, 'contents.json'))
 

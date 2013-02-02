@@ -24,7 +24,6 @@ from .. import libqa
 from .. import jsondb
 from .. import fileutil
 from .. import libqa
-from ..ostbuildlog import log, error
 from ..subprocess_helpers import run_sync
 from ..guestfish import GuestFish, GuestMount
 

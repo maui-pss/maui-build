@@ -27,7 +27,6 @@ from StringIO import StringIO
 from .. import builtins
 from .. import ostbuildrc
 from .. import privileged_subproc
-from ..ostbuildlog import log, fatal
 
 class OstbuildDeployRoot(builtins.Builtin):
     name = "deploy-root"

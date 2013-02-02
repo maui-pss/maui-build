@@ -21,7 +21,6 @@ import os, argparse
 
 from .. import builtins
 from .. import libqa
-from ..ostbuildlog import log, error
 from ..guestfish import GuestMount
 
 class OstbuildQaPullDeploy(builtins.Builtin):
@@ -53,11 +52,11 @@ class OstbuildQaPullDeploy(builtins.Builtin):
         try:
             libqa.pull_deploy(self._mntdir, args.srcrepo, args.osname, args.target, args.revision)
         except Exception, e:
-            error(e.message)
+            self.logger.error(e.message)
         finally:
             gfmnt.umount()
 
         libqa.grub_install(diskpath)
-        log("Complete!")
+        self.logger.info("Complete!")
 
 builtins.register(OstbuildQaPullDeploy)

@@ -28,7 +28,6 @@ import json
 from .. import builtins
 from .. import vcs
 from .. import buildutil
-from ..ostbuildlog import log, fatal
 from ..subprocess_helpers import run_sync, run_sync_get_output
 
 class OstbuildSourceDiff(builtins.Builtin):
@@ -109,7 +108,7 @@ class OstbuildSourceDiff(builtins.Builtin):
 
         valid_modes = ['names', 'log', 'logp', 'diff']
         if args.mode not in valid_modes:
-            fatal("--mode must be one of %r" % (valid_modes, ))
+            self.logger.fatal("--mode must be one of %r" % (valid_modes, ))
 
         to_snap = None
         from_snap = None
@@ -124,40 +123,40 @@ class OstbuildSourceDiff(builtins.Builtin):
             to_snap = json.load(open(args.snapshot_to))
 
         if to_snap is None:
-            fatal("One of --rev-to/--snapshot-to must be given")
+            self.logger.fatal("One of --rev-to/--snapshot-to must be given")
         if from_snap is None:
             if args.rev_to:
                 from_snap = self._snapshot_from_rev(args.rev_to + '^')
             else:
-                fatal("One of --rev-from/--snapshot-from must be given")
+                self.logger.fatal("One of --rev-from/--snapshot-from must be given")
 
         for from_component in from_snap['components']:
             name = from_component['name']
             src = from_component['src']
             (keytype, uri) = vcs.parse_src_key(src)
             if keytype == 'local':
-                log("Component %r has local URI" % (name, ))
+                self.logger.info("Component %r has local URI" % (name, ))
                 continue
             branch_or_tag = from_component.get('branch') or from_component.get('tag')
             mirrordir = vcs.ensure_vcs_mirror(self.mirrordir, keytype, uri, branch_or_tag)
 
             to_component = self.find_component_in_snapshot(name, to_snap)
             if to_component is None:
-                log("DELETED COMPONENT: %s" % (name, ))
+                self.logger.info("DELETED COMPONENT: %s" % (name, ))
                 continue
 
             from_revision = from_component.get('revision')
             to_revision = to_component.get('revision')
             if from_revision is None:
-                log("From component %s missing revision" % (name, ))
+                self.logger.info("From component %s missing revision" % (name, ))
                 continue
             if to_revision is None:
-                log("From component %s missing revision" % (name, ))
+                self.logger.info("From component %s missing revision" % (name, ))
                 continue
 
             if from_revision != to_revision:
                 if args.mode == 'names':
-                    log("Component %s changed from %s to %s" % (name, from_revision, to_revision))
+                    self.logger.info("Component %s changed from %s to %s" % (name, from_revision, to_revision))
                 elif args.mode == 'log':
                     self._log([], name, mirrordir, from_revision, to_revision)
                 elif args.mode == 'logp':

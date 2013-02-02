@@ -20,7 +20,6 @@
 import os, argparse, shutil
 
 from .. import builtins
-from ..ostbuildlog import log, fatal
 from ..subprocess_helpers import run_sync, run_sync_get_output
 from ..subprocess_helpers import run_sync_monitor_log_file
 from ..guestfish import GuestFish
@@ -65,7 +64,7 @@ class OstbuildQaMakeDisk(builtins.Builtin):
 
         disk_bytesize = int(lines[0])
         disk_sectorsize = int(lines[1])
-        log("bytesize: %d, sectorsize: %d" % (disk_bytesize, disk_sectorsize))
+        self.logger.info("bytesize: %d, sectorsize: %d" % (disk_bytesize, disk_sectorsize))
 
         bootsize_sectors = bootsize_mb * 1024 / disk_sectorsize * 1024
         swapsize_sectors = swapsize_mb * 1024 / disk_sectorsize * 1024
@@ -87,9 +86,9 @@ class OstbuildQaMakeDisk(builtins.Builtin):
             "mount /dev/vda3 /\n" \
             "mkdir /boot\n" % (boot_offset, swap_offset - 1, swap_offset,
                                root_offset - 1, root_offset, end_offset - 1)
-        log("partition configuration: %s" % partconfig)
+        self.logger.info("partition configuration: %s" % partconfig)
         lines = gf.run(partconfig).rstrip().split('\n')
         os.rename(tmppath, path)
-        log("Created: %s" % path)
+        self.logger.info("Created: %s" % path)
 
 builtins.register(OstbuildQaMakeDisk)

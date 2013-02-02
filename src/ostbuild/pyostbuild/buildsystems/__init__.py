@@ -23,7 +23,7 @@ import json
 from multiprocessing import cpu_count
 import select, time
 
-from ..ostbuildlog import log
+from ..logger import Logger
 from ..subprocess_helpers import run_sync, run_sync_get_output
 
 PREFIX = '/usr'
@@ -67,6 +67,7 @@ class BuildSystem(object):
     tempfiles = []
 
     def __init__(self, args):
+        self.logger = Logger()
         self.args = args
 
         uname = os.uname()
@@ -196,8 +197,8 @@ class BuildSystem(object):
     
         self.endtime = time.time()
 
-        log("Compilation succeeded; %d seconds elapsed" % (int(self.endtime - self.starttime),))
-        log("Results placed in %s" % (self.ostbuild_resultdir, ))
+        self.logger.info("Compilation succeeded; %d seconds elapsed" % (int(self.endtime - self.starttime),))
+        self.logger.info("Results placed in %s" % (self.ostbuild_resultdir, ))
 
     def _get_env_for_cwd(self, cwd=None, env=None):
         # This dance is necessary because we want to keep the PWD
@@ -250,7 +251,7 @@ class BuildSystem(object):
                     ignored = True
                     break
             if ignored:
-                log("Not installing %s" % (src, ))
+                self.logger.info("Not installing %s" % (src, ))
                 os.unlink(src)
                 return
             try:

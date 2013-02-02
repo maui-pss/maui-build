@@ -25,7 +25,7 @@ import subprocess
 import tempfile
 import functools
 
-from .ostbuildlog import log, fatal
+from .logger import Logger
 from .warningfilter import WarningFilter
 from .mainloop import Mainloop
 
@@ -48,8 +48,10 @@ def _get_env_for_cwd(cwd=None, env=None):
 
 def run_sync_get_output(args, cwd=None, env=None, stdout=None, stderr=None, none_on_error=False,
                         log_success=False, log_initiation=False):
+    logger = Logger()
+
     if log_initiation:
-        log("running: %s" % (subprocess.list2cmdline(args),))
+        logger.debug("running: %s" % (subprocess.list2cmdline(args),))
 
     env_copy = _get_env_for_cwd(cwd, env)
 
@@ -64,9 +66,9 @@ def run_sync_get_output(args, cwd=None, env=None, stdout=None, stderr=None, none
     f.close()
     output = proc.communicate()[0].strip()
     if proc.returncode != 0 and not none_on_error:
-        logfn = fatal
+        logfn = logger.fatal
     elif log_success:
-        logfn = log
+        logfn = logger.debug
     else:
         logfn = None
     if logfn is not None:
@@ -78,8 +80,10 @@ def run_sync_get_output(args, cwd=None, env=None, stdout=None, stderr=None, none
 
 def run_sync_with_input_get_output(args, input, cwd=None, env=None, stderr=None,
                                    none_on_error=False, log_success=False, log_initiation=False):
+    logger = Logger()
+
     if log_initiation:
-        log("running: %s" % (subprocess.list2cmdline(args),))
+        logger.debug("running: %s" % (subprocess.list2cmdline(args),))
 
     env_copy = _get_env_for_cwd(cwd, env)
 
@@ -92,9 +96,9 @@ def run_sync_with_input_get_output(args, input, cwd=None, env=None, stderr=None,
                             close_fds=True, cwd=cwd, env=env_copy)
     output = proc.communicate(input=input)[0].strip()
     if proc.returncode != 0 and not none_on_error:
-        logfn = fatal
+        logfn = logger.fatal
     elif log_success:
-        logfn = log
+        logfn = logger.debug
     else:
         logfn = None
     if logfn is not None:
@@ -107,8 +111,10 @@ def run_sync_with_input_get_output(args, input, cwd=None, env=None, stderr=None,
 def run_sync(args, cwd=None, env=None, fatal_on_error=True, keep_stdin=False,
              log_success=True, log_initiation=True, stdin=None, stdout=None,
              stderr=None):
+    logger = Logger()
+
     if log_initiation:
-        log("running: %s" % (subprocess.list2cmdline(args),))
+        logger.debug("running: %s" % (subprocess.list2cmdline(args),))
 
     env_copy = _get_env_for_cwd(cwd, env)
 
@@ -135,9 +141,9 @@ def run_sync(args, cwd=None, env=None, fatal_on_error=True, keep_stdin=False,
         stdin_target.close()
     returncode = proc.wait()
     if fatal_on_error and returncode != 0:
-        logfn = fatal
+        logfn = logger.fatal
     elif log_success:
-        logfn = log
+        logfn = logger.debug
     else:
         logfn = None
     if logfn is not None:
@@ -149,8 +155,10 @@ def run_sync(args, cwd=None, env=None, fatal_on_error=True, keep_stdin=False,
 
 def run_sync_monitor_log_file(args, logfile, cwd=None, env=None,
                               fatal_on_error=True, log_initiation=True):
+    logger = Logger()
+
     if log_initiation:
-        log("running: %s" % (subprocess.list2cmdline(args),))
+        logger.debug("running: %s" % (subprocess.list2cmdline(args),))
 
     env_copy = _get_env_for_cwd(cwd, env)
 
@@ -173,9 +181,9 @@ def run_sync_monitor_log_file(args, logfile, cwd=None, env=None,
         succeeded['succeeded'] = success
         warnfilter.finish(success)
         if fatal_on_error and failed:
-            logfn = fatal
+            logfn = logger.fatal
         else:
-            logfn = log
+            logfn = logger.debug
         logfn("pid %d exited with STATUS %d" % (pid, estatus))
         loop.quit()
     loop.watch_pid(proc.pid, _on_pid_exited)

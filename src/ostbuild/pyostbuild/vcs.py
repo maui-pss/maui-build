@@ -24,7 +24,7 @@ import shutil
 
 from .subprocess_helpers import run_sync_get_output, run_sync
 from . import buildutil
-from .ostbuildlog import log, fatal
+from .logger import Logger
 
 def get_mirrordir(mirrordir, keytype, uri, prefix=''):
     colon = uri.index("://")
@@ -143,6 +143,8 @@ def _list_submodules(mirrordir, mirror, keytype, uri, branch):
 
 def ensure_vcs_mirror(mirrordir, keytype, uri, branch, fetch=False,
                       fetch_keep_going=False):
+    logger = Logger()
+
     mirror = buildutil.get_mirrordir(mirrordir, keytype, uri)
     tmp_mirror = mirror + '.tmp'
     did_update = False
@@ -169,7 +171,7 @@ def ensure_vcs_mirror(mirrordir, keytype, uri, branch, fetch=False,
 
     changed = current_vcs_version != last_fetch_contents
     if changed:
-        log("last fetch %r differs from branch %r" % (last_fetch_contents, current_vcs_version))
+        logger.info("last fetch %r differs from branch %r" % (last_fetch_contents, current_vcs_version))
         for (sub_checksum, sub_name, sub_url) in _list_submodules(mirrordir, mirror, keytype, uri, branch):
             ensure_vcs_mirror(mirrordir, keytype, sub_url, sub_checksum, fetch=fetch)
     

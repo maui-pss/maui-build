@@ -28,7 +28,6 @@ from .. import ostbuildrc
 from .. import buildutil
 from .. import fileutil
 from .. import vcs
-from ..ostbuildlog import log, fatal
 from ..subprocess_helpers import run_sync, run_sync_get_output
 
 class OstbuildCheckout(builtins.Builtin):
@@ -66,7 +65,7 @@ class OstbuildCheckout(builtins.Builtin):
 
         if args.clean:
             if is_local:
-                log("note: ignoring --clean argument due to \"local:\" specification")
+                self.logger.info("note: ignoring --clean argument due to \"local:\" specification")
             else:
                 vcs.clean(keytype, checkoutdir)
 
@@ -86,7 +85,7 @@ class OstbuildCheckout(builtins.Builtin):
         json.dump(component, f, indent=4, sort_keys=True)
         f.close()
         
-        log("Checked out: %r" % (checkoutdir, ))
+        self.logger.info("Checked out: %r" % (checkoutdir, ))
 
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)

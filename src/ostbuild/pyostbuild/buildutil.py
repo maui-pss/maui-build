@@ -24,7 +24,7 @@ import tempfile
 import StringIO
 
 from . import ostbuildrc
-from .ostbuildlog import log, fatal
+from .logger import Logger
 from .subprocess_helpers import run_sync_get_output
 
 BUILD_ENV = {
@@ -50,8 +50,9 @@ def parse_src_key(srckey):
 
 
 def get_mirrordir(mirrordir, keytype, uri, prefix=''):
+    logger = Logger()
     if keytype != 'git':
-        fatal("Unhandled keytype '%s' for uri '%s'" % (keytype, uri))
+        logger.fatal("Unhandled keytype '%s' for uri '%s'" % (keytype, uri))
     parsed = urlparse.urlsplit(uri)
     return os.path.join(mirrordir, prefix, keytype, parsed.scheme, parsed.netloc, parsed.path[1:])
 

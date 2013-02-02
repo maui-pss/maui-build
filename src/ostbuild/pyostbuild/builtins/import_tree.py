@@ -27,7 +27,6 @@ import json
 
 from .. import builtins
 from .. import buildutil
-from ..ostbuildlog import log, fatal
 from ..subprocess_helpers import run_sync, run_sync_get_output
 
 class OstbuildImportTree(builtins.Builtin):
@@ -46,7 +45,7 @@ class OstbuildImportTree(builtins.Builtin):
         self.parse_config()
         self.parse_snapshot_from_current()
 
-        log("Loading source from tree %r" % (self.snapshot.path, ))
+        self.logger.info("Loading source from tree %r" % (self.snapshot.path, ))
 
         related_objects = run_sync_get_output(['ostree', '--repo='+ self.repo,
                                                'show', '--print-related',
@@ -75,7 +74,7 @@ class OstbuildImportTree(builtins.Builtin):
                 replace_key = '/' + target_prefix + '-'
                 newref = ref.replace(base_key, replace_key)
             else:
-                fatal("Unhandled ref %r; expected components/ or bases/" % (ref, ))
+                self.logger.fatal("Unhandled ref %r; expected components/ or bases/" % (ref, ))
                 
             f.write('%s %s\n' % (newref, rev))
         f.close()
@@ -91,8 +90,8 @@ class OstbuildImportTree(builtins.Builtin):
         db = self.get_src_snapshot_db()
         (path, modified) = db.store(self.snapshot.data)
         if modified:
-            log("New source snapshot: %s" % (path, ))
+            self.logger.info("New source snapshot: %s" % (path, ))
         else:
-            log("Source snapshot unchanged: %s" % (path, ))
+            self.logger.info("Source snapshot unchanged: %s" % (path, ))
 
 builtins.register(OstbuildImportTree)

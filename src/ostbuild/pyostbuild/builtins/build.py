@@ -34,7 +34,6 @@ from .. import jsonutil
 from .. import kvfile
 from .. import snapshot
 from .. import vcs
-from ..ostbuildlog import log, fatal
 from ..subprocess_helpers import run_sync, run_sync_get_output
 from ..subprocess_helpers import run_sync_monitor_log_file
 
@@ -67,7 +66,7 @@ class OstbuildBuild(builtins.Builtin):
         for root in roots:
             if root == keep_root:
                 continue
-            log("Removing old cached buildroot %s" % (root, ))
+            self.logger.info("Removing old cached buildroot %s" % (root, ))
             path = os.path.join(buildroot_cachedir, root)
             shutil.rmtree(path)
 
@@ -93,7 +92,7 @@ class OstbuildBuild(builtins.Builtin):
                                                         prefix,
                                                         architecture)
 
-        log("Computing buildroot contents")
+        self.logger.info("Computing buildroot contents")
 
         arch_buildroot_rev = run_sync_get_output(['ostree', '--repo=' + self.repo, 'rev-parse',
                                                   arch_buildroot_name]).strip()
@@ -141,14 +140,14 @@ class OstbuildBuild(builtins.Builtin):
 
         cached_root = os.path.join(buildroot_cachedir, new_root_cacheid)
         if os.path.isdir(cached_root):
-            log("Reusing cached buildroot: %s" % (cached_root, ))
+            self.logger.info("Reusing cached buildroot: %s" % (cached_root, ))
             self._clean_stale_buildroots(buildroot_cachedir, os.path.basename(cached_root))
             os.unlink(tmppath)
             return cached_root
 
         if len(checkout_trees) > 0:
-            log("composing buildroot from %d parents (last: %r)" % (len(checkout_trees),
-                                                                    checkout_trees[-1][0]))
+            self.logger.info("composing buildroot from %d parents (last: %r)" % (len(checkout_trees),
+                                                                                 checkout_trees[-1][0]))
 
         cached_root_tmp = cached_root + '.tmp'
         if os.path.isdir(cached_root_tmp):
@@ -173,7 +172,7 @@ class OstbuildBuild(builtins.Builtin):
         self._clean_stale_buildroots(buildroot_cachedir, os.path.basename(cached_root))
 
         endtime = time.time()
-        log("Composed buildroot; %d seconds elapsed" % (int(endtime - starttime),))
+        self.logger.info("Composed buildroot; %d seconds elapsed" % (int(endtime - starttime),))
 
         return cached_root
 
@@ -195,7 +194,7 @@ class OstbuildBuild(builtins.Builtin):
             run_sync(git_args, cwd=component_srcdir, stdin=open('/dev/null'),
                      stdout=sys.stdout, env=subproc_env, log_success=False)
         else:
-            log("No previous build; skipping source diff")
+            self.logger.info("No previous build; skipping source diff")
 
     def _needs_rebuild(self, previous_metadata, new_metadata):
         build_keys = ['config-opts', 'src', 'revision', 'setuid', 'build-system']
@@ -253,6 +252,8 @@ class OstbuildBuild(builtins.Builtin):
     def _build_one_component(self, component, architecture):
         basename = component['name']
 
+        self.logger.action("Building \"%s\"" % (basename, ))
+
         prefix = self.snapshot.data['prefix']
         buildname = '%s/%s/%s' % (prefix, basename, architecture)
         build_ref = 'components/%s' % (buildname, )
@@ -281,12 +282,12 @@ class OstbuildBuild(builtins.Builtin):
             previous_metadata = json.loads(previous_metadata_text)
             previous_vcs_version = previous_metadata.get('revision')
 
-            log("Previous build of %s is ostree:%s " % (buildname, previous_build_version))
+            self.logger.info("Previous build of %s is ostree:%s " % (buildname, previous_build_version))
         else:
-            log("No previous build for '%s' found" % (buildname, ))
+            self.logger.info("No previous build for '%s' found" % (buildname, ))
             previous_vcs_version = None
             if skip_rebuild:
-                fatal("--compose-only specified but no previous build of %s found" % (buildname, ))
+                self.logger.fatal("--compose-only specified but no previous build of %s found" % (buildname, ))
 
         if 'patches' in expanded_component:
             patches_revision = expanded_component['patches']['revision']
@@ -320,14 +321,14 @@ class OstbuildBuild(builtins.Builtin):
             rebuild_reason = self._needs_rebuild(previous_metadata, expanded_component)
             if rebuild_reason is None:
                 if not force_rebuild:
-                    log("Reusing cached build of %s at %s" % (buildname, previous_vcs_version)) 
+                    self.logger.info("Reusing cached build of %s at %s" % (buildname, previous_vcs_version)) 
                     if not was_in_build_cache:
                         return self._save_component_build(buildname, expanded_component)
                     return previous_build_version
                 else:
-                    log("Build forced regardless") 
+                    self.logger.info("Build forced regardless") 
             else:
-                log("Need rebuild of %s: %s" % (buildname, rebuild_reason, ) )
+                self.logger.info("Need rebuild of %s: %s" % (buildname, rebuild_reason, ) )
 
         taskdir = task.TaskDir(os.path.join(self.workdir, 'tasks'))
         build_taskset = taskdir.get(buildname)
@@ -407,7 +408,7 @@ class OstbuildBuild(builtins.Builtin):
             self._analyze_build_failure(t, architecture, component, component_src,
                                         current_vcs_version, previous_vcs_version)
             self._write_status('Failed building ' + build_ref)
-            fatal("Exiting due to build failure in component:%s arch:%s" % (component, architecture))
+            self.logger.fatal("Exiting due to build failure in component:%s arch:%s" % (component, architecture))
 
         recorded_meta_path = os.path.join(component_resultdir, '_ostbuild-meta.json')
         jsonutil.write_json_file_atomic(recorded_meta_path, expanded_component)
@@ -573,12 +574,12 @@ and the manifest input."""
             built_rev = re.sub(r'[ \n]', '', built_rev)
             built_rev_file.close()
             if force_rebuild:
-                log("%s forced rebuild" % builddir_name)
+                self.logger.info("%s forced rebuild" % builddir_name)
             elif built_rev == basemeta['revision']:
-                log("Already built %s at %s" % (builddir_name, built_rev))
+                self.logger.info("Already built %s at %s" % (builddir_name, built_rev))
                 return
             else:
-                log("%s was %s, now at revision %s" % (builddir_name, built_rev, basemeta['revision']))
+                self.logger.info("%s was %s, now at revision %s" % (builddir_name, built_rev, basemeta['revision']))
 
         # Just keep reusing the old working directory downloads and sstate
         old_builddir = os.path.join(self.workdir, 'build-%s' % (basemeta['name'], ))
@@ -630,16 +631,16 @@ and the manifest input."""
         self.parse_config()
         self.parse_snapshot(args.prefix, args.snapshot)
 
-        log("Using source snapshot: %s" % (os.path.basename(self.snapshot.path), ))
+        self.logger.info("Using source snapshot: %s" % (os.path.basename(self.snapshot.path), ))
 
         db = self.get_src_snapshot_db()
         prev_snapshot = db.get_previous_path(self.snapshot.path)
         if prev_snapshot is not None:
             (added, modified, removed) = snapshot.snapshot_diff(db.load_from_path(self.snapshot.path),
                                                                 db.load_from_path(prev_snapshot))
-            log("Removed components: %r" % (removed, ))
-            log("Modified components: %r" % (modified, ))
-            log("Added components: %r" % (added, ))
+            self.logger.info("Removed components: %r" % (removed, ))
+            self.logger.info("Modified components: %r" % (modified, ))
+            self.logger.info("Added components: %r" % (added, ))
 
         self._write_status('Starting')
 
@@ -716,12 +717,12 @@ and the manifest input."""
             for rebuild in rebuilds:
                 component = self.snapshot.get_component(rebuild)
                 name = component['name']
-                log("Component %s build forced via epoch" % (name, ))
+                self.logger.info("Component %s build forced via epoch" % (name, ))
                 self.force_build_components.add(component['name'])
 
         self._component_build_cache['build-epoch'] = current_build_epoch
 
-        log("%d components to build" % (len(components_to_build), ))
+        self.logger.info("%d components to build" % (len(components_to_build), ))
         for (component, architecture) in components_to_build:
             archname = '%s/%s' % (component['name'], architecture)
             build_rev = self._build_one_component(component, architecture)
@@ -769,7 +770,7 @@ and the manifest input."""
                 target['contents'] = contents
 
         for target in targets_list:
-            log("Composing %r from %d components" % (target['name'], len(target['contents'])))
+            self.logger.info("Composing %r from %d components" % (target['name'], len(target['contents'])))
             self._compose_one_target(target, component_build_revs)
 
         self._write_status('Complete')

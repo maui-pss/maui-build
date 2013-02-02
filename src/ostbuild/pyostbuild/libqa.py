@@ -19,7 +19,7 @@
 
 import os, re, shutil
 from .guestfish import GuestFish, GuestMount
-from .ostbuildlog import log, error, fatal
+from .logger import Logger
 from .subprocess_helpers import run_sync
 from .fileutil import find_program_in_path
 
@@ -38,6 +38,8 @@ def new_read_write_mount(diskpath):
     return [gfmnt, mntdir]
 
 def create_disk(diskpath):
+    logger = Logger()
+
     size_mb = 8 * 1024
     bootsize_mb = 200
     swapsize_mb = 64
@@ -52,10 +54,10 @@ blockdev-getss /dev/vda
     gf = GuestFish(diskpath, partition_opts=[], read_write=True)
     lines = gf.run(make_disk_cmd)
     if len(lines) != 2:
-        fatal("guestfish returned unexpected output lines (%d, expected 2)" % len(lines))
+        logger.fatal("guestfish returned unexpected output lines (%d, expected 2)" % len(lines))
     disk_bytesize = int(lines[0])
     disk_sectorsize = int(lines[1])
-    log("bytesize: %d sectorsize: %d" % (disk_bytesize, disk_sectorsize))
+    logger.debug("bytesize: %d sectorsize: %d" % (disk_bytesize, disk_sectorsize))
 
     bootsize_sectors = bootsize_mb * 1024 / disk_sectorsize * 1024
     rootsize_sectors = disk_bytesize / disk_sectorsize - bootsize_sectors - swapsize_sectors - 65
@@ -76,7 +78,7 @@ set-e2label /dev/vda3 maui-root
 mount /dev/vda3 /
 mkdir /boot
 """ % (boot_offset, swap_offset - 1, swap_offset, root_offset - 1, root_offset, end_offset - 1)
-    log("partition config: %s" % partconfig)
+    logger.debug("partition config: %s" % partconfig)
     gf.run(partconfig)
 
 def create_disk_snapshot(diskpath, newdiskpath):
@@ -86,6 +88,7 @@ def copy_disk(srcpath, destpath):
     run_sync(["qemu-img", "convert", "-O", "qcow2", srcpath, destpath])
 
 def get_qemu_path():
+    logger = Logger()
     fallback_paths = ["/usr/libexec/qemu-kvm"]
     qemu_path_string = find_program_in_path("qemu-kvm")
     if not qemu_path_string:
@@ -96,7 +99,7 @@ def get_qemu_path():
                 continue
             qemu_path_string = path
     if not qemu_path_string:
-        fatal("Unable to find qemu-kvm")
+        logger.fatal("Unable to find qemu-kvm")
     return qemu_path_string
 
 def get_deploy_dirs(mntdir, osname):
@@ -174,38 +177,36 @@ def enable_autologin(current_dir, current_etc_dir, username):
     config_file.close()
 
 def _find_current_kernel(mntdir, osname):
+    logger = Logger()
     deploy_bootdir = os.path.abspath(os.path.join(mntdir, "ostree", "deploy", osname, "current", "boot"))
     for item in os.listdir(deploy_bootdir):
         child = os.path.join(deploy_bootdir, item)
         if os.path.basename(child)[:8] == "vmlinuz-":
             return child
-    fatal("Couldn't find vmlinuz- in %s" % deploy_bootdir)
+    logger.fatal("Couldn't find vmlinuz- in %s" % deploy_bootdir)
 
 def _parse_kernel_release(kernel_path):
+    logger = Logger()
     name = os.path.basename(kernel_path)
     try:
         index = name.index("-")
     except ValueError:
-        fatal("Invalid kernel name %s" % kernel_path)
+        logger.fatal("Invalid kernel name %s" % kernel_path)
     return name[index+1:]
 
 def _get_initramfs_path(mntdir, kernel_release):
+    logger = Logger()
     bootdir = os.path.join(mntdir, "boot")
     initramfs_name = "initramfs-%s.img" % kernel_release
     path = os.path.join(bootdir, "ostree", initramfs_name)
     if not os.path.exists(path):
-        fatal("Couldn't find initramfs %s" % path)
+        logger.fatal("Couldn't find initramfs %s" % path)
     return path
 
 def pull_deploy(mntdir, srcrepo, osname, target, revision):
-    if not osname:
-        raise ValueError("Invalid OS name '%s'" % (osname, ))
-    if not srcrepo:
-        raise ValueError("Invalid source repository '%s'" % (srcrepo, ))
-    if not target:
-        raise ValueError("Invalid target '%s'" % (target, ))
-
     import copy
+
+    logger = Logger()
 
     bootdir = os.path.join(mntdir, "boot")
     ostreedir = os.path.join(mntdir, "ostree")
@@ -260,7 +261,7 @@ def pull_deploy(mntdir, srcrepo, osname, target, revision):
     deploy_kernel_path = _find_current_kernel(mntdir, osname)
     boot_kernel_path = os.path.join(bootdir, "ostree", os.path.basename(deploy_kernel_path))
     if not os.path.exists(boot_kernel_path):
-        fatal("%s doesn't exist" % boot_kernel_path)
+        logger.fatal("%s doesn't exist" % boot_kernel_path)
     kernel_release = _parse_kernel_release(deploy_kernel_path)
     initramfs_path = _get_initramfs_path(mntdir, kernel_release)
 

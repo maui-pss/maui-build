@@ -24,7 +24,6 @@
 import os, shutil, tempfile
 
 from . import BuildSystem, PREFIX
-from ..ostbuildlog import log, fatal
 from ..subprocess_helpers import run_sync
 
 class BuildApiBuildSystem(BuildSystem):
@@ -65,13 +64,13 @@ class BuildApiBuildSystem(BuildSystem):
 
         autogen_script = None
         if not os.path.exists(configure_path):
-            log("No 'configure' script found, looking for autogen/bootstrap")
+            self.logger.info("No 'configure' script found, looking for autogen/bootstrap")
             for name in ['autogen', 'autogen.sh', 'bootstrap']:
                 if os.path.exists(name):
-                    log("Using bootstrap script '%s'" % (name, ))
+                    self.logger.info("Using bootstrap script '%s'" % (name, ))
                     autogen_script = name
             if autogen_script is None:
-                fatal("No configure or autogen script detected; unknown buildsystem")
+                self.logger.fatal("No configure or autogen script detected; unknown buildsystem")
 
         if autogen_script is not None:
             env = dict(os.environ)
@@ -81,7 +80,7 @@ class BuildApiBuildSystem(BuildSystem):
         use_builddir = True
         doesnot_support_builddir = self._has_buildapi_configure_variable('no-builddir')
         if doesnot_support_builddir:
-            log("Found no-builddir Build API variable; copying source tree to " + self.builddir)
+            self.logger.info("Found no-builddir Build API variable; copying source tree to " + self.builddir)
             if os.path.isdir(self.builddir):
                 shutil.rmtree(self.builddir)
             shutil.copytree('.', self.builddir, symlinks=True,
@@ -89,7 +88,7 @@ class BuildApiBuildSystem(BuildSystem):
             use_builddir = False
 
         if use_builddir:
-            log("Using build directory %r" % (self.builddir, ))
+            self.logger.info("Using build directory %r" % (self.builddir, ))
             if not os.path.isdir(self.builddir):
                 os.mkdir(self.builddir)
 
@@ -108,7 +107,7 @@ class BuildApiBuildSystem(BuildSystem):
             else:
                 makefile_path = None
         if makefile_path is None:
-            fatal("No Makefile found")
+            self.logger.fatal("No Makefile found")
 
         args = list(self.makeargs)
         user_specified_jobs = False
@@ -122,10 +121,10 @@ class BuildApiBuildSystem(BuildSystem):
             for line in open(makefile_path):
                 if line.startswith('.NOTPARALLEL'):
                     has_notparallel = True
-                    log("Found .NOTPARALLEL")
+                    self.logger.info("Found .NOTPARALLEL")
 
             if not has_notparallel:
-                log("Didn't find NOTPARALLEL, using parallel make by default")
+                self.logger.info("Didn't find NOTPARALLEL, using parallel make by default")
                 args.extend(self.default_make_jobs)
 
         run_sync(args, cwd=self.builddir)

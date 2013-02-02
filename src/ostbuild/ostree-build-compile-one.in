@@ -28,7 +28,6 @@ sys.path.insert(0, '/ostbuild')
 from pyostbuild.buildsystems.buildapi import BuildApiBuildSystem
 from pyostbuild.buildsystems.cmake import CMakeBuildSystem
 from pyostbuild.buildsystems.qmake import QMakeBuildSystem
-from pyostbuild.ostbuildlog import fatal
 
 def main(args):
     buildsys = None
@@ -45,7 +44,7 @@ def main(args):
             break
 
     if not buildsys:
-        fatal("Unsupported build system!")
+        buildsys.logger.fatal("Unsupported build system!")
 
     buildsys.build()
 

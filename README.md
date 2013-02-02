@@ -34,6 +34,8 @@ sudo ln -s /usr/lib/guestfs /usr/lib/x86_64-linux-gnu/guestf
 
 You also need to build and install *linux-user-chroot* and *ostree*, follow the next sections for more information.
 
+If you want *ostbuild* to print colored output, install the *termcolor* Python module.
+
 ### Download and install linux-user-chroot
 
 Install the following additional packages:

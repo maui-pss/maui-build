@@ -19,11 +19,13 @@
 
 import os,sys,subprocess
 
-from .ostbuildlog import log, fatal
 from . import ostbuildrc
+from .logger import Logger
 from .subprocess_helpers import run_sync
 
 class PrivilegedSubprocess(object):
+    def __init__(self):
+        self.logger = Logger()
 
     def spawn_sync(self, argv):
         helper = ostbuildrc.get_key('privileged_exec', default='pkexec')
@@ -32,7 +34,7 @@ class PrivilegedSubprocess(object):
 
         handler = handlers.get(helper)
         if handler is None:
-            fatal("Unrecognized privileged_exec; valid values=%r" % (handlers.keys(),))
+            self.logger.fatal("Unrecognized privileged_exec; valid values=%r" % (handlers.keys(),))
         else:
             handler(argv)
 

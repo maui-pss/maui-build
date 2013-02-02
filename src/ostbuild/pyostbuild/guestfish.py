@@ -19,14 +19,16 @@
 
 import os, time
 
-from .ostbuildlog import log, fatal
+from .logger import Logger
 from .subprocess_helpers import run_sync
 from .subprocess_helpers import run_sync_with_input_get_output
 
 class LibGuestfs(object):
     def __init__(self, diskpath, use_lock_file=True, partition_opts=["-i"], read_write=False):
+        self.logger = Logger()
+
         if os.geteuid() != 0:
-            fatal("guestfish needs elevated privileges otherwise it will not work")
+            self.logger.fatal("guestfish needs elevated privileges otherwise it will not work")
 
         self._diskpath = diskpath
         self._use_lock_file = use_lock_file
@@ -110,14 +112,14 @@ class GuestMount(LibGuestfs):
         guestfish_exited = False
         for i in range(0, 30):
             if run_sync(["kill", "-0", pid_str], stderr=None):
-                log("Awaiting termination of guestfish, pid=%s timeout=%ss" % (pid_str, str(30 - i)))
+                self.log.info("Awaiting termination of guestfish, pid=%s timeout=%ss" % (pid_str, str(30 - i)))
                 time.sleep(1)
             else:
                 guestfish_exited = True
                 break
 
         if not guestfish_exited:
-            fatal("guestfish failed to exit")
+            self.logger.fatal("guestfish failed to exit")
         self._mounted = false
 
         self.unlock()

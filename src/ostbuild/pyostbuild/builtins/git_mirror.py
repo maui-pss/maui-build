@@ -28,7 +28,6 @@ import json
 from .. import builtins
 from .. import vcs
 from .. import buildutil
-from ..ostbuildlog import log, fatal
 from ..subprocess_helpers import run_sync, run_sync_get_output
 from ..snapshot import Snapshot
 
@@ -100,10 +99,10 @@ class OstbuildGitMirror(builtins.Builtin):
                     mtime = stbuf.st_mtime
                     delta = curtime - mtime
                     if delta < args.fetch_skip_secs:
-                        log("Skipping fetch for %s updated in last %d seconds" % (name, delta))
+                        self.logger.info("Skipping fetch for %s updated in last %d seconds" % (name, delta))
                         continue
 
-            log("Running git fetch for %s" % (name, ))
+            self.logger.info("Running git fetch for %s" % (name, ))
             vcs.fetch(self.mirrordir, keytype, uri, branch_or_tag, keep_going=args.keep_going)
 
 builtins.register(OstbuildGitMirror)

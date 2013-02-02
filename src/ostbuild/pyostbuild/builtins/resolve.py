@@ -31,7 +31,6 @@ from .. import vcs
 from .. import jsondb
 from .. import buildutil
 from .. import kvfile
-from ..ostbuildlog import log, fatal
 from ..subprocess_helpers import run_sync, run_sync_get_output
 from ..snapshot import Snapshot
 
@@ -63,7 +62,7 @@ class OstbuildResolve(builtins.Builtin):
         self.args = args
 
         if len(args.components) > 0 and not args.fetch:
-            fatal("Can't specify components without --fetch")
+            self.logger.fatal("Can't specify components without --fetch")
         
         self.parse_config()
 
@@ -82,7 +81,7 @@ class OstbuildResolve(builtins.Builtin):
             name = component['name']
 
             if name in unique_component_names:
-                fatal("Duplicate component name '%s'" % (name, ))
+                self.logger.fatal("Duplicate component name '%s'" % (name, ))
             unique_component_names.add(name)
 
         if args.fetch and len(args.components) == 0:
@@ -129,12 +128,12 @@ class OstbuildResolve(builtins.Builtin):
         src_db = self.get_src_snapshot_db()
         (path, modified) = src_db.store(self.snapshot.data)
         if modified:
-            log("New source snapshot: %s" % (path, ))
+            self.logger.info("New source snapshot: %s" % (path, ))
             if args.stamp_file:
                 f = open(args.stamp_file, 'w')
                 f.write(path)
                 f.close()
         else:
-            log("Source snapshot unchanged: %s" % (path, ))
+            self.logger.info("Source snapshot unchanged: %s" % (path, ))
         
 builtins.register(OstbuildResolve)

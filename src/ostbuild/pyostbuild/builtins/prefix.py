@@ -27,7 +27,6 @@ import json
 
 from .. import builtins
 from .. import buildutil
-from ..ostbuildlog import log, fatal
 from ..subprocess_helpers import run_sync, run_sync_get_output
 
 class OstbuildPrefix(builtins.Builtin):
@@ -42,7 +41,7 @@ class OstbuildPrefix(builtins.Builtin):
         f.write(prefix)
         f.write('\n')
         f.close()
-        log("Prefix is now %r" % (prefix, ))
+        self.logger.info("Prefix is now %r" % (prefix, ))
 
     def execute(self, argv):
         parser = argparse.ArgumentParser(description=self.short_description)
@@ -58,9 +57,9 @@ class OstbuildPrefix(builtins.Builtin):
                 print "%s" % (f.read().strip(), )
                 f.close()
             else:
-                log("No currently active prefix")
+                self.logger.info("No currently active prefix")
         elif args.prefix is not None and args.active:
-            fatal("Can't specify -a with prefix")
+            self.logger.fatal("Can't specify -a with prefix")
         elif args.prefix is not None:
             self._set_prefix(args.prefix)
         else:

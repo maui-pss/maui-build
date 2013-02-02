@@ -22,7 +22,6 @@
 import os, shutil, tempfile
 
 from . import BuildSystem, PREFIX
-from ..ostbuildlog import log, fatal
 from ..subprocess_helpers import run_sync
 
 class CMakeBuildSystem(BuildSystem):
@@ -34,12 +33,12 @@ class CMakeBuildSystem(BuildSystem):
         for name in os.listdir(os.getcwd()):
             if name == 'CMakeLists.txt':
                 self.cmakefile_path = os.path.join(os.getcwd(), name)
-                log("Found CMake project " + self.cmakefile_path)
+                self.logger.info("Found CMake project " + self.cmakefile_path)
                 return True
         return False
 
     def do_build(self):
-        log("Using build directory %r" % (self.builddir, ))
+        self.logger.info("Using build directory %r" % (self.builddir, ))
         if not os.path.isdir(self.builddir):
             os.mkdir(self.builddir)
 
@@ -65,7 +64,7 @@ class CMakeBuildSystem(BuildSystem):
             else:
                 makefile_path = None
         if makefile_path is None:
-            fatal("No Makefile found")
+            self.logger.fatal("No Makefile found")
 
         args = list(self.makeargs)
         user_specified_jobs = False
