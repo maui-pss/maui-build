@@ -48,7 +48,6 @@ def parse_src_key(srckey):
     uri = srckey[idx+1:]
     return (keytype, uri)
 
-
 def get_mirrordir(mirrordir, keytype, uri, prefix=''):
     logger = Logger()
     if keytype != 'git':
@@ -155,7 +154,6 @@ def get_base_user_chroot_args():
         args.append('--unshare-net')
     return args
 
-    
 def resolve_component_meta(snapshot, component_meta):
     result = dict(component_meta)
     orig_src = component_meta['src']

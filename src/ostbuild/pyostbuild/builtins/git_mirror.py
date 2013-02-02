@@ -17,9 +17,6 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-# ostbuild-compile-one-make wraps systems that implement the GNOME build API:
-# http://people.gnome.org/~walters/docs/build-api.txt
-
 import os,sys,stat,subprocess,tempfile,re,shutil,time
 import argparse
 from StringIO import StringIO
