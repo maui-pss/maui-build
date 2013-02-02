@@ -138,26 +138,32 @@ class BuildSystem(object):
             os.makedirs(resultdir)
 
         # Remove /var from the install - components are required to
-        # auto-create these directories on demand.
+        # auto-create these directories on demand
         varpath = os.path.join(self.tempdir, 'var')
         if os.path.isdir(varpath):
             shutil.rmtree(varpath)
 
-        # Move symbolic links for shared libraries as well
-        # as static libraries.  And delete all .la files.
+        # Delete all .la files.  See:
+        # https://bugzilla.gnome.org/show_bug.cgi?id=654013
         libdir = os.path.join(self.tempdir, 'usr/lib')
         for dirpath, subdirs, files in os.walk(libdir):
             for filename in files:
-                subpath = os.path.join(dirpath, filename)
+                path = os.path.join(dirpath, filename)
                 if filename.endswith('.la'):
-                    os.unlink(subpath)
-                    continue
+                    os.unlink(path)
+
+        # Move symbolic links for shared libraries as well
+        # as static libraries into /devel
+        if os.path.exists(libdir):
+            for filename in os.listdir(libdir):
+                path = os.path.join(libdir, filename)
+                stbuf = os.lstat(path)
                 if not ((filename.endswith('.so')
-                         and os.path.islink(filename))
+                         and stat.S_ISLNK(stbuf.st_mode))
                         or filename.endswith('.a')):
                         continue
-                dest = os.path.join(devel_path, libdir, filename)
-                self._install_and_unlink(subpath, dest)
+                dest = os.path.join(devel_path, 'usr/lib', filename)
+                self._install_and_unlink(path, dest)
 
         for dirname in _DEVEL_DIRS:
             dirpath = os.path.join(self.tempdir, dirname)
