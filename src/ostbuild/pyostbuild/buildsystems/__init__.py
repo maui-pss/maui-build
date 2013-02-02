@@ -155,9 +155,9 @@ class BuildSystem(object):
                         continue
                     dst_path = src_path + ".debug"
                     dest = os.path.join(debug_path, dst_path)
-                    run_sync(["objdump", "--only-keep-debug", src_path, dst_path])
-                    run_sync(["objdump", "--strip-debug", src_path])
-                    run_sync(["objdump", "--add-gnu-debuglink=" + dst_path, src_path])
+                    run_sync(["objcopy", "--only-keep-debug", src_path, dst_path])
+                    run_sync(["objcopy", "--strip-debug", src_path])
+                    run_sync(["objcopy", "--add-gnu-debuglink=" + dst_path, src_path])
                     run_sync(["chmod", "-x", dst_path])
                     self._install_and_unlink(dst_path, dest)
 
