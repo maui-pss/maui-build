@@ -25,9 +25,9 @@ import sys
 # namespace.
 sys.path.insert(0, '/ostbuild')
 
-from pyostbuild.buildsystem_buildapi import BuildApiBuildSystem
-from pyostbuild.buildsystem_cmake import CMakeBuildSystem
-from pyostbuild.buildsystem_qmake import QMakeBuildSystem
+from pyostbuild.buildsystems.buildapi import BuildApiBuildSystem
+from pyostbuild.buildsystems.cmake import CMakeBuildSystem
+from pyostbuild.buildsystems.qmake import QMakeBuildSystem
 from pyostbuild.ostbuildlog import fatal
 
 def main(args):

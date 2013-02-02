@@ -20,7 +20,7 @@
 # This implement a qmake build system
 
 import os, shutil, tempfile
-from .buildsystem import BuildSystem, PREFIX
+from . import BuildSystem, PREFIX
 
 class QMakeBuildSystem(BuildSystem):
     name = "qmake"

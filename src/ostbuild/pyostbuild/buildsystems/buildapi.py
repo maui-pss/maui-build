@@ -22,7 +22,7 @@
 # http://people.gnome.org/~walters/docs/build-api.txt
 
 import os, shutil, tempfile
-from .buildsystem import BuildSystem, PREFIX
+from . import BuildSystem, PREFIX
 
 class BuildApiBuildSystem(BuildSystem):
     name = "buildapi"

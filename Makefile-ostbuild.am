@@ -41,10 +41,6 @@ utils_SCRIPTS = \
 pyostbuilddir=$(libdir)/ostbuild/pyostbuild
 pyostbuild_PYTHON =						\
 	src/ostbuild/pyostbuild/buildutil.py			\
-	src/ostbuild/pyostbuild/buildsystem.py			\
-	src/ostbuild/pyostbuild/buildsystem_buildapi.py		\
-	src/ostbuild/pyostbuild/buildsystem_cmake.py		\
-	src/ostbuild/pyostbuild/buildsystem_qmake.py		\
 	src/ostbuild/pyostbuild/filemonitor.py			\
 	src/ostbuild/pyostbuild/task.py				\
 	src/ostbuild/pyostbuild/fileutil.py			\
@@ -66,7 +62,7 @@ pyostbuild_PYTHON =						\
 	$(NULL)
 
 pyostbuildbuiltinsdir=$(pyostbuilddir)/builtins
-pyostbuildbuiltins_PYTHON =                                     \
+pyostbuildbuiltins_PYTHON =					\
 	src/ostbuild/pyostbuild/builtins/__init__.py		\
 	src/ostbuild/pyostbuild/builtins/build.py		\
 	src/ostbuild/pyostbuild/builtins/build_disks.py		\
@@ -80,4 +76,12 @@ pyostbuildbuiltins_PYTHON =                                     \
 	src/ostbuild/pyostbuild/builtins/prefix.py		\
 	src/ostbuild/pyostbuild/builtins/resolve.py		\
 	src/ostbuild/pyostbuild/builtins/source_diff.py		\
+	$(NULL)
+
+pyostbuildbuildsystemsdir=$(pyostbuilddir)/buildsystems
+pyostbuildbuildsystems_PYTHON =					\
+	src/ostbuild/pyostbuild/buildsystems/__init__.py	\
+	src/ostbuild/pyostbuild/buildsystems/buildapi.py	\
+	src/ostbuild/pyostbuild/buildsystems/cmake.py		\
+	src/ostbuild/pyostbuild/buildsystems/qmake.py		\
 	$(NULL)
