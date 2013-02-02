@@ -705,6 +705,20 @@ and the manifest input."""
         else:
             self._component_build_cache = {}
 
+        previous_build_epoch = self._component_build_cache['build-epoch']
+        current_build_epoch = self._snapshot.data['build-epoch']
+        if (not previous_build_epoch) or (current_build_epoch and \
+                previous_build_epoch['version'] < current_build_epoch['version']):
+            current_epoch_ver = current_build_epoch['version']
+            rebuilds = current_build_epoch['component-name']
+            for rebuild in rebuilds:
+                component = self._snapshot.get_component(rebuild)
+                name = component['name']
+                log("Component %s build forced via epoch" % (name, ))
+                self.force_build_components[name] = True
+
+        self._component_build_cache['build-epoch'] = current_build_epoch
+
         log("%d components to build" % (len(components_to_build), ))
         for (component, architecture) in components_to_build:
             archname = '%s/%s' % (component['name'], architecture)
