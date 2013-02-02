@@ -33,6 +33,7 @@ from . import ostbuildrc
 from . import buildutil
 from . import task
 from . import fileutil
+from . import jsonutil
 from . import kvfile
 from . import snapshot
 from . import vcs
@@ -246,7 +247,7 @@ class OstbuildBuild(builtins.Builtin):
         cachedata['ostree'] = run_sync_get_output(['ostree', '--repo=' + self.repo,
                                                    'rev-parse', build_ref])
         self._component_build_cache[buildname] = cachedata
-        fileutil.write_json_file_atomic(self._component_build_cache_path, self._component_build_cache)
+        jsonutil.write_json_file_atomic(self._component_build_cache_path, self._component_build_cache)
         return cachedata['ostree']
 
     def _build_one_component(self, component, architecture):
@@ -334,7 +335,7 @@ class OstbuildBuild(builtins.Builtin):
         workdir = t.path
 
         temp_metadata_path = os.path.join(workdir, '_ostbuild-meta.json')
-        fileutil.write_json_file_atomic(temp_metadata_path, expanded_component)
+        jsonutil.write_json_file_atomic(temp_metadata_path, expanded_component)
 
         checkoutdir = os.path.join(self.workdir, 'checkouts')
         component_src = os.path.join(checkoutdir, buildname)
@@ -409,7 +410,7 @@ class OstbuildBuild(builtins.Builtin):
             fatal("Exiting due to build failure in component:%s arch:%s" % (component, architecture))
 
         recorded_meta_path = os.path.join(component_resultdir, '_ostbuild-meta.json')
-        fileutil.write_json_file_atomic(recorded_meta_path, expanded_component)
+        jsonutil.write_json_file_atomic(recorded_meta_path, expanded_component)
 
         args = ['ostree', '--repo=' + self.repo,
                 'commit', '-b', build_ref, '-s', 'Build',
@@ -510,7 +511,7 @@ class OstbuildBuild(builtins.Builtin):
         os.unlink(contents_tmppath)
 
         contents_path = os.path.join(compose_rootdir, 'contents.json')
-        fileutil.write_json_file_atomic(contents_path, self.snapshot.data)
+        jsonutil.write_json_file_atomic(contents_path, self.snapshot.data)
 
         treename = 'trees/%s' % (target['name'], )
         
@@ -528,7 +529,7 @@ class OstbuildBuild(builtins.Builtin):
     def _write_status(self, description):
         if not self.args.status_json_path:
             return
-        fileutil.write_json_file_atomic(self.args.status_json_path,
+        jsonutil.write_json_file_atomic(self.args.status_json_path,
                                         {'description': description})
 
     def _initialize_repo(self):
