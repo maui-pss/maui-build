@@ -74,6 +74,12 @@ class OstbuildResolve(builtins.Builtin):
         self.prefix = self.snapshot.data['prefix']
 
         components = map(lambda x: buildutil.resolve_component_meta(self.snapshot.data, x), self.snapshot.data['components'])
+        def determine(logger, component):
+            if component.get('disabled'):
+                logger.info("Ignoring \"%s\" because it's disabled" % component.get('name'))
+                return False
+            return True
+        components[:] = [x for x in components if determine(self.logger, x)]
         self.snapshot.data['components'] = components
 
         unique_component_names = set()
