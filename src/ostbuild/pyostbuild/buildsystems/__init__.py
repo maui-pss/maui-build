@@ -53,6 +53,8 @@ _DEBUG_DIRS = ['usr/bin',
                'usr/lib64',
                'usr/libexec']
 
+_COMPLETE_STRIP = True
+
 class BuildSystem(object):
     name = None
     default_make_jobs = ['-j', '%d' % (cpu_count() + 1), 
@@ -157,25 +159,31 @@ class BuildSystem(object):
                         continue
                     # We only want ELF executables
                     file_mimetype = run_sync_get_output(["file", "-b", "--mime-type", src_path])
-                    if file_mimetype.strip() in ("application/x-executable", "application/x-sharedlib"):
+                    if file_mimetype.strip() not in ("application/x-executable", "application/x-sharedlib"):
                         continue
                     # Debugging information and artifact destination file name
                     dst_path = src_path + ".debug"
                     dest = os.path.join(debug_path, dst_path)
-                    # Add writing permission first because it might be read-only, this avoids
-                    # objcopy --strip-debug to fail
+                    # Add writing permission to avoid subsequent actions to fail
+                    # if the file is read-only
                     src_stbuf = os.stat(src_path)
                     os.chmod(src_path, stat.S_IRUSR | stat.S_IWUSR)
                     # Strip executable
-                    run_sync(["objcopy", "--only-keep-debug", src_path, dst_path])
-                    run_sync(["objcopy", "--strip-debug", src_path])
-                    run_sync(["objcopy", "--add-gnu-debuglink=" + dst_path, src_path])
-                    # Restore permissions and remove executable bits from the debug file
-                    dst_stbuf = os.stat(dst_path)
+                    if _COMPLETE_STRIP:
+                        run_sync(["strip", "-p", "--strip-debug", src_path])
+                    else:
+                        run_sync(["objcopy", "--only-keep-debug", src_path, dst_path])
+                        run_sync(["objcopy", "--strip-debug", src_path])
+                        run_sync(["objcopy", "--add-gnu-debuglink=" + dst_path, src_path])
+                    # Restore permissions
                     os.chmod(src_path, src_stbuf.st_mode)
-                    os.chmod(dst_path, dst_stbuf.st_mode ^ (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
+                    if not _COMPLETE_STRIP:
+                        # Remove executable bits from the debug file
+                        dst_stbuf = os.stat(dst_path)
+                        os.chmod(dst_path, dst_stbuf.st_mode ^ (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
                     # Install debug file into the artifact
-                    self._install_and_unlink(dst_path, dest)
+                    if not _COMPLETE_STRIP:
+                        self._install_and_unlink(dst_path, dest)
 
         for dirname in _DEVEL_DIRS:
             dirpath = os.path.join(self.tempdir, dirname)
