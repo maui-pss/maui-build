@@ -670,15 +670,21 @@ and the manifest input."""
 
         runtime_components = []
         devel_components = []
+        additional_components = {}
 
         for component in components:
             name = component['name']
+            target_component_type = component.get('component', 'runtime')
 
-            is_runtime = component.get('component', 'runtime') == 'runtime'
-
-            if is_runtime:
+            if target_component_type == 'runtime':
                 runtime_components.append(component)
-            devel_components.append(component)
+            elif target_component_type == 'devel':
+                devel_components.append(component)
+            else:
+                if additional_components.has_key(target_component_type):
+                    additional_components[target_component_type].append(component)
+                else:
+                    additional_components[target_component_type] = [component]
 
             is_noarch = component.get('noarch', False)
             if is_noarch:
@@ -730,7 +736,9 @@ and the manifest input."""
             component_build_revs[archname] = build_rev
 
         targets_list = []
-        for target_component_type in ['runtime', 'devel']:
+        target_component_types = ['runtime', 'devel']
+        target_component_types.extend(additional_components.keys())
+        for target_component_type in target_component_types:
             for architecture in architectures:
                 target = {}
                 targets_list.append(target)
@@ -750,9 +758,11 @@ and the manifest input."""
 
                 if target_component_type == 'runtime':
                     target_components = runtime_components
-                else:
+                elif target_component_type == 'devel':
                     target_components = devel_components
-                    
+                else:
+                    target_components = additional_components[target_component_type]
+
                 contents = []
                 for component in target_components:
                     if component.get('bootstrap'):
@@ -764,8 +774,10 @@ and the manifest input."""
                     component_ref = {'name': binary_name}
                     if target_component_type == 'runtime':
                         component_ref['trees'] = ['/runtime']
-                    else:
+                    elif target_component_type == 'devel':
                         component_ref['trees'] = ['/runtime', '/devel', '/doc']
+                    else:
+                        component_ref['trees'] = ['/runtime']
                     contents.append(component_ref)
                 target['contents'] = contents
 
