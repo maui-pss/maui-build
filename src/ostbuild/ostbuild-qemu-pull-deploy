@@ -88,7 +88,6 @@ if [ ! -f ${mountpoint}${initramfs} ]; then
 fi
 
 mkdir -p ${bootdir}/grub
-#GRUB_PREFIX=${bootdir}/grub grub-mkconfig -o ${bootdir}/grub/grub.cfg
 cat >${bootdir}/grub/menu.lst <<EOF
 default=0
 timeout=5
@@ -98,7 +97,6 @@ kernel ${kernel} root=/dev/sda ostree=${osname}/current
 initrd ${initramfs}
 EOF
 grub-menulst2cfg ${bootdir}/grub/menu.lst ${bootdir}/grub/grub.cfg
-cat ${bootdir}/grub/grub.cfg
 rm -f ${bootdir}/grub/menu.lst
 
 cat >${bootdir}/grub/device.map <<EOF
