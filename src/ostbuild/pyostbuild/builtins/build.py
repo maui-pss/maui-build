@@ -696,6 +696,11 @@ and the manifest input."""
                 component_arches = component.get('architectures', architectures)
             component_to_arches[name] = component_arches
 
+        # Components for devel and additional targets all depends on runtime
+        for target_component_type in additional_components.keys():
+            additional_components[target_component_type].extend(runtime_components)
+        devel_components.extend(runtime_components)
+
         for name in args.components:
             component = self.snapshot.get_component(name)
             self.force_build_components.add(component['name'])
