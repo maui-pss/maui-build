@@ -50,7 +50,7 @@ class CMakeBuildSystem(BuildSystem):
                 build_type_found = True
                 break
         if not build_type_found:
-            configargs.extend(['-DCMAKE_BUILD_TYPE=Release'])
+            configargs.extend(['-DCMAKE_BUILD_TYPE=Debug'])
         configargs.extend(['..'])
         args = ['cmake']
         args.extend(configargs)
