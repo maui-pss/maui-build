@@ -313,20 +313,19 @@ class OstbuildBuild(builtins.Builtin):
         else:
             patchdir = None
 
-        force_rebuild = (self.buildopts.force_rebuild or
-                         basename in self.force_build_components or
+        force_rebuild = (basename in self.force_build_components or
                          expanded_component['src'].startswith('local:'))
 
         if previous_metadata is not None:
             rebuild_reason = self._needs_rebuild(previous_metadata, expanded_component)
             if rebuild_reason is None:
-                if not force_rebuild:
+                if force_rebuild:
+                    self.logger.info("Build forced regardless")
+                else:
                     self.logger.info("Reusing cached build of %s at %s" % (buildname, previous_vcs_version)) 
                     if not was_in_build_cache:
                         return self._save_component_build(buildname, expanded_component)
                     return previous_build_version
-                else:
-                    self.logger.info("Build forced regardless") 
             else:
                 self.logger.info("Need rebuild of %s: %s" % (buildname, rebuild_reason, ) )
 
@@ -657,6 +656,9 @@ and the manifest input."""
         self._initialize_repo()
 
         components = self.snapshot.data['components']
+
+        if self.buildopts.force_rebuild and len(args.components) == 0:
+            args.components = self.snapshot.get_all_component_names()
 
         prefix = self.snapshot.data['prefix']
         base_prefix = '%s/%s' % (self.snapshot.data['base']['name'], prefix)
