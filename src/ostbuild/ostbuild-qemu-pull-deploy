@@ -93,7 +93,7 @@ default=0
 timeout=5
 title ${osname}
 root (hd0)
-kernel ${kernel} root=/dev/sda ostree=${osname}/current
+kernel ${kernel} root=/dev/sda ostree=${osname}/current quiet
 initrd ${initramfs}
 EOF
 grub-menulst2cfg ${bootdir}/grub/menu.lst ${bootdir}/grub/grub.cfg
