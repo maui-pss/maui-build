@@ -17,7 +17,8 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-import os,sys
+import os, sys
+from .logger import Logger
 
 def _component_dict(snapshot):
     r = {}
@@ -51,6 +52,7 @@ def snapshot_diff(a, b):
  
 class Snapshot(object):
     def __init__(self, data, path):
+        self.logger = Logger()
         self.data = data
         self.path = path
         self._dict = _component_dict(data)
@@ -77,7 +79,7 @@ class Snapshot(object):
 
     def get_component(self, name, allow_none=False):
         if not self._dict.get(name) and not allow_none:
-            fatal("No component '%s' in snapshot" % (name, ))
+            self.logger.fatal("No component '%s' in snapshot" % (name, ))
         return self._dict[name]
 
     def get_matching_src(self, src, allow_none=False):
