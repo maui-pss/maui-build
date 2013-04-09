@@ -186,23 +186,18 @@ def fetch(mirrordir, keytype, uri, branch, keep_going=False):
     ensure_vcs_mirror(mirrordir, keytype, uri, branch, fetch=True,
                       fetch_keep_going=keep_going)
     
-def checkout_patches(mirrordir, patchdir, component, patches_path=None):
+def checkout_patches(mirrordir, patchdir, component):
     patches = component.get('patches')
-    if patches is None:
-        return []
-    
-    if patches_path is not None:
-        (patches_keytype, patches_uri) = ('local', patches_path)
-        patchdir = patches_uri
-    else:
-        (patches_keytype, patches_uri) = parse_src_key(patches['src'])
-        assert patches_keytype == 'git'
-        patches_mirror = get_mirrordir(mirrordir, patches_keytype, patches_uri)
-        get_vcs_checkout(mirrordir, patches_keytype, patches_uri,
-                         patchdir, patches['revision'],
-                         overwrite=True,
-                         quiet=True)
+    (patches_keytype, patches_uri) = parse_src_key(patches['src'])
+    if patches_keytype == 'local':
+        return patches_uri
+    elif patches_keytype != 'git':
+        raise Exception("Unhandled keytype %s" % (patches_keytype, ))
+
+    patches_mirror = get_mirrordir(mirrordir, patches_keytype, patches_uri)
+    get_vcs_checkout(mirrordir, patches_keytype, patches_uri,
+                     patchdir, patches['revision'],
+                     overwrite=True,
+                     quiet=True)
 
     return patchdir
-
-    

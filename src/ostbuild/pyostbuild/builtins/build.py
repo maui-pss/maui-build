@@ -291,15 +291,13 @@ class OstbuildBuild(builtins.Builtin):
 
         if 'patches' in expanded_component:
             patches_revision = expanded_component['patches']['revision']
-            if self.args.patches_path:
-                patchdir = self.args.patches_path
-            elif self.cached_patchdir_revision == patches_revision:
+            if self.cached_patchdir_revision == patches_revision:
                 patchdir = self.patchdir
             else:
                 patchdir = vcs.checkout_patches(self.mirrordir,
                                                 self.patchdir,
-                                                expanded_component,
-                                                patches_path=self.args.patches_path)
+                                                expanded_component)
+                self.patchdir = patchdir
                 self.cached_patchdir_revision = patches_revision
             if ((previous_metadata is not None) and
                 'patches' in previous_metadata and
@@ -346,9 +344,7 @@ class OstbuildBuild(builtins.Builtin):
         if not self.buildopts.no_clean:
             child_args.append('--clean')
         child_args.extend(['--overwrite', basename])
-        if self.args.patches_path:
-            child_args.append('--patches-path=' + self.args.patches_path)
-        elif patchdir is not None:
+        if patchdir is not None:
             child_args.append('--patches-path=' + patchdir)
         run_sync(child_args)
 
@@ -613,7 +609,6 @@ and the manifest input."""
         parser = argparse.ArgumentParser(description=self.short_description)
         parser.add_argument('--prefix')
         parser.add_argument('--snapshot')
-        parser.add_argument('--patches-path')
         parser.add_argument('--status-json-path',
                             help="Write data to this JSON file as build progresses")
         parser.add_argument('--force-rebuild', action='store_true')
