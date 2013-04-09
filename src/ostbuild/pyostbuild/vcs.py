@@ -40,7 +40,7 @@ def get_mirrordir(mirrordir, keytype, uri, prefix=''):
     if prefix: prefix += '/'
     return os.path.join(mirrordir, prefix, keytype, scheme, rest)
 
-def _fixup_submodule_references(mirrordir, parent_uri, cwd):
+def _process_checkout_submodules(mirrordir, parent_uri, cwd):
     logger = Logger()
 
     submodules_status_text = run_sync_get_output(['git', 'submodule', 'status'], cwd=cwd)
@@ -58,7 +58,8 @@ def _fixup_submodule_references(mirrordir, parent_uri, cwd):
             sub_url = _make_absolute_url(parent_uri, sub_url)
         local_mirror = get_mirrordir(mirrordir, 'git', sub_url)
         run_sync(['git', 'config', 'submodule.%s.url' % (sub_name, ), 'file://' + local_mirror], cwd=cwd)
-    return have_submodules
+        run_sync(['git', 'submodule', 'update', '--init', sub_name], cwd=cwd)
+        _process_checkout_submodules(mirrordir, sub_url, os.path.join(cwd, sub_name))
 
 def get_vcs_checkout(mirrordir, keytype, uri, dest, branch, overwrite=True,
                      quiet=False):
@@ -92,11 +93,7 @@ def get_vcs_checkout(mirrordir, keytype, uri, dest, branch, overwrite=True,
     run_sync(['git', 'checkout', '-q', branch], cwd=tmp_dest,
              log_initiation=(not quiet),
              log_success=(not quiet))
-    have_submodules = _fixup_submodule_references(mirrordir, uri, tmp_dest)
-    if have_submodules:
-        run_sync(['git', 'submodule', 'update', '--init'], cwd=tmp_dest,
-                 log_initiation=(not quiet),
-                 log_success=(not quiet))
+    _process_checkout_submodules(mirrordir, uri, tmp_dest)
     if tmp_dest != dest:
         os.rename(tmp_dest, dest)
     return dest
