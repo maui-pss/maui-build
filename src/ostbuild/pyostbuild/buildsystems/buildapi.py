@@ -49,7 +49,7 @@ class BuildApiBuildSystem(BuildSystem):
                       '--sysconfdir=/etc',
                       '--localstatedir=/var',
                       '--bindir=' + os.path.join(PREFIX, 'bin'),
-                      '--sbindir=' + os.path.join(PREFIX, 'sbin'),
+                      '--sbindir=' + os.path.join(PREFIX, 'bin'),
                       '--datadir=' + os.path.join(PREFIX, 'share'),
                       '--includedir=' + os.path.join(PREFIX, 'include'),
                       '--libexecdir=' + os.path.join(PREFIX, 'libexec'),
