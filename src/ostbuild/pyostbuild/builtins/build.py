@@ -562,8 +562,9 @@ and the manifest input."""
         builddir_name = 'build-%s-%s' % (basemeta['name'], architecture)
         builddir = os.path.join(self.workdir, builddir_name)
 
-        force_rebuild = (basemeta['name'] in self.force_build_components or
-                         basemeta['src'][:6] == 'local')
+        #force_rebuild = (basemeta['name'] in self.force_build_components or
+        #                 basemeta['src'][:6] == 'local')
+        force_rebuild = False
 
         built_rev_path = os.path.join(builddir, 'built-revision')
         if os.path.exists(built_rev_path):
