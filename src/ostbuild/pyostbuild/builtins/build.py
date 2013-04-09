@@ -301,6 +301,7 @@ class OstbuildBuild(builtins.Builtin):
                 self.cached_patchdir_revision = patches_revision
             if ((previous_metadata is not None) and
                 'patches' in previous_metadata and
+                previous_metadata['patches']['src'].find('local:') != 0 and
                 'revision' in previous_metadata['patches'] and
                 previous_metadata['patches']['revision'] == patches_revision):
                 # Copy over the sha256sums
