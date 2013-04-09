@@ -127,24 +127,21 @@ class BuildSystem(object):
         if os.path.isdir(varpath):
             shutil.rmtree(varpath)
 
-        # Delete all .la files.  See:
-        # https://bugzilla.gnome.org/show_bug.cgi?id=654013
+        # Delete all .la and .a files
         libdir = os.path.join(self.tempdir, 'usr/lib')
         for dirpath, subdirs, files in os.walk(libdir):
             for filename in files:
                 path = os.path.join(dirpath, filename)
-                if filename.endswith('.la'):
+                if filename.endswith('.la') or filename.endswith('.a'):
                     os.unlink(path)
 
-        # Move symbolic links for shared libraries as well
-        # as static libraries into /devel
+        # Move symbolic links for shared libraries to devel
         if os.path.exists(libdir):
             for filename in os.listdir(libdir):
                 path = os.path.join(libdir, filename)
                 stbuf = os.lstat(path)
-                if not ((filename.endswith('.so')
-                         and stat.S_ISLNK(stbuf.st_mode))
-                        or filename.endswith('.a')):
+                if not (filename.endswith('.so')
+                        and stat.S_ISLNK(stbuf.st_mode)):
                         continue
                 dest = os.path.join(devel_path, 'usr/lib', filename)
                 self._install_and_unlink(path, dest)
