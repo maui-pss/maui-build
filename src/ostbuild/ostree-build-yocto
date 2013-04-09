@@ -42,6 +42,12 @@ test -n "${repo_path}" || (usage; exit 1)
 
 . "${srcdir}/oe-init-build-env" "${builddir}"
 
+LAYERNAMES=$(cat ${srcdir}/LAYERS)
+LAYERS=""
+for layername in ${LAYERNAMES}; do
+    LAYERS="${LAYERS} \${OSTREE_SRCDIR}/${layername}"
+done
+
 cat > ${builddir}/conf/bblayers.conf <<EOF
 # LAYER_CONF_VERSION is increased each time build/conf/bblayers.conf
 # changes incompatibly
@@ -50,12 +56,8 @@ LCONF_VERSION = "6"
 BBPATH = "\${TOPDIR}"
 BBFILES ?= ""
 
-BBLAYERS ?= " \
-  ${srcdir}/meta \
-  ${srcdir}/meta-yocto \
-  ${srcdir}/meta-yocto-bsp \
-  ${srcdir}/meta-maui \
-  "
+OSTREE_SRCDIR = "${srcdir}"
+BBLAYERS ?= "${LAYERS}"
 EOF
 
 case "$architecture" in
