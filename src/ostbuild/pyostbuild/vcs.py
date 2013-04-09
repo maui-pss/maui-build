@@ -49,8 +49,7 @@ def _process_checkout_submodules(mirrordir, parent_uri, cwd):
     for line in submodule_status_lines:
         if line == '': continue
         have_submodules = True
-        line = line[1:]
-        (sub_checksum, sub_name) = line.split(' ', 1)
+        (sub_checksum, sub_name) = _parse_submodule_status(line)
         sub_url = run_sync_get_output(['git', 'config', '-f', '.gitmodules',
                                        'submodule.%s.url' % (sub_name, )], cwd=cwd)
         logger.info("Processing submodule %s" % sub_url)
@@ -117,6 +116,13 @@ def get_lastfetch_path(mirrordir, keytype, uri, branch):
     branch_safename = branch.replace('/','_').replace('.', '_')
     return mirror + '.lastfetch-%s' % (branch_safename, )
 
+def _parse_submodule_status(line):
+    line = line[1:]
+    (sub_checksum, sub_name) = line.split(' ', 2)[:2]
+    if sub_name.find('/') > 0:
+        sub_name = os.path.basename(sub_name)
+    return [sub_checksum, sub_name]
+
 def _list_submodules(mirrordir, mirror, keytype, uri, branch):
     current_vcs_version = run_sync_get_output(['git', 'rev-parse', branch], cwd=mirror)
     tmp_checkout = buildutil.get_mirrordir(mirrordir, keytype, uri, prefix='_tmp-checkouts')
@@ -132,10 +138,7 @@ def _list_submodules(mirrordir, mirror, keytype, uri, branch):
     submodule_status_lines = submodules_status_text.split('\n')
     for line in submodule_status_lines:
         if line == '': continue
-        line = line[1:]
-        (sub_checksum, sub_name) = line.split(' ', 1)
-        if sub_name.find('/') > 0:
-            sub_name = os.path.basename(sub_name)
+        (sub_checksum, sub_name) = _parse_submodule_status(line)
         sub_url = run_sync_get_output(['git', 'config', '-f', '.gitmodules',
                                        'submodule.%s.url' % (sub_name, )], cwd=tmp_checkout)
         submodules.append((sub_checksum, sub_name, sub_url))
