@@ -740,32 +740,29 @@ and the manifest input."""
             component_build_revs[archname] = build_rev
 
         targets_list = []
-        target_component_types = ['runtime', 'devel']
-        target_component_types.extend(additional_components.keys())
+        target_component_types = ['runtime', 'runtime-debug', 'devel', 'devel-debug']
         for target_component_type in target_component_types:
             for architecture in architectures:
                 target = {}
                 targets_list.append(target)
                 target['name'] = '%s-%s-%s' % (prefix, architecture, target_component_type)
 
-                runtime_ref = '%s-%s-runtime' % (base_prefix, architecture)
+                base_runtime_ref = '%s-%s-runtime' % (base_prefix, architecture)
                 buildroot_ref = '%s-%s-devel' % (base_prefix, architecture)
                 if target_component_type == 'runtime':
-                    base_ref = runtime_ref
+                    base_ref = base_runtime_ref
                 else:
                     base_ref = buildroot_ref
                 target['base'] = {'name': base_ref,
-                                  'runtime': runtime_ref,
+                                  'runtime': base_runtime_ref,
                                   'devel': buildroot_ref}
 
                 self._write_status('Composing ' + target['name'])
 
-                if target_component_type == 'runtime':
+                if target_component_type.find('runtime-') == 0:
                     target_components = runtime_components
-                elif target_component_type == 'devel':
-                    target_components = devel_components
                 else:
-                    target_components = additional_components[target_component_type]
+                    target_components = devel_components
 
                 contents = []
                 for component in target_components:
@@ -778,10 +775,12 @@ and the manifest input."""
                     component_ref = {'name': binary_name}
                     if target_component_type == 'runtime':
                         component_ref['trees'] = ['/runtime']
+                    elif target_component_type == 'runtime-debug':
+                        component_ref['trees'] = ['/runtime', '/debug']
                     elif target_component_type == 'devel':
                         component_ref['trees'] = ['/runtime', '/devel', '/doc']
-                    else:
-                        component_ref['trees'] = ['/runtime']
+                    elif target_component_type == 'devel-debug':
+                        component_ref['trees'] = ['/runtime', '/devel', '/doc', '/debug']
                     contents.append(component_ref)
                 target['contents'] = contents
 

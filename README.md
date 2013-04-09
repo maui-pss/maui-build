@@ -25,6 +25,7 @@ Also install the following packages:
  * guestfsd
  * guestmount
  * libguestfs-tools
+ * elfutils (for eu-readelf)
 
 To run ```ostbuild qa-make-disk``` or ```ostbuild qa-pull-deploy``` on Ubuntu 12.10 you will need to make a symbolic link to the right libguestfs path:
 

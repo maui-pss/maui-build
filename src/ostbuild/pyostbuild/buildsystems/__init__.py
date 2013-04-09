@@ -46,15 +46,6 @@ _DEVEL_DIRS = ['usr/include',
                'usr/lib/qt5/cmake',
                'usr/lib/qt5/mkspecs']
 
-_DEBUG_DIRS = ['usr/bin',
-               'usr/sbin',
-               'usr/lib',
-               'usr/lib32',
-               'usr/lib64',
-               'usr/libexec']
-
-_COMPLETE_STRIP = True
-
 class BuildSystem(object):
     name = None
     default_make_jobs = ['-j', '%d' % (cpu_count() + 1), 
@@ -115,11 +106,27 @@ class BuildSystem(object):
         devel_path = os.path.join(self.ostbuild_resultdir, 'devel')
         doc_path = os.path.join(self.ostbuild_resultdir, 'doc')
         debug_path = os.path.join(self.ostbuild_resultdir, 'debug')
-        for artifact_type in ['runtime', 'devel', 'doc', 'debug']:
-            resultdir = os.path.join(self.ostbuild_resultdir, artifact_type)
+        for resultdir in [runtime_path, devel_path, doc_path, debug_path]:
             if os.path.isdir(resultdir):
                 shutil.rmtree(resultdir)
             os.makedirs(resultdir)
+
+        # Some components install files that are read-only even for the user,
+        # this will make stripping debugging information fail so we need
+        # to change file modes before we continue
+        for subpath, subdirs, files in os.walk(self.tempdir):
+            for filename in files:
+                src_path = os.path.join(subpath, filename)
+                # Ensure that files are at least rw-rw-r-- and directories
+                # are rwxrw-r--
+                statsrc = os.lstat(src_path)
+                if not stat.S_ISLNK(statsrc.st_mode):
+                    minimal_mode = (stat.S_IRUSR | stat.S_IWUSR |
+                                    stat.S_IRGRP | stat.S_IWGRP |
+                                    stat.S_IROTH)
+                    if stat.S_ISDIR(statsrc.st_mode):
+                        minimal_mode |= stat.S_IXUSR
+                    os.chmod(src_path, statsrc.st_mode | minimal_mode)
 
         # Remove /var from the install - components are required to
         # auto-create these directories on demand
@@ -146,41 +153,10 @@ class BuildSystem(object):
                 dest = os.path.join(devel_path, 'usr/lib', filename)
                 self._install_and_unlink(path, dest)
 
-        for dirname in _DEBUG_DIRS:
-            dirpath = os.path.join(self.tempdir, dirname)
-            for subpath, subdirs, files in os.walk(dirpath):
-                for filename in files:
-                    src_path = os.path.join(subpath, filename)
-                    # Skip symbolic links
-                    if os.path.islink(src_path):
-                        continue
-                    # We only want ELF executables
-                    file_mimetype = run_sync_get_output(["file", "-b", "--mime-type", src_path])
-                    if file_mimetype.strip() not in ("application/x-executable", "application/x-sharedlib"):
-                        continue
-                    # Debugging information and artifact destination file name
-                    dst_path = src_path + ".debug"
-                    dest = os.path.join(debug_path, dst_path)
-                    # Add writing permission to avoid subsequent actions to fail
-                    # if the file is read-only
-                    src_stbuf = os.stat(src_path)
-                    os.chmod(src_path, stat.S_IRUSR | stat.S_IWUSR)
-                    # Strip executable
-                    if _COMPLETE_STRIP:
-                        run_sync(["strip", "-p", "--strip-debug", src_path])
-                    else:
-                        run_sync(["objcopy", "--only-keep-debug", src_path, dst_path])
-                        run_sync(["objcopy", "--strip-debug", src_path])
-                        run_sync(["objcopy", "--add-gnu-debuglink=" + dst_path, src_path])
-                    # Restore permissions
-                    os.chmod(src_path, src_stbuf.st_mode)
-                    if not _COMPLETE_STRIP:
-                        # Remove executable bits from the debug file
-                        dst_stbuf = os.stat(dst_path)
-                        os.chmod(dst_path, dst_stbuf.st_mode ^ (stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH))
-                    # Install debug file into the artifact
-                    if not _COMPLETE_STRIP:
-                        self._install_and_unlink(dst_path, dest)
+        for subpath, subdirs, files in os.walk(self.tempdir):
+            for filename in files:
+                src_path = os.path.join(subpath, filename)
+                self._process_build_result_split_debuginfo(self.tempdir, debug_path, src_path)
 
         for dirname in _DEVEL_DIRS:
             dirpath = os.path.join(self.tempdir, dirname)
@@ -277,3 +253,30 @@ class BuildSystem(object):
                 else:
                     shutil.copy2(src, dest)
                 os.unlink(src)
+
+    def _process_build_result_split_debuginfo(self, build_result_dir, debug_path, path):
+        # Only process shared libraries and executables
+        file_mimetype = run_sync_get_output(["file", "-b", "--mime-type", path]).strip()
+        is_shared = file_mimetype == "application/x-sharedlib"
+        is_exec = file_mimetype == "application/x-executable"
+        if not is_shared and not is_exec:
+            return
+        # Retrieve Build ID
+        build_id = run_sync_get_output(["eu-readelf", "-n", path]).strip()
+        m = re.search(r'\s+Build ID: ([0-9a-f]+)', build_id)
+        if not m:
+            self.logger.warning("No build-id for ELF object %s" % path)
+            return
+        build_id = m.group(1)
+        self.logger.info("ELF object %s buildid=%s" % (path, build_id))
+        dbg_name = "%s/%s.debug" % (s[:2], s[2:])
+        objdebug_path = os.path.abspath(os.path.join(debug_path, "usr/lib/debug/.build-id/" + dbg_name))
+        if not os.path.isdir(objdebug_path):
+            os.makedirs(objdebug_path)
+        run_sync(["objcopy", "--only-keep-debug", path, objdebug_path])
+
+        strip_args = ["strip", "--remove-section=.comment", "--remove-section=.note"]
+        if is_shared:
+            strip_args.append("--strip-unneeded")
+        strip_args.append(path)
+        run_sync(strip_args)
