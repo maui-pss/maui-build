@@ -40,7 +40,9 @@ def get_mirrordir(mirrordir, keytype, uri, prefix=''):
     if prefix: prefix += '/'
     return os.path.join(mirrordir, prefix, keytype, scheme, rest)
 
-def _fixup_submodule_references(mirrordir, cwd):
+def _fixup_submodule_references(mirrordir, parent_uri, cwd):
+    logger = Logger()
+
     submodules_status_text = run_sync_get_output(['git', 'submodule', 'status'], cwd=cwd)
     submodule_status_lines = submodules_status_text.split('\n')
     have_submodules = False
@@ -51,6 +53,9 @@ def _fixup_submodule_references(mirrordir, cwd):
         (sub_checksum, sub_name) = line.split(' ', 1)
         sub_url = run_sync_get_output(['git', 'config', '-f', '.gitmodules',
                                        'submodule.%s.url' % (sub_name, )], cwd=cwd)
+        logger.info("Processing submodule %s" % sub_url)
+        if sub_url.find('../') == 0:
+            sub_url = _make_absolute_url(parent_uri, sub_url)
         local_mirror = get_mirrordir(mirrordir, 'git', sub_url)
         run_sync(['git', 'config', 'submodule.%s.url' % (sub_name, ), 'file://' + local_mirror], cwd=cwd)
     return have_submodules
@@ -87,12 +92,9 @@ def get_vcs_checkout(mirrordir, keytype, uri, dest, branch, overwrite=True,
     run_sync(['git', 'checkout', '-q', branch], cwd=tmp_dest,
              log_initiation=(not quiet),
              log_success=(not quiet))
-    run_sync(['git', 'submodule', 'init'], cwd=tmp_dest,
-             log_initiation=(not quiet),
-             log_success=(not quiet))
-    have_submodules = _fixup_submodule_references(mirrordir, tmp_dest)
+    have_submodules = _fixup_submodule_references(mirrordir, uri, tmp_dest)
     if have_submodules:
-        run_sync(['git', 'submodule', 'update'], cwd=tmp_dest,
+        run_sync(['git', 'submodule', 'update', '--init'], cwd=tmp_dest,
                  log_initiation=(not quiet),
                  log_success=(not quiet))
     if tmp_dest != dest:
@@ -135,11 +137,36 @@ def _list_submodules(mirrordir, mirror, keytype, uri, branch):
         if line == '': continue
         line = line[1:]
         (sub_checksum, sub_name) = line.split(' ', 1)
+        if sub_name.find('/') > 0:
+            sub_name = os.path.basename(sub_name)
         sub_url = run_sync_get_output(['git', 'config', '-f', '.gitmodules',
                                        'submodule.%s.url' % (sub_name, )], cwd=tmp_checkout)
         submodules.append((sub_checksum, sub_name, sub_url))
     shutil.rmtree(tmp_checkout)
     return submodules
+
+def _make_absolute_url(parent, relpath):
+    orig_parent = parent
+    orig_relpath = relpath
+    if parent[-1:] == '/':
+        parent = parent[:-1]
+    method_index = parent.find('://')
+    if method_index == -1:
+        raise Exception("Invalid method")
+    first_slash = parent.find('/', method_index + 3)
+    if first_slash == -1:
+        raise Exception("Invalid URL")
+    parent_path = parent[first_slash:]
+    while relpath.find('../') == 0:
+        i = parent_path.rfind('/')
+        if i < 0:
+            raise Exception("Relative path %s is too long for parent %s" % (orig_relpath, orig_parent))
+        relpath = relpath[3:]
+        parent_path = parent_path[:i]
+    parent = parent[:first_slash] + parent_path
+    if len(relpath) == 0:
+        return parent
+    return parent + '/' + relpath
 
 def ensure_vcs_mirror(mirrordir, keytype, uri, branch, fetch=False,
                       fetch_keep_going=False):
@@ -173,6 +200,10 @@ def ensure_vcs_mirror(mirrordir, keytype, uri, branch, fetch=False,
     if changed:
         logger.info("last fetch %r differs from branch %r" % (last_fetch_contents, current_vcs_version))
         for (sub_checksum, sub_name, sub_url) in _list_submodules(mirrordir, mirror, keytype, uri, branch):
+            logger.info("Processing submodule %s at %s from %s" % (sub_name, sub_checksum, sub_url))
+            if sub_url.find('../') == 0:
+                sub_url = _make_absolute_url(uri, sub_url)
+                logger.info("Absolute URL: %s" % (sub_url, ))
             ensure_vcs_mirror(mirrordir, keytype, sub_url, sub_checksum, fetch=fetch)
     
     if changed:
