@@ -110,7 +110,7 @@ def run_sync_with_input_get_output(args, input, cwd=None, env=None, stderr=None,
 
 def run_sync(args, cwd=None, env=None, fatal_on_error=True, keep_stdin=False,
              log_success=True, log_initiation=True, stdin=None, stdout=None,
-             stderr=None):
+             stderr=None, return_exitcode=False):
     logger = Logger()
 
     if log_initiation:
@@ -151,7 +151,10 @@ def run_sync(args, cwd=None, env=None, fatal_on_error=True, keep_stdin=False,
             logfn("Command %s exited with code %d" % (subprocess.list2cmdline(args), returncode))
         else:
             logfn("pid %d exited with code %d" % (proc.pid, returncode))
-    return os.WIFEXITED(returncode) and os.WEXITSTATUS(returncode) == 0
+    success = os.WIFEXITED(returncode) and os.WEXITSTATUS(returncode) == 0
+    if return_exitcode:
+        return (success, returncode)
+    return success
 
 def run_sync_monitor_log_file(args, logfile, cwd=None, env=None,
                               fatal_on_error=True, log_initiation=True):
