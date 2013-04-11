@@ -60,6 +60,7 @@ pyostbuild_PYTHON =						\
 	src/ostbuild/pyostbuild/snapshot.py			\
 	src/ostbuild/pyostbuild/singleton.py			\
 	src/ostbuild/pyostbuild/subprocess_helpers.py		\
+	src/ostbuild/pyostbuild/timeutil.py			\
 	src/ostbuild/pyostbuild/vcs.py				\
 	$(NULL)
 
