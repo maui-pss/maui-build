@@ -37,6 +37,8 @@ class Builtin(object):
     short_description = None
 
     def __init__(self):
+        prog = "%s %s" % (os.path.basename(sys.argv[0]), self.name)
+        self.parser = argparse.ArgumentParser(prog=prog, description=self.short_description)
         self.logger = Logger()
         self._meta_cache = {}
         self.prefix = None
