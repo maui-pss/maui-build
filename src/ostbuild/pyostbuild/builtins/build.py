@@ -31,7 +31,6 @@ from .. import buildutil
 from .. import task
 from .. import fileutil
 from .. import jsonutil
-from .. import kvfile
 from .. import snapshot
 from .. import vcs
 from ..subprocess_helpers import run_sync, run_sync_get_output

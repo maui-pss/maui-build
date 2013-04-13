@@ -30,7 +30,6 @@ from .. import ostbuildrc
 from .. import vcs
 from .. import jsondb
 from .. import buildutil
-from .. import kvfile
 from ..subprocess_helpers import run_sync, run_sync_get_output
 from ..snapshot import Snapshot
 
