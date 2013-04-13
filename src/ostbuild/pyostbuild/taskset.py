@@ -17,18 +17,33 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-import os, json
+from .logger import Logger
 
-def write_json_to_stream(stream, data):
-    json.dump(data, stream, indent=4, sort_keys=True)
+_all_tasks = {}
 
-def write_json_file_atomic(path, data):
-    path_tmp = path + '.tmp'
-    f = open(path_tmp, 'w')
-    write_json_to_stream(f, data)
-    f.close()
-    os.chmod(path_tmp, 0644)
-    os.rename(path_tmp, path)
+def register(taskdef):
+    _all_tasks[taskdef.name] = taskdef
 
-def load_json(path):
-    return json.load(open(path, "r"))
+def get_task(name, allow_none=False):
+    logger = Logger()
+    if name is None:
+        logger.fatal("No task name given")
+    taskdef = _all_tasks.get(name)
+    if taskdef is not None:
+        return taskdef
+    if not allow_none:
+        logger.fatal("No task definition matches %r" % (name, ))
+    return None
+
+def get_task_after(name):
+    ret = []
+    for task_name in _all_tasks:
+        taskdef = _all_tasks[task_name]
+        for after_name in taskdef.after:
+            if after_name == name:
+                ret.append(taskdef)
+                break
+    return ret
+
+def get_all_tasks():
+    return sorted(_all_tasks.itervalues(), lambda a, b: cmp(a.name, b.name))

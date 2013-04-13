@@ -1,6 +1,6 @@
 # vim: et:ts=4:sw=4
 # Copyright (C) 2012-2013 Pier Luigi Fiorini <pierluigi.fiorini@gmail.com>
-# Copyright (C) 2011 Colin Walters <walters@verbum.org>
+# Copyright (C) 2012-2013 Colin Walters <walters@verbum.org>
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -17,127 +17,327 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-import os,sys,subprocess,tempfile,re,shutil,stat
-import argparse
-import time
-import urlparse
-import hashlib
-import json
+import os, sys, re, argparse, shutil, datetime, json
+import __builtin__
+from multiprocessing import cpu_count
 
-from . import fileutil
+from . import event
+from . import buildutil
+from . import jsondb
+from . import jsonutil
+from . import timeutil
+from . import taskset
+from .subprocess_helpers import run_sync
+from .logger import Logger
 
-VERSION_RE = re.compile(r'(\d+)\.(\d+)')
+class TaskMaster(event.Event):
+    __events__ = ("task_complete", "task_executing")
 
-class TaskDir(object):
-    def __init__(self, path):
+    def __init__(self, builtin, path, on_empty=None, process_after=True, skip=[]):
+        self.logger = Logger()
+        self.builtin = builtin
         self.path = path
+        self._process_after = process_after
+        self._skip_tasks = {}
+        for skip_task in skip:
+            self._skip_tasks[skip_task] = True
+        self.max_concurrent = cpu_count()
+        self._on_empty = on_empty
+        self._idle_recalculate_id = 0
+        self._executing = []
+        self._pending_tasks_list = []
+        self._seen_tasks = {}
+        self._task_errors = {}
+        self._caught_error = False
+        self._task_versions = {}
 
-    def get(self, name):
-        task_path = os.path.join(self.path, name)
-        fileutil.ensure_dir(task_path)
+    def push_task(self, name, args):
+        taskdef = taskset.get_task(name)
+        self._push_task_def(taskdef, args)
 
-        return TaskSet(task_path)
-        
-class TaskHistoryEntry(object):
-    def __init__(self, path, state=None):
-        self.path = path
-        match = VERSION_RE.match(os.path.basename(path))
-        assert match is not None
-        self.major = int(match.group(1))
-        self.minor = int(match.group(2))
-        self.timestamp = None
-        self.logfile_path = None
-        self.logfile_stream = None
-        self.start_timestamp = None
-        if state is None:
-            statuspath = os.path.join(self.path, 'status')
-            if os.path.isfile(statuspath):
-                f = open(statuspath)
-                self.state = f.read()
-                f.close()
-                self.timestamp = int(os.stat(statuspath)[stat.ST_MTIME])
+    def is_task_queued(self, name):
+        return self._is_task_pending(name) or self.is_task_executing(name)
+
+    def is_task_executing(self, name):
+        for executing_task in self._executing:
+            if executing_task.name == name:
+                return True
+        return False
+
+    def get_task_state(self):
+        ret = []
+        for task in self._pending_tasks_list:
+            retval.append({"running": False, "task": task})
+        for task in self._executing:
+            retval.append({"running": True, "task": task})
+        return ret
+
+    def _push_task_def(self, taskdef, args):
+        name = taskdef.name
+        if not self._is_task_pending(name):
+            instance = taskdef(self.builtin, self, name, args)
+            instance.complete.connect(self._on_complete, task=instance)
+            instance.prepare()
+            self._pending_tasks_list.append(instance)
+            self._queue_recalculate()
+
+    def _is_task_pending(self, name):
+        for pending in self._pending_tasks_list:
+            if pending.name == name:
+                return True
+        return False
+
+    def _queue_recalculate(self):
+        if self._idle_recalculate_id > 0:
+            return
+        self._idle_recalculate_id += 1
+        self._recalculate()
+
+    def _recalculate(self):
+        self._idle_recalculate_id = 0
+
+        if len(self._executing) == 0 and len(self._pending_tasks_list) == 0:
+            self._on_empty(True, None)
+            return
+        elif len(self._pending_tasks_list) == 0:
+            return
+
+        not_executing = []
+        executing = []
+        for pending in self._pending_tasks_list:
+            if self.is_task_executing(pending.name):
+                executing.append(pending)
             else:
-                self.state = 'interrupted'
-        else:
-            self.state = state
-            self.start_timestamp = int(time.time())
+                not_executing.append(pending)
 
-    def finish(self, success):
-        statuspath = os.path.join(self.path, 'status')
-        f = open(statuspath, 'w')
-        if success:
-            success_str = 'success'
-        else:
-            success_str = 'failed'
-        self.state = success_str
-        self.timestamp = int(time.time())
-        self.logfile_stream.write('Task %s in %d seconds\n' % (success_str, self.timestamp - self.start_timestamp))
-        self.logfile_stream.close()
-        f.write(success_str)
-        f.close()
+        self._pending_tasks_list = not_executing + executing
+        self._reschedule()
 
-    def __cmp__(self, other):
-        if not isinstance(other, TaskHistoryEntry):
-            return -1
-        elif (self.major != other.major):
-            return cmp(self.major, other.major)
-        else:
-            return cmp(self.minor, other.minor)
+    def _reschedule(self):
+        while ((len(self._executing) < self.max_concurrent)
+                and (len(self._pending_tasks_list) > 0)
+                and not self.is_task_executing(self._pending_tasks_list[0].name)):
+            task = self._pending_tasks_list.pop(0)
+            version = task.query_version()
+            if version is not None:
+                self._task_versions[task.name] = version
+            task._execute_in_subprocess_internal()
+            self._executing.append(task)
+            self.task_executing(task)
 
-class TaskSet(object):
-    def __init__(self, path):
-        self.path = path
-
-        self._history = []
-        self._running = False
-        self._running_version = None
-        self._maxVersions = 10
-
-        self._load()
-
-    def _cleanOldEntries(self):
-        while len(self._history) > self._maxVersions:
-            task = self._history.pop(0)
-            shutil.rmtree(task.path)
-
-    def _load(self):
-        history = []
-        for item in os.listdir(self.path):
-            match = VERSION_RE.match(item)
-            if match is None:
+    def _on_complete(self, success, error, task=None):
+        self.logger.warning("____ %s %s %s" % (task.name, str(success), str(error)))
+        idx = -1
+        for i in range(len(self._executing)):
+            executing_task = self._executing[i]
+            if executing_task != task:
                 continue
-            history_path = os.path.join(self.path, item)
-            history.append(TaskHistoryEntry(history_path))
-        history.sort()
-        self._history = history
-        self._cleanOldEntries()
+            idx = i
+            break
+        if idx == -1:
+            raise Exception("TaskMaster: Internal error - Failed to find completed task %s" % (task.name, ))
+        self._executing.pop(idx)
+        self.task_complete(task, success, error)
+        if success and self._process_after:
+            changed = True
+            version = task.query_version()
+            if version is not None:
+                old_version = self._task_versions[task.name]
+                if old_version == version:
+                    changed = False
+                elif old_version is not None:
+                    self.logger.info("task %s new version: %s" % (task.name, version))
+            if changed:
+                tasks_after = taskset.get_tasks_after(task.name)
+                for after in tasks_after:
+                    if not self._skip_tasks[after.name]:
+                        self._push_task_def(after, {})
+        self._queue_recalculate()
 
-    def start(self):
-        assert not self._running
-        self._running = True
-        yearver = time.gmtime().tm_year
-        if len(self._history) == 0:
-            lastversion = -1 
+class TaskDef(event.Event):
+    __events__ = ("complete",)
+
+    name = None
+    short_description = None
+
+    pattern = None
+    after = []
+
+    preserve_stdout = False
+    retain_failed = 1
+    retain_success = 5
+
+    _VERSION_RE = re.compile(r'^(\d+\d\d\d\d)\.(\d+)$')
+
+    def __init__(self, builtin, taskmaster, name, argv):
+        self.builtin = builtin
+        self.taskmaster = taskmaster
+        self.name = name
+        self.subparsers = builtin.parser.add_subparsers(title=self.name,
+                                                        description=self.short_description)
+        self.subparser = self.subparsers.add_parser(self.name, add_help=False)
+        self.argv = argv
+        self.logger = Logger()
+
+    def get_depends(self):
+        return []
+
+    def query_versions(self):
+        return None
+
+    def prepare(self):
+        if self.taskmaster is not None:
+            self.workdir = os.path.realpath(os.path.join(self.taskmaster.path, os.pardir))
         else:
-            last = self._history[-1]
-            if last.major == yearver:
-                lastversion = last.minor
-            else:
-                lastversion = -1 
-        history_path = os.path.join(self.path, '%d.%d' % (yearver, lastversion + 1))
-        fileutil.ensure_dir(history_path)
-        entry = TaskHistoryEntry(history_path, state='running')
-        self._history.append(entry)
-        entry.logfile_path = os.path.join(history_path, 'log')
-        entry.logfile_stream = open(entry.logfile_path, 'w')
-        return entry
+            self.workdir = os.environ["_OSTBUILD_WORKDIR"]
 
-    def finish(self, success):
-        assert self._running
-        last = self._history[-1]
-        last.finish(success)
-        self._running = False
-        self._cleanOldEntries()
+        buildutil.check_is_work_directory(self.workdir)
 
-    def get_history(self):
-        return self._history
+        self.resultdir = os.path.join(self.workdir, "results")
+        if not os.path.isdir(self.resultdir):
+            os.makedirs(self.resultdir)
+        self.mirrordir = os.path.join(self.workdir, "src")
+        if not os.path.isdir(self.mirrordir):
+            os.makedirs(self.mirrordir)
+        self.cachedir = os.path.join(self.workdir, "cache", "raw")
+        if not os.path.isdir(self.cachedir):
+            os.makedirs(self.cachedir)
+        self.libdir = __builtin__.__dict__["LIBDIR"]
+        self.repo = os.path.join(self.workdir, "repo")
+
+    def execute(self):
+        raise NotImplementedError("Not implemented")
+
+    def _get_result_db(self, taskname):
+        path = os.path.join(self.resultdir, taskname)
+        return jsondb.JsonDB(path)
+
+    def _load_versions_from(self, dirname):
+        results = []
+        for subpath, subdirs, files in os.walk(dirname):
+            for filename in files:
+                path = os.path.join(subpath, filename)
+                if not self._VERSION_RE.match(filename):
+                    continue
+                results.append(filename)
+        results.sort(cmp=buildutil.compare_versions)
+        return results
+
+    def _clean_old_versions(self, path, retain):
+        versions = self._load_versions_from(path)
+        while len(versions) > retain:
+            shutil.rmtree(os.path.join(path, versions.pop(0)))
+
+    def _load_all_versions(self):
+        all_versions = []
+
+        success_versions = self._load_versions_from(self._success_dir)
+        for version in success_versions:
+            all_versions.append((True, version))
+
+        failed_versions = self._load_versions_from(self._failed_dir)
+        for version in failed_versions:
+            all_versions.append((False, version))
+
+        def cmp(a, b):
+            (success_a, version_a) = a
+            (success_b, version_b) = b
+            return buildutil.compare_versions(version_a, version_b)
+        all_versions.sort(cmp=cmp)
+        return all_versions
+
+    def _execute_in_subprocess_internal(self):
+        self._start_time_millis = int(timeutil.monotonic_time() * 1000)
+
+        self.dir = os.path.join(self.taskmaster.path, self.name)
+        if not os.path.isdir(self.dir):
+            os.makedirs(self.dir)
+
+        self._success_dir = os.path.join(self.dir, "successful")
+        if not os.path.isdir(self._success_dir):
+            os.makedirs(self._success_dir)
+        self._failed_dir = os.path.join(self.dir, "failed")
+        if not os.path.isdir(self._failed_dir):
+            os.makedirs(self._failed_dir)
+
+        all_versions = self._load_all_versions()
+
+        current_time = datetime.datetime.utcnow()
+        current_ymd = current_time.strftime("%Y%m%d")
+
+        version = None
+        if len(all_versions) > 0:
+            (last_success, last_version) = all_versions[-1]
+            m = self._VERSION_RE.match(last_version)
+            if not m:
+                raise Exception("Invalid version")
+            last_ymd = m.group(1)
+            last_serial = m.group(2)
+            if last_ymd == last_serial:
+                version = current_ymd + "." + str(int(last_serial) + 1)
+        if version is None:
+            version = current_ymd + ".0"
+
+        self._version = version
+        self._workdir = os.path.join(self.dir, version)
+        if os.path.isdir(self._workdir):
+            shutil.rmtree(self._workdir)
+        if not os.path.isdir(self._workdir):
+            os.makedirs(self._workdir)
+
+        base_args = [sys.argv[0], "run-task", "--task-name", self.name]
+        base_args.extend(self.argv)
+        env_copy = os.environ.copy()
+        env_copy["_OSTBUILD_WORKDIR"] = self.workdir
+        if self.preserve_stdout:
+            out_path = os.path.join(self._workdir, "output.txt")
+            stdout = open(out_path, "w")
+            stderr = stdout
+        else:
+            err_path = os.path.join(self._workdir, "errors.txt")
+            stdout = open("/dev/null", "w")
+            stderr = open(err_path, "w")
+        (success, exitcode) = run_sync(base_args, cwd=self._workdir, stdout=stdout,
+                                       stderr=stderr, env=env_copy, return_exitcode=True)
+        self._on_child_exited(success, exitcode)
+
+    def _update_index(self):
+        all_versions = self._load_all_versions()
+
+        file_list = []
+        for (successful, version) in all_versions:
+            fname = ("successful/" if successfull else "failed/") + version
+            file_list.append(fname)
+
+        index = {"files": file_list}
+        jsonutil.write_json_file_atomic(os.path.join(self.dir, "index.json"), index)
+
+    def _on_child_exited(self, success, exitcode):
+        errmsg = None
+        if not success:
+            errmsg = "Child process exited with code %d" % exitcode
+
+        elapsed_millis = int(timeutil.monotonic_time() * 1000) - self._start_time_millis
+        meta = {"task-meta-version": 0, "task-version": self._version,
+            "success": success, "errmsg": errmsg, "elapsed-millis": elapsed_millis}
+        jsonutil.write_json_file_atomic(os.path.join(self._workdir, "meta.json"), meta)
+
+        if not success:
+            target = os.path.join(self._failed_dir, self._version)
+            shutil.move(self._workdir, target)
+            self._workdir = target
+            self._clean_old_versions(self._failed_dir, self.retain_failed)
+            self.on_complete(success, errmsg, task=self)
+        else:
+            target = os.path.join(self._success_dir, self._version)
+            shutil.move(self._workdir, target)
+            self._workdir = target
+            self._clean_old_versions(self._success_dir, self.retain_success)
+            self.on_complete(success, None, task=self)
+
+        # Also remove any old interrupted versions
+        self._clean_old_versions(self.dir, 0, None)
+
+        self._update_index()
+
+        buildutil.atomic_symlink_swap(os.path.join(self.dir, "current"), target)

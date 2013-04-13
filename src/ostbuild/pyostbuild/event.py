@@ -35,16 +35,18 @@ class Event(object):
             return "event '%s'" % self.__name__
 
         def __call__(self, *args, **kwargs):
-            for target in self.targets:
-                target(*args, **kwargs)
+            for item in self.targets:
+                dict_args = item.get("kwargs", {})
+                dict_args.update(kwargs)
+                item["target"](args, dict_args)
 
         def __iadd__(self, target):
-            self.targets.append(target)
+            self.targets.append({"target": target})
             return self
 
         def __isub__(self, target):
-            while target in self.targets:
-                self.targets.remove(target)
+            while item in self.targets:
+                self.targets.remove(item)
             return self
 
         def __len__(self):
@@ -52,12 +54,12 @@ class Event(object):
 
         def __iter__(self):
             def gen():
-                for target in self.targets:
-                    yield target
+                for item in self.targets:
+                    yield item
             return gen()
 
-        def __getitem__(self, key):
-            return self.targets[key]
+        def connect(self, target, **kwargs):
+            self.targets.append({"target": target, "kwargs": kwargs})
 
     def __getattr__(self, name):
         if name not in self.__class__.__events__:

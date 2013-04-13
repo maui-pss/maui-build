@@ -51,14 +51,60 @@ def snapshot_diff(a, b):
     return (added, modified, removed)
  
 class Snapshot(object):
-    def __init__(self, data, path):
+    def __init__(self, data, path, prepare_resolve=False):
         self.logger = Logger()
         self.data = data
         self.path = path
+        if prepare_resolve:
+            data["patches"] = self._resolve_component(data, data["patches"])
+            data["base"] = self._resolve_component(data, data["base"])
+            data["components"] = [self._resolve_component(data, component) for component in data["components"]]
         self._dict = _component_dict(data)
         self._names = []
         for name in self._dict:
             self._names.append(name)
+
+    def _resolve_component(self, manifest, component_meta):
+        result = dict(component_meta)
+        orig_src = component_meta["src"]
+        name = component_meta.get("name")
+
+        if orig_src.startswith("tarball:"):
+            if not name:
+                self.logger.fatal("Component src %s has no name attribute" % orig_src)
+            if not component_meta.get("checksum"):
+                self.logger.fatal("Component src %s has no checksum attribute" % orig_src)
+
+        did_expand = False
+        vcs_config = manifest["vcsconfig"]
+        for vcsprefix in vcs_config.keys():
+            expansion = vcs_config[vcsprefix]
+            prefix = vcsprefix + ":"
+            if orig_src.find(prefix) == 0:
+                result["src"] = expansion + orig_src[len(prefix):]
+                did_expand = True
+                break
+
+        if name is None:
+            if did_expand:
+                src = orig_src
+                idx = src.rindex(":")
+            else:
+                src = result["src"]
+                idx = src.rindex("/")
+            name = src[idx+1:]
+
+            i = name.rindex(".git")
+            if i != -1 and i == len(name) - 4:
+                name = name[:len(name)-4]
+            name = name.replace("/", "-")
+            result["name"] = name
+
+        branch_or_tag = result.get("branch") or result.get("tag")
+        if branch_or_tag is None:
+            result["branch"] = "master"
+
+        return result
 
     def _expand_component(self, component):
         meta = dict(component)
@@ -76,6 +122,9 @@ class Snapshot(object):
 
     def get_all_component_names(self):
         return self._names
+
+    def get_component_map(self):
+        return self._dict
 
     def get_component(self, name, allow_none=False):
         if not self._dict.get(name) and not allow_none:

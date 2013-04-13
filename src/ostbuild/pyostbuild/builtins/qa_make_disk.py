@@ -24,7 +24,7 @@ from ..subprocess_helpers import run_sync, run_sync_get_output
 from ..subprocess_helpers import run_sync_monitor_log_file
 from ..guestfish import GuestFish
 
-class OstbuildQaMakeDisk(builtins.Builtin):
+class BuiltinQaMakeDisk(builtins.Builtin):
     name = "qa-make-disk"
     short_description = "Generate a disk image"
 
@@ -32,10 +32,9 @@ class OstbuildQaMakeDisk(builtins.Builtin):
         builtins.Builtin.__init__(self)
 
     def execute(self, argv):
-        parser = argparse.ArgumentParser(description=self.short_description)
-        parser.add_argument("diskpath")
+        self.parser.add_argument("diskpath")
 
-        args = parser.parse_args(argv)
+        args = self.parser.parse_args(argv)
 
         path = os.path.realpath(args.diskpath)
         if os.path.exists(path):
@@ -91,4 +90,4 @@ class OstbuildQaMakeDisk(builtins.Builtin):
         os.rename(tmppath, path)
         self.logger.info("Created: %s" % path)
 
-builtins.register(OstbuildQaMakeDisk)
+builtins.register(BuiltinQaMakeDisk)

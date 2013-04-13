@@ -24,23 +24,15 @@ import sys
 import argparse
 
 from . import builtins
-from builtins import build
-from builtins import build_disks
 from builtins import checkout
 from builtins import git_mirror
-from builtins import import_tree
-from builtins import prefix
+from builtins import make
 from builtins import qa_make_disk
-from builtins import qa_pull_deploy
-from builtins import qa_smoketest
-from builtins import resolve
-from builtins import source_diff
+from builtins import run_task
 
 def usage(ecode):
     print "Builtins:"
     for builtin in builtins.get_all():
-        if builtin.name.startswith('privhelper'):
-            continue
         print "    %s - %s" % (builtin.name, builtin.short_description)
     return ecode
 

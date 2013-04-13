@@ -17,10 +17,7 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-import os
-import re
-import urlparse
-import shutil
+import os, re, urlparse, shutil, datetime, hashlib
 
 from .subprocess_helpers import run_sync_get_output, run_sync
 from . import buildutil
@@ -42,7 +39,6 @@ def get_mirrordir(mirrordir, keytype, uri, prefix=''):
 
 def _process_checkout_submodules(mirrordir, parent_uri, cwd):
     logger = Logger()
-
     submodules_status_text = run_sync_get_output(['git', 'submodule', 'status'], cwd=cwd)
     submodule_status_lines = submodules_status_text.split('\n')
     have_submodules = False
@@ -60,14 +56,27 @@ def _process_checkout_submodules(mirrordir, parent_uri, cwd):
         run_sync(['git', 'submodule', 'update', '--init', sub_name], cwd=cwd)
         _process_checkout_submodules(mirrordir, sub_url, os.path.join(cwd, sub_name))
 
-def get_vcs_checkout(mirrordir, keytype, uri, dest, branch, overwrite=True,
-                     quiet=False):
-    module_mirror = get_mirrordir(mirrordir, keytype, uri)
-    assert keytype == 'git'
-    checkoutdir_parent = os.path.dirname(os.path.realpath(dest))
+def get_vcs_checkout(mirrordir, component, dest, branch, overwrite=True, quiet=False):
+    logger = Logger()
+    (keytype, uri) = parse_src_key(component["src"])
+    if keytype in ("git", "local"):
+        revision = component.get("revision")
+        module_mirror = get_mirrordir(mirrordir, keytype, uri)
+        add_upstream = True
+    elif keytype == "tarball":
+        if not component.get("checksum"):
+            logger.fatal("Tarball components must have the checksum key, "
+                         "please check the %r component" % component["name"])
+        revision = "tarball-import-" + component["checksum"]
+        module_mirror = get_mirrordir(mirrordir, "tarball", component["name"])
+        add_upstream = False
+    else:
+        logger.fatal("Unsupported %r SRC uri" % keytype)
+
+    checkoutdir_parent = os.path.abspath(os.path.join(dest, os.pardir))
     if not os.path.isdir(checkoutdir_parent):
         os.makedirs(checkoutdir_parent)
-    tmp_dest = dest + '.tmp'
+    tmp_dest = os.path.join(checkoutdir_parent, os.path.basename(dest) + ".tmp")
     if os.path.isdir(tmp_dest):
         shutil.rmtree(tmp_dest)
     if os.path.islink(dest):
@@ -82,9 +91,10 @@ def get_vcs_checkout(mirrordir, keytype, uri, dest, branch, overwrite=True,
                   '--no-checkout', module_mirror, tmp_dest],
                  log_initiation=(not quiet),
                  log_success=(not quiet))
-        run_sync(['git', 'remote', 'add', 'upstream', uri], cwd=tmp_dest,
-                 log_initiation=(not quiet),
-                 log_success=(not quiet))
+        if add_upstream:
+            run_sync(['git', 'remote', 'add', 'upstream', uri], cwd=tmp_dest,
+                     log_initiation=(not quiet),
+                     log_success=(not quiet))
     else:
         run_sync(['git', 'fetch', 'localmirror'], cwd=tmp_dest,
                  log_initiation=(not quiet),
@@ -98,7 +108,6 @@ def get_vcs_checkout(mirrordir, keytype, uri, dest, branch, overwrite=True,
     return dest
 
 def clean(keytype, checkoutdir):
-    assert keytype in ('git', 'dirty-git')
     run_sync(['git', 'clean', '-d', '-f', '-x'], cwd=checkoutdir)
 
 def parse_src_key(srckey):
@@ -106,13 +115,26 @@ def parse_src_key(srckey):
     if idx < 0:
         raise ValueError("Invalid SRC uri=%s" % (srckey, ))
     keytype = srckey[:idx]
-    if keytype not in ['git', 'local']:
+    if keytype not in ("git", "local", "tarball"):
         raise ValueError("Unsupported SRC uri=%s" % (srckey, ))
     uri = srckey[idx+1:]
     return (keytype, uri)
+ 
+def checkout_patches(mirrordir, patchdir, component):
+    patches = component.get('patches')
+    (patches_keytype, patches_uri) = parse_src_key(patches['src'])
+    if patches_keytype == 'local':
+        return patches_uri
+    elif patches_keytype != 'git':
+        raise Exception("Unhandled keytype %s" % (patches_keytype, ))
+
+    patches_mirror = get_mirrordir(mirrordir, patches_keytype, patches_uri)
+    get_vcs_checkout(mirrordir, patches, patchdir, overwrite=True, quiet=True)
+
+    return patchdir
 
 def get_lastfetch_path(mirrordir, keytype, uri, branch):
-    mirror = buildutil.get_mirrordir(mirrordir, keytype, uri)
+    mirror = get_mirrordir(mirrordir, keytype, uri)
     branch_safename = branch.replace('/','_').replace('.', '_')
     return mirror + '.lastfetch-%s' % (branch_safename, )
 
@@ -125,7 +147,7 @@ def _parse_submodule_status(line):
 
 def _list_submodules(mirrordir, mirror, keytype, uri, branch):
     current_vcs_version = run_sync_get_output(['git', 'rev-parse', branch], cwd=mirror)
-    tmp_checkout = buildutil.get_mirrordir(mirrordir, keytype, uri, prefix='_tmp-checkouts')
+    tmp_checkout = get_mirrordir(mirrordir, keytype, uri, prefix='_tmp-checkouts')
     if os.path.isdir(tmp_checkout):
         shutil.rmtree(tmp_checkout)
     parent = os.path.dirname(tmp_checkout)
@@ -146,21 +168,22 @@ def _list_submodules(mirrordir, mirror, keytype, uri, branch):
     return submodules
 
 def _make_absolute_url(parent, relpath):
+    logger = Logger()
     orig_parent = parent
     orig_relpath = relpath
     if parent[-1:] == '/':
         parent = parent[:-1]
     method_index = parent.find('://')
     if method_index == -1:
-        raise Exception("Invalid method")
+        logger.fatal("Invalid method")
     first_slash = parent.find('/', method_index + 3)
     if first_slash == -1:
-        raise Exception("Invalid URL")
+        logger.fatal("Invalid URL")
     parent_path = parent[first_slash:]
     while relpath.find('../') == 0:
         i = parent_path.rfind('/')
         if i < 0:
-            raise Exception("Relative path %s is too long for parent %s" % (orig_relpath, orig_parent))
+            logger.fatal("Relative path %s is too long for parent %s" % (orig_relpath, orig_parent))
         relpath = relpath[3:]
         parent_path = parent_path[:i]
     parent = parent[:first_slash] + parent_path
@@ -168,13 +191,34 @@ def _make_absolute_url(parent, relpath):
         return parent
     return parent + '/' + relpath
 
-def ensure_vcs_mirror(mirrordir, keytype, uri, branch, fetch=False,
-                      fetch_keep_going=False):
+def ensure_vcs_mirror(mirrordir, component, fetch=False,
+                      fetch_keep_going=False, timeout_sec=0):
     logger = Logger()
+    (keytype, uri) = parse_src_key(component["src"])
+    if keytype in ("git", "local"):
+        branch = component.get("branch") or component.get("tag")
+        return _ensure_vcs_mirror_git(mirrordir, uri, branch,
+                                      fetch=fetch, fetch_keep_going=fetch_keep_going,
+                                      timeout_sec=timeout_sec)
+    elif keytype == "tarball":
+        name = component["name"]
+        checksum = component.get("checksum")
+        if not checksum:
+            logger.fatal("Component %r missing checksum attribute" % name)
+        return _ensure_vcs_mirror_tarball(mirrordir, name, uri, checksum,
+                                          fetch=fetch, fetch_keep_going=fetch_keep_going,
+                                          timeout_sec=timeout_sec)
+    else:
+        logger.fatal("Unhandled %r keytype" % keytype)
 
-    mirror = buildutil.get_mirrordir(mirrordir, keytype, uri)
-    tmp_mirror = mirror + '.tmp'
+def _ensure_vcs_mirror_git(mirrordir, uri, branch, fetch=False,
+                           fetch_keep_going=False, timeout_sec=0):
+    logger = Logger()
+    keytype = "git"
+    mirror = get_mirrordir(mirrordir, keytype, uri)
+    tmp_mirror = os.path.abspath(os.path.join(mirror, os.pardir, os.path.basename(mirror) + ".tmp"))
     did_update = False
+    current_time = datetime.datetime.now()
     last_fetch_path = get_lastfetch_path(mirrordir, keytype, uri, branch)
     if os.path.exists(last_fetch_path):
         f = open(last_fetch_path)
@@ -183,6 +227,12 @@ def ensure_vcs_mirror(mirrordir, keytype, uri, branch, fetch=False,
         last_fetch_contents = last_fetch_contents.strip()
     else:
         last_fetch_contents = None
+    if timeout_sec > 0:
+        t = os.path.getmtime(last_fetch_path)
+        last_fetch_time = datetime.datetime.fromtimestamp(t)
+        diff = current_time - last_fetch_time
+        if diff.total_seconds() < timeout_sec:
+            fetch = False
     if os.path.isdir(tmp_mirror):
         shutil.rmtree(tmp_mirror)
     if not os.path.isdir(mirror):
@@ -190,45 +240,118 @@ def ensure_vcs_mirror(mirrordir, keytype, uri, branch, fetch=False,
         run_sync(['git', 'config', 'gc.auto', '0'], cwd=tmp_mirror)
         os.rename(tmp_mirror, mirror)
     elif fetch:
-        run_sync(['git', 'fetch'], cwd=mirror, log_initiation=False,
-                 fatal_on_error=(not fetch_keep_going)) 
+        run_sync(['git', 'fetch'], cwd=mirror, fatal_on_error=(not fetch_keep_going)) 
 
-    current_vcs_version = run_sync_get_output(['git', 'rev-parse', branch], cwd=mirror)
-    current_vcs_version = current_vcs_version.strip()
+    current_vcs_version = run_sync_get_output(['git', 'rev-parse', branch], cwd=mirror).strip()
 
     changed = current_vcs_version != last_fetch_contents
     if changed:
-        logger.info("last fetch %r differs from branch %r" % (last_fetch_contents, current_vcs_version))
+        logger.info("Last fetch %r differs from branch %r" % (last_fetch_contents, current_vcs_version))
         for (sub_checksum, sub_name, sub_url) in _list_submodules(mirrordir, mirror, keytype, uri, branch):
             logger.info("Processing submodule %s at %s from %s" % (sub_name, sub_checksum, sub_url))
             if sub_url.find('../') == 0:
                 sub_url = _make_absolute_url(uri, sub_url)
                 logger.info("Absolute URL: %s" % (sub_url, ))
-            ensure_vcs_mirror(mirrordir, keytype, sub_url, sub_checksum, fetch=fetch)
+            _ensure_vcs_mirror_git(mirrordir, sub_url, sub_checksum, fetch=fetch,
+                                   fetch_keep_going=fetch_keep_going, timeout_sec=timeout_sec)
     
-    if changed:
+    if changed or (fetch and timeout_sec > 0):
         f = open(last_fetch_path, 'w')
         f.write(current_vcs_version + '\n')
         f.close()
 
     return mirror
 
-def fetch(mirrordir, keytype, uri, branch, keep_going=False):
-    ensure_vcs_mirror(mirrordir, keytype, uri, branch, fetch=True,
-                      fetch_keep_going=keep_going)
-    
-def checkout_patches(mirrordir, patchdir, component):
-    patches = component.get('patches')
-    (patches_keytype, patches_uri) = parse_src_key(patches['src'])
-    if patches_keytype == 'local':
-        return patches_uri
-    elif patches_keytype != 'git':
-        raise Exception("Unhandled keytype %s" % (patches_keytype, ))
+def _ensure_vcs_mirror_tarball(mirrordir, name, uri, checksum, fetch=False):
+    logger = Logger()
+    mirror = get_mirrordir(mirrordir, "tarball", name)
+    tmp_mirror = os.path.abspath(os.path.join(mirror, os.pardir, os.path.basename(mirror) + ".tmp"))
+    if not os.path.exists(mirror):
+        shutil.rmtree(tmp_mirror)
+        if not os.path.isdir(tmp_mirror):
+            os.makedirs(tmp_mirror)
+        run_sync(["git", "init", "--bare"], cwd=tmp_mirror)
+        run_sync(["git", "config", "gc.auto", "0"], cwd=tmp_mirror)
+        os.rename(tmp_mirror, mirror)
 
-    patches_mirror = get_mirrordir(mirrordir, patches_keytype, patches_uri)
-    get_vcs_checkout(mirrordir, patches_keytype, patches_uri,
-                     patchdir, patches['revision'],
-                     overwrite=True,
-                     quiet=True)
+    import_tag = "tarball-import-" + checksum
+    git_revision = run_sync_get_output(["git", "rev-parse", import_tag], cwd=mirror).strip()
+    if not git_revision:
+        return mirror
 
-    return patchdir
+    # First, we get a clone of the tarball git repo
+    tmp_checkout_path = os.path.join(mirrordir, "tarball-cwd-" + name)
+    shutil.rmtree(tmp_checkout_path)
+    run_sync(["git", "clone", mirror, tmp_checkout_path])
+    # Now, clean the contents out
+    run_sync(["git", "rm", "-r", "--ignore-unmatch", "."], cwd=tmp_checkout_path)
+
+    # Download the tarball
+    tmp_path = os.path.join(mirrordir, "tarball-" + name)
+    shutil.rmtree(tmp_path)
+    tmp_path_parent = os.path.abspath(os.path.join(tmp_path, os.pardir))
+    if not os.path.isdir(tmp_path_parent):
+        os.makedirs(tmp_path_parent)
+    run_sync(["curl", "-o", tmp_path, uri])
+
+    # And verify the checksum
+    actual_checksum = hashlib.sha256(open(tmp_path, "rb").read()).hexdigest()
+    if checksum != actual_checksum:
+        logger.fatal("Wrong checksum for %r, %r was expected but "
+                     "it's actually %r" % (uri, checksu, actual_checksum))
+
+    ext = os.path.splitext(uri)[1]
+    decomp_opt = None
+    if ext == ".xz":
+        decomp_opt = "--xz"
+    elif ext == ".bz2":
+        decomp_opt = "--bzip2"
+    elif ext == ".gz":
+        decomp_opt = "--gzip"
+
+    # Extract the tarball to our checkout
+    args = ["tar", "-C", tmp_checkout_path, "-x"]
+    if decomp_opt:
+        args.append(decomp_opt)
+    args.extend(["-f", tmp_path])
+    run_sync(args)
+    os.unlink(tmp_path)
+
+    # Automatically strip the first element if there's exactly one directory
+    n_files = 0
+    last_file = None
+    for name in os.listdir(tmp_checkout_path):
+        if name == ".git":
+            continue
+        n_files += 1
+        last_file = os.path.join(tmp_checkout_path, name)
+    if n_files == 1 and os.path.isdir(last_file):
+        for name in os.listdir(last_file):
+            child = os.path.join(last_file, name)
+            if child != last_file:
+                os.rename(child, os.path.join(tmp_checkout_path, name))
+        os.unlink(last_file)
+
+    msg = "Automatic import of " + uri
+    author = "Automatic Tarball Importer <maui-development@googlegroups.com>"
+    run_sync(["git", "add", "."], cwd=tmp_checkout_path)
+    run_sync(["git", "commit", "-a", "--author=" + author, "-m", msg], cwd=tmp_checkout_path)
+    run_sync(["git", "push", "--tags", "origin", "master:master"], cwd=tmp_checkout_path)
+    shutil.rmtree(tmp_checkout_path)
+
+    return mirror
+
+def uncache_repository(mirrordir, keytype, uri, branc):
+    last_fetch_path = get_lastfetch_path(mirrordir, keytype, uri, branch)
+    shutil.rmtree(last_fetch_path)
+
+def fetch(mirrordir, component, keep_going=False, timeout_sec=0):
+    ensure_vcs_mirror(mirrordir, component, fetch=True,
+                      fetch_keep_going=keep_going,
+                      timeout_sec=timeout_sec)
+
+def describe_version(dirpath, branch):
+    args = ["git", "describe", "--long", "--abbrev=42", "--always"]
+    if branch:
+        args.append(branch)
+    return run_sync_get_output(args, cwd=dirpath).strip()

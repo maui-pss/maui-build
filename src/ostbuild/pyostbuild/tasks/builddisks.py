@@ -19,20 +19,21 @@
 
 import os, argparse, shutil
 
-from .. import builtins
 from .. import libqa
 from .. import jsondb
 from .. import fileutil
 from .. import libqa
+from .. import taskset
+from ..task import TaskDef
 from ..subprocess_helpers import run_sync
 from ..guestfish import GuestFish, GuestMount
 
-class OstbuildBuildDisks(builtins.Builtin):
+class TaskBuildDisks(TaskDef):
     name = "build-disks"
     short_description = "Generate disk images"
 
-    def __init__(self):
-        builtins.Builtin.__init__(self)
+    def __init__(self, builtin, taskmaster, name, argv):
+        TaskDef.__init__(self, builtin, taskmaster, name, argv)
 
     def _disk_path_for_target(self, target_name, is_snap=False):
         squashed_name = target_name.replace("/", "_")
@@ -93,4 +94,4 @@ class OstbuildBuildDisks(builtins.Builtin):
 
         fileutil.file_linkcopy(latest_path, os.path.join(image_dir, os.path.basename(latest_path)), overwrite=True)
 
-builtins.register(OstbuildBuildDisks)
+taskset.register(TaskBuildDisks)

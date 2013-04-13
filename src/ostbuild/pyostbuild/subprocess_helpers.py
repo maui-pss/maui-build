@@ -51,7 +51,7 @@ def run_sync_get_output(args, cwd=None, env=None, stdout=None, stderr=None, none
     logger = Logger()
 
     if log_initiation:
-        logger.debug("running: %s" % (subprocess.list2cmdline(args),))
+        logger.info("Running: %s" % (subprocess.list2cmdline(args),))
 
     env_copy = _get_env_for_cwd(cwd, env)
 
@@ -83,7 +83,7 @@ def run_sync_with_input_get_output(args, input, cwd=None, env=None, stderr=None,
     logger = Logger()
 
     if log_initiation:
-        logger.debug("running: %s" % (subprocess.list2cmdline(args),))
+        logger.info("Running: %s" % (subprocess.list2cmdline(args),))
 
     env_copy = _get_env_for_cwd(cwd, env)
 
@@ -114,7 +114,7 @@ def run_sync(args, cwd=None, env=None, fatal_on_error=True, keep_stdin=False,
     logger = Logger()
 
     if log_initiation:
-        logger.debug("running: %s" % (subprocess.list2cmdline(args),))
+        logger.info("Running: %s" % (subprocess.list2cmdline(args),))
 
     env_copy = _get_env_for_cwd(cwd, env)
 
@@ -161,7 +161,7 @@ def run_sync_monitor_log_file(args, logfile, cwd=None, env=None,
     logger = Logger()
 
     if log_initiation:
-        logger.debug("running: %s" % (subprocess.list2cmdline(args),))
+        logger.info("Running: %s" % (subprocess.list2cmdline(args),))
 
     env_copy = _get_env_for_cwd(cwd, env)
 

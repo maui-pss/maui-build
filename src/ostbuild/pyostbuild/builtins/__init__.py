@@ -17,13 +17,10 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-import os
-import sys
-import stat
-import argparse
-import json
+import os, sys, stat, argparse, json, types
+import __builtin__
 
-from .. import ostbuildrc
+from .. import buildutil
 from .. import fileutil
 from .. import jsondb
 from ..logger import Logger
@@ -40,152 +37,36 @@ class Builtin(object):
         prog = "%s %s" % (os.path.basename(sys.argv[0]), self.name)
         self.parser = argparse.ArgumentParser(prog=prog, description=self.short_description)
         self.logger = Logger()
-        self._meta_cache = {}
-        self.prefix = None
-        self.manifest = None
-        self.snapshot = None
-        self.bin_snapshot = None
-        self.repo = None
-        self.ostree_dir = self.find_ostree_dir()
-        (self.active_branch, self.active_branch_checksum) = self._find_active_branch()
-        self._src_snapshots = None
-        self._bin_snapshots = None
+        self._workdir_initialized = False
 
-    def find_ostree_dir(self):
-        for path in ['/ostree', '/sysroot/ostree']:
-            if os.path.isdir(path):
-                return path
-        return None
-        
-    def _find_active_branch(self):
-        if self.ostree_dir is None:
-            return (None, None)
-        current_path = os.path.realpath(os.path.join(self.ostree_dir, 'current'))
-        if os.path.isdir(current_path):
-            basename = os.path.basename(current_path)
-            return basename.rsplit('-', 1)
+    def _init_workdir(self, workdir):
+        if self._workdir_initialized:
+            return
+        self._workdir_initialized = True
+        if workdir is None:
+            workdir = os.getcwd()
+
+        buildutil.check_is_work_directory(workdir)
+
+        self.workdir = workdir
+        self.mirrordir = os.path.join(workdir, "src")
+        if not os.path.isdir(self.mirrordir):
+            os.makedirs(self.mirrordir)
+        self.patchdir = os.path.join(workdir, "patches")
+        self.libdir = __builtin__.__dict__["LIBDIR"]
+        self.repo = os.path.join(workdir, "repo")
+
+    def _init_snapshot(self, workdir, snapshot_path):
+        self._init_workdir(workdir)
+        snapshot_dir = os.path.join(workdir, "snapshots")
+        if snapshot_path:
+            path = os.path.abspath(snapshot_path)
+            data = jsonutil.load_json(path)
         else:
-            return (None, None)
-
-    def get_component_from_cwd(self):
-        cwd = os.getcwd()
-        parent = os.path.dirname(cwd)
-        parentparent = os.path.dirname(parent)
-        return '%s/%s/%s' % tuple(map(os.path.basename, [parentparent, parent, cwd]))
-
-    def parse_config(self):
-        self.ostbuildrc = ostbuildrc
-
-        self.mirrordir = os.path.expanduser(ostbuildrc.get_key('mirrordir'))
-        fileutil.ensure_dir(self.mirrordir)
-        self.workdir = os.path.expanduser(ostbuildrc.get_key('workdir'))
-        fileutil.ensure_dir(self.workdir)
-        self.snapshot_dir = os.path.join(self.workdir, 'snapshots')
-        fileutil.ensure_dir(self.snapshot_dir)
-        self.patchdir = os.path.join(self.workdir, 'patches')
-
-    def get_component_snapshot(self, name):
-        found = False
-        for content in self.active_branch_contents['contents']:
-            if content['name'] == name:
-                found = True
-                break
-        if not found:
-            self.logger.fatal("Unknown component '%s'" % (name, ))
-        return content
-
-    def get_component_meta_from_revision(self, revision):
-        text = run_sync_get_output(['ostree', '--repo=' + self.repo,
-                                    'cat', revision,
-                                    '/_ostbuild-meta.json'])
-        return json.loads(text)
-
-    def find_component_in_snapshot(self, name, snapshot):
-        for component in snapshot['components']:
-            if component['name'] == name:
-                return component
-        if snapshot['base']['name'] == name:
-            return snapshot['base']
-        if snapshot['patches']['name'] == name:
-            return snapshot['patches']
-        return None
-
-    def get_prefix(self):
-        if self.prefix is None:
-            path = os.path.expanduser('~/.config/ostbuild-prefix')
-            if not os.path.exists(path):
-                self.logger.fatal("No prefix set; use \"ostbuild prefix\" to set one")
-            f = open(path)
-            self.prefix = f.read().strip()
-            f.close()
-        return self.prefix
-
-    def create_db(self, dbsuffix, prefix=None):
-        if prefix is None:
-            target_prefix = self.get_prefix()
-        else:
-            target_prefix = prefix
-        name = '%s-%s' % (target_prefix, dbsuffix)
-        fileutil.ensure_dir(self.snapshot_dir)
-        return jsondb.JsonDB(self.snapshot_dir, prefix=name)
-
-    def get_src_snapshot_db(self):
-        if self._src_snapshots is None:
-            self._src_snapshots = self.create_db('src-snapshot')
-        return self._src_snapshots
-
-    def get_bin_snapshot_db(self):
-        if self._bin_snapshots is None:
-            self._bin_snapshots = self.create_db('bin-snapshot')
-        return self._bin_snapshots
-
-    def init_repo(self):
-        if self.repo is not None:
-            return self.repo
-        repo = ostbuildrc.get_key('override_repo', default=None)
-        if repo is not None:
-            self.repo = os.path.expanduser(repo)
-        else:
-            self.repo = os.path.join(self.workdir, 'repo')
-            if not os.path.isdir(os.path.join(self.repo, 'objects')):
-                fileutil.ensure_dir(self.repo)
-                run_sync(['ostree', '--repo=' + self.repo, 'init', '--mode=archive-z2'])
-
-    def parse_prefix(self, prefix):
-        if prefix is not None:
-            self.prefix = prefix
-        else:
-            self.prefix = self.get_prefix()
-
-    def parse_snapshot(self, prefix, path):
-        self.parse_prefix(prefix)
-        self.init_repo()
-        if path is None:
-            latest_path = self.get_src_snapshot_db().get_latest_path()
-            if latest_path is None:
-                raise Exception("No source snapshot found for prefix %r" % (self.prefix, ))
-            snapshot_path = latest_path
-        else:
-            snapshot_path = path
-        snapshot_data = json.load(open(snapshot_path))
-        self.snapshot = Snapshot(snapshot_data, snapshot_path)
-        key = '00ostbuild-manifest-version'
-        src_ver = self.snapshot.data[key]
-        if src_ver != 0:
-            self.logger.fatal("Unhandled %s version \"%d\", expected 0" % (key, src_ver, ))
-        if self.prefix is None:
-            self.prefix = self.snapshot.data['prefix']
-
-    def parse_snapshot_from_current(self):
-        if self.ostree_dir is None:
-            self.logger.fatal("/ostree directory not found")
-        repo_path = os.path.join(self.ostree_dir, 'repo')
-        if not os.path.isdir(repo_path):
-            self.logger.fatal("Repository '%s' doesn't exist" % (repo_path, ))
-        if self.active_branch is None:
-            self.logger.fatal("No \"current\" link found")
-        tree_path = os.path.join(self.ostree_dir, "trees/", self.active_branch)
-        self.parse_snapshot(None, os.path.join(tree_path, 'contents.json'))
+            db = jsondb.JsonDB(snapshot_dir)
+            path = db.get_latest_path()
+            data = db.load_from_path(path)
+        self._snapshot = Snapshot(data, path)
 
     def execute(self, args):
         raise NotImplementedError()

@@ -17,15 +17,9 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-import os
-import re
-import urlparse
-import tempfile
-import StringIO
+import os, shutil
 
-from . import ostbuildrc
 from .logger import Logger
-from .subprocess_helpers import run_sync_get_output
 
 BUILD_ENV = {
     'HOME' : '/', 
@@ -38,22 +32,19 @@ BUILD_ENV = {
     'TZ': 'EST5EDT'
     }
 
-def parse_src_key(srckey):
-    idx = srckey.find(':')
-    if idx < 0:
-        raise ValueError("Invalid SRC uri=%s" % (srckey, ))
-    keytype = srckey[:idx]
-    if keytype not in ['git', 'local']:
-        raise ValueError("Unsupported SRC uri=%s" % (srckey, ))
-    uri = srckey[idx+1:]
-    return (keytype, uri)
-
-def get_mirrordir(mirrordir, keytype, uri, prefix=''):
-    logger = Logger()
-    if keytype != 'git':
-        logger.fatal("Unhandled keytype '%s' for uri '%s'" % (keytype, uri))
-    parsed = urlparse.urlsplit(uri)
-    return os.path.join(mirrordir, prefix, keytype, parsed.scheme, parsed.netloc, parsed.path[1:])
+def get_patch_paths_for_component(patchdir, component):
+    patches = component.get('patches')
+    if not patches:
+        return []
+    patch_subdir = patches.get('subdir', None)
+    if patch_subdir is not None:
+        patchdir = os.path.join(patchdir, patch_subdir)
+    else:
+        patchdir = self.patchdir
+    result = []
+    for patch in patches['files']:
+        result.append(os.path.join(patchdir, patch))
+    return result
 
 def find_user_chroot_path():
     # We need to search PATH here manually so we correctly pick up an
@@ -69,132 +60,48 @@ def find_user_chroot_path():
         ostbuild_user_chroot_path = 'linux-user-chroot'
     return ostbuild_user_chroot_path
 
-def branch_name_for_artifact(a):
-    return 'artifacts/%s/%s/%s' % (a['buildroot'],
-                                   a['name'],
-                                   a['branch'])
-
-def get_git_version_describe(dirpath, commit=None):
-    args = ['git', 'describe', '--long', '--abbrev=42', '--always']
-    if commit is not None:
-        args.append(commit)
-    version = run_sync_get_output(args, cwd=dirpath)
-    return version.strip()
-
-def ref_to_unix_name(ref):
-    return ref.replace('/', '.')
-
-def tsort_components(components, key):
-    (fd, path) = tempfile.mkstemp(suffix='.txt', prefix='ostbuild-tsort-')
-    f = os.fdopen(fd, 'w')
-    for name,component in components.iteritems():
-        build_prev = component.get(key)
-        if (build_prev is not None and len(build_prev) > 0):
-            for dep_name in build_prev:
-                f.write('%s %s\n' % (name, dep_name))
-    f.close()
-    
-    output = run_sync_get_output(['tsort', path])
-    os.unlink(path)
-    output_stream = StringIO.StringIO(output)
-    result = []
-    for line in output_stream:
-        result.append(line.strip())
-    return result
-
-def _recurse_depends(depkey, component_name, components, dep_names):
-    component = components[component_name]
-    depends = component.get(depkey)
-    if (depends is None or len(depends) == 0):
-        return
-    for depname in depends:
-        dep_names.add(depname)
-        _recurse_depends(depkey, depname, components, dep_names)
-
-def _sorted_depends(deptype, component_name, components):
-    dep_names = set()
-    _recurse_depends(deptype, component_name, components, dep_names)
-    dep_components = {}
-    for component_name in dep_names:
-        dep_components[component_name] = components[component_name]
-    result = tsort_components(dep_components, deptype)
-    result.reverse()
-    return result
-    
-def build_depends(component_name, components):
-    return _sorted_depends('build-depends', component_name, components)
-
-def runtime_depends(component_name, components):
-    return _sorted_depends('runtime-depends', component_name, components)
-
-def find_component_in_manifest(manifest, component_name):
-    for component in manifest['components']:
-        if component['name'] == component_name:
-            return component
-    return None
-
-def compose(repo, target, artifacts):
-    child_args = ['ostree', '--repo=' + repo, 'compose',
-                  '-b', target, '-s', 'Compose']
-    (fd, path) = tempfile.mkstemp(suffix='.txt', prefix='ostbuild-compose-')
-    f = os.fdopen(fd, 'w')
-    for artifact in artifacts:
-        f.write(artifact)
-        f.write('\n')
-    f.close()
-    child_args.extend(['-F', path])
-    revision = run_sync_get_output(child_args, log_initiation=True).strip()
-    os.unlink(path)
-    return revision
-
 def get_base_user_chroot_args():
     path = find_user_chroot_path()
-    args = [path, '--unshare-pid', '--unshare-ipc']
-    if not ostbuildrc.get_key('preserve_net', default=False):
-        args.append('--unshare-net')
-    return args
+    return [path, '--unshare-pid', '--unshare-ipc', '--unshare-net']
 
-def resolve_component_meta(snapshot, component_meta):
-    result = dict(component_meta)
-    orig_src = component_meta['src']
+def compare_versions(a, b):
+    adot = a.find(".")
+    while adot != -1:
+        bdot = b.find(".")
+        if bdot == -1:
+            return 1
+        a_sub = int(a[:adot])
+        b_sub = int(b[:bdot])
+        if a_sub > b_sub:
+            return 1
+        elif a_sub < b_sub:
+            return -1
+        a = a[adot+1:]
+        b = b[bdot+1:]
+        adot = a.find(".")
+    if b.find(".") != -1:
+        return -1
+    a_sub = int(a)
+    b_sub = int(b)
+    if a_sub > b_sub:
+        return 1
+    elif a_sub < b_sub:
+        return -1
+    return 0
 
-    did_expand = False
-    for (vcsprefix, expansion) in snapshot['vcsconfig'].iteritems():
-        prefix = vcsprefix + ':'
-        if orig_src.startswith(prefix):
-            result['src'] = expansion + orig_src[len(prefix):]
-            did_expand = True
-            break
+def atomic_symlink_swap(link_path, new_target):
+    parent = os.path.realpath(os.path.join(link_path, os.pardir))
+    tmp_link_path = os.path.join(parent, "current-new.tmp")
+    shutil.rmtree(tmp_link_path)
+    relpath = os.path.join(parent, new_target)
+    os.symlink(new_target, tmp_link_path)
+    os.rename(tmp_link_path, link_path)
 
-    name = component_meta.get('name')
-    if name is None:
-        if did_expand:
-            src = orig_src
-            idx = src.rindex(':')
-            name = src[idx+1:]
-        else:
-            src = result['src']
-            idx = src.rindex('/')
-            name = src[idx+1:]
-        if name.endswith('.git'):
-            name = name[:-4]
-        name = name.replace('/', '-')
-        result['name'] = name
-
-    branch_or_tag = result.get('branch') or result.get('tag')
-    if branch_or_tag is None:
-        result['branch'] = 'master'
-
-    return result
-
-def get_patch_paths_for_component(patchdir, component):
-    patches = component.get('patches')
-    patch_subdir = patches.get('subdir', None)
-    if patch_subdir is not None:
-        patchdir = os.path.join(patchdir, patch_subdir)
-    else:
-        patchdir = self.patchdir
-    result = []
-    for patch in patches['files']:
-        result.append(os.path.join(patchdir, patch))
-    return result
+def check_is_work_directory(path):
+    logger = Logger()
+    manifest_path = os.path.join(path, "manifest.json")
+    if not os.path.exists(manifest_path):
+        logger.fatal("No manifest.json found in %s" % path)
+    dot_git_path = os.path.join(path, ".git")
+    if os.path.exists(dot_git_path):
+        logger.fatal(".git found in %s; are you in a ostbuild checkout?" % path)

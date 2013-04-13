@@ -19,22 +19,22 @@
 
 import os
 
-from .. import builtins
+from .. import taskset
+from ..task import TaskDef
 from ..subprocess_helpers import run_sync
 from ..fileutil import find_program_in_path
 
-class OstbuildQaSmoketest(builtins.Builtin):
+class TaskQaSmoketest(TaskDef):
     name = "qa-smoketest"
     short_description = "Basic smoke testing via parsing serial console"
 
-    def __init__(self):
-        builtins.Builtin.__init__(self)
+    def __init__(self, builtin, taskmaster, name, argv):
+        TaskDef.__init__(self, builtin, taskmaster, name, argv)
 
-    def execute(self, argv):
-        parser = argparse.ArgumentParser(description=self.short_description)
-        parser.add_argument("diskpath")
+        self.subparser.add_argument("diskpath")
 
-        args = parser.parse_args(argv)
+    def execute(self):
+        args = self.subparser.parse_args(self.argv)
 
         path = args.diskpath
         workdir = "."
@@ -54,4 +54,4 @@ class OstbuildQaSmoketest(builtins.Builtin):
                   "-drive", "file=" + diskpath + ",if=virtio"])
         self.logger.info("Complete!")
 
-builtins.register(OstbuildQaSmoketest)
+taskset.register(TaskQaSmoketest)
