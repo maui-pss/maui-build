@@ -27,7 +27,6 @@ from . import builtins
 from builtins import build
 from builtins import build_disks
 from builtins import checkout
-from builtins import deploy_root
 from builtins import git_mirror
 from builtins import import_tree
 from builtins import prefix
@@ -56,5 +55,3 @@ def main(args):
             print "error: Unknown builtin '%s'" % (args[0], )
             return usage(1)
         return builtin.execute(args[1:])
-    
-    

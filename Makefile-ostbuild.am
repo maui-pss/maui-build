@@ -55,7 +55,6 @@ pyostbuild_PYTHON =						\
 	src/ostbuild/pyostbuild/main.py				\
 	src/ostbuild/pyostbuild/mainloop.py			\
 	src/ostbuild/pyostbuild/ostbuildrc.py			\
-	src/ostbuild/pyostbuild/privileged_subproc.py		\
 	src/ostbuild/pyostbuild/warningfilter.py		\
 	src/ostbuild/pyostbuild/snapshot.py			\
 	src/ostbuild/pyostbuild/singleton.py			\
@@ -70,7 +69,6 @@ pyostbuildbuiltins_PYTHON =					\
 	src/ostbuild/pyostbuild/builtins/build.py		\
 	src/ostbuild/pyostbuild/builtins/build_disks.py		\
 	src/ostbuild/pyostbuild/builtins/checkout.py		\
-	src/ostbuild/pyostbuild/builtins/deploy_root.py		\
 	src/ostbuild/pyostbuild/builtins/import_tree.py		\
 	src/ostbuild/pyostbuild/builtins/qa_make_disk.py	\
 	src/ostbuild/pyostbuild/builtins/qa_pull_deploy.py	\
