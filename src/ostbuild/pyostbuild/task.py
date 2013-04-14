@@ -226,18 +226,21 @@ class TaskDef(GObject.GObject):
     def _load_versions_from(self, dirname):
         results = []
         for subpath, subdirs, files in os.walk(dirname):
-            for filename in files:
-                path = os.path.join(subpath, filename)
-                if not self._VERSION_RE.match(filename):
+            for subdir in subdirs:
+                path = os.path.join(subpath, subdir)
+                if not self._VERSION_RE.match(subdir):
                     continue
-                results.append(filename)
+                if subdir not in results:
+                    results.append(subdir)
         results.sort(cmp=buildutil.compare_versions)
         return results
 
     def _clean_old_versions(self, path, retain):
         versions = self._load_versions_from(path)
         while len(versions) > retain:
-            shutil.rmtree(os.path.join(path, versions.pop(0)))
+            subpath = os.path.join(path, versions.pop(0))
+            if os.path.isdir(subpath):
+                shutil.rmtree(subpath)
 
     def _load_all_versions(self):
         all_versions = []
@@ -318,7 +321,7 @@ class TaskDef(GObject.GObject):
 
         file_list = []
         for (successful, version) in all_versions:
-            fname = ("successful/" if successfull else "failed/") + version
+            fname = ("successful/" if successful else "failed/") + version
             file_list.append(fname)
 
         index = {"files": file_list}
