@@ -90,11 +90,12 @@ def compare_versions(a, b):
     return 0
 
 def atomic_symlink_swap(link_path, new_target):
-    parent = os.path.realpath(os.path.join(link_path, os.pardir))
+    parent = os.path.abspath(os.path.join(link_path, os.pardir))
     tmp_link_path = os.path.join(parent, "current-new.tmp")
-    shutil.rmtree(tmp_link_path)
-    relpath = os.path.join(parent, new_target)
-    os.symlink(new_target, tmp_link_path)
+    if os.path.isdir(tmp_link_path):
+        shutil.rmtree(tmp_link_path)
+    relpath = os.path.relpath(new_target, parent)
+    os.symlink(relpath, tmp_link_path)
     os.rename(tmp_link_path, link_path)
 
 def check_is_work_directory(path):
