@@ -20,7 +20,7 @@
 # Boston, MA 02111-1307, USA.
 
 import os, sys, argparse
-from gi.repository import GObject
+from gi.repository import GLib, GObject
 
 from . import builtins
 from builtins import checkout
@@ -45,10 +45,24 @@ def main(args):
         if builtin is None:
             print "error: Unknown builtin '%s'" % (args[0], )
             return usage(1)
-        GObject.threads_init()
+
         ecode = 0
-        try:
-            builtin.run(args[1:])
-        except KeyboardInterrupt:
-            ecode = 1
+
+        GObject.threads_init()
+
+        loop = GObject.MainLoop()
+        builtin._loop = loop
+
+        def run_builtin():
+            try:
+                builtin.execute(args[1:])
+            except KeyboardInterrupt:
+                ecode = 1
+                loop.quit()
+            except Exception, e:
+                loop.quit()
+                raise
+        GLib.idle_add(run_builtin)
+
+        loop.run()
         return ecode
