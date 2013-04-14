@@ -57,13 +57,15 @@ class BuiltinMake(builtins.Builtin):
             print "Tasks:"
             for task in taskset.get_all_tasks():
                 print "    %s - %s" % (task.name, task.short_description)
+            self._loop.quit()
             return
 
         if args.task_help:
             task_def = taskset.get_task(args.task_name)
             instance = task_def(self, None, args.task_name, args.parameters)
             instance.subparser.print_help()
-            sys.exit(0)
+            self._loop.quit()
+            return
 
         self._init_workdir(None)
         self._failed = False

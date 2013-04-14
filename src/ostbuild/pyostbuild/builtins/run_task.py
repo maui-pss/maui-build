@@ -50,13 +50,15 @@ class BuiltinRunTask(builtins.Builtin):
             print "Tasks:"
             for task in taskset.get_all_tasks():
                 print "    %s - %s" % (task.name, task.short_description)
+            self._loop.quit()
             return
 
         task_def = taskset.get_task(args.task_name)
         instance = task_def(self, None, args.task_name, args.parameters)
         if args.task_help:
             instance.subparser.print_help()
-            sys.exit(0)
+            self._loop.quit()
+            return
         instance.prepare()
         instance.execute()
 
