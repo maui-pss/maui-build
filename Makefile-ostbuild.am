@@ -42,7 +42,6 @@ pyostbuilddir=$(libdir)/ostbuild/pyostbuild
 pyostbuild_PYTHON =						\
 	src/ostbuild/pyostbuild/__init__.py			\
 	src/ostbuild/pyostbuild/buildutil.py			\
-	src/ostbuild/pyostbuild/event.py			\
 	src/ostbuild/pyostbuild/filemonitor.py			\
 	src/ostbuild/pyostbuild/task.py				\
 	src/ostbuild/pyostbuild/taskset.py			\
