@@ -148,13 +148,13 @@ class TaskMaster(GObject.GObject):
             changed = True
             version = task.query_version()
             if version is not None:
-                old_version = self._task_versions[task.name]
+                old_version = self._task_versions.get(task.name)
                 if old_version == version:
                     changed = False
                 elif old_version is not None:
                     self.logger.info("task %s new version: %s" % (task.name, version))
             if changed:
-                tasks_after = taskset.get_tasks_after(task.name)
+                tasks_after = taskset.get_task_after(task.name)
                 for after in tasks_after:
                     if not self._skip_tasks[after.name]:
                         self._push_task_def(after, {})
