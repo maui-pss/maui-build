@@ -85,6 +85,13 @@ class TaskBuild(TaskDef):
 
         target_source_version = builddb.parse_version_str(os.path.basename(self._snapshot.path))
 
+        # Pick up overrides from $workdir/overrides/$name
+        for component in components:
+            override_path = os.path.join(self.workdir, "overrides", component["name"])
+            if os.path.exists(override_path):
+                self.logger.info("Using override: %s" % override_path)
+                component["src"] = "local:%s" % override_path
+
         have_local_component = False
         for component in components:
             if component["src"][:6] == "local:":
