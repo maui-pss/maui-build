@@ -17,7 +17,7 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-import os, sys, tempfile, shutil
+import os, sys, re, tempfile, shutil
 
 from .. import taskset
 from .. import jsondb
@@ -34,12 +34,27 @@ OPT_COMMON_CFLAGS = {'i686': '-O2 -pipe -g -m32 -march=i686 -mtune=atom -fasynch
 OPT_COMMON_LDFLAGS = {'i686': '-Wl,-O1,--sort-common,--as-needed,-z,relro',
                       'x86_64': '-Wl,-O1,--sort-common,--as-needed,-z,relro'}
 
+DEVEL_DIRS = ['usr/include',
+              'usr/share/aclocal',
+              'usr/share/pkgconfig',
+              'usr/lib/pkgconfig',
+              'usr/share/cmake',
+              'usr/lib/cmake',
+              'usr/lib/qt5/cmake',
+              'usr/lib/qt5/mkspecs']
+
+DOC_DIRS = ['usr/share/doc',
+            'usr/share/gtk-doc',
+            'usr/share/man',
+            'usr/share/info']
+
 class TaskBuild(TaskDef):
     name = "build"
     short_description = "Build multiple components and generate trees"
 
     def __init__(self, builtin, taskmaster, name, argv):
         TaskDef.__init__(self, builtin, taskmaster, name, argv)
+
         self.subparser.add_argument('components', nargs='*')
 
     def execute(self):
@@ -407,6 +422,136 @@ class TaskBuild(TaskDef):
                                                    'rev-parse', build_ref])
         self._write_component_cache(build_ref, cachedata)
         return cachedata['ostree']
+
+    def _install_and_unlink(self, build_result_dir, src_file, final_result_dir):
+        relpath = os.path.join(build_result_dir, src_file)
+        if relpath is None:
+            dest_file = final_result_dir
+        else:
+            dest_file = os.path.join(final_result_dir, relpath)
+        fileutil.ensure_parent_dir(dest_file)
+
+        if os.path.isdir(src_file):
+            fileutil.ensure_dir(dest_file)
+            for subpath, subdirs, files in os.walk(src_file):
+                for filename in files:
+                    path = os.path.join(subpath, filename)
+                    self._install_and_unlink(build_result_dir, path, final_result_dir)
+            shutil.rmtree(src_file)
+        else:
+            shutil.copy2(src_file, dest_file)
+            os.unlink(src_file)
+
+    def _process_build_result_split_debuginfo(self, build_result_dir, debug_path, path):
+        # Only process shared libraries and executables
+        file_mimetype = run_sync_get_output(["file", "-b", "--mime-type", path]).strip()
+        is_shared = file_mimetype == "application/x-sharedlib"
+        is_exec = file_mimetype == "application/x-executable"
+        if not is_shared and not is_exec:
+            return
+        # Retrieve Build ID
+        build_id = run_sync_get_output(["eu-readelf", "-n", path]).strip()
+        m = re.search(r'\s+Build ID: ([0-9a-f]+)', build_id)
+        if not m:
+            self.logger.warning("No build-id for ELF object %s" % path)
+            return
+        build_id = m.group(1)
+        self.logger.info("ELF object %s buildid=%s" % (path, build_id))
+        dbg_name = "%s/%s.debug" % (s[:2], s[2:])
+        objdebug_path = os.path.abspath(os.path.join(debug_path, "usr/lib/debug/.build-id/" + dbg_name))
+        if not os.path.isdir(objdebug_path):
+            os.makedirs(objdebug_path)
+        run_sync(["objcopy", "--only-keep-debug", path, objdebug_path])
+
+        strip_args = ["strip", "--remove-section=.comment", "--remove-section=.note"]
+        if is_shared:
+            strip_args.append("--strip-unneeded")
+        strip_args.append(path)
+        run_sync(strip_args)
+
+    def _process_build_results(self, component, build_result_dir, final_result_dir):
+        runtime_path = os.path.join(final_result_dir, "runtime")
+        fileutil.ensure_dir(runtime_path)
+        devel_path = os.path.join(final_result_dir, "devel")
+        fileutil.ensure_dir(devel_path)
+        doc_path = os.path.join(final_result_dir, "doc")
+        fileutil.ensure_dir(doc_path)
+        debug_path = os.path.join(final_result_dir, "debug")
+        fileutil.ensure_dir(debug_path)
+
+        # Some components install files that are read-only even for the user,
+        # this will make stripping debugging information fail so we need
+        # to change file modes before we continue
+        for subpath, subdirs, files in os.walk(build_result_dir):
+            for filename in files:
+                path = os.path.join(subpath, filename)
+                # Ensure that files are at least rw-rw-r-- and directories
+                # are rwxrw-r--
+                statsrc = os.lstat(path)
+                if not stat.S_ISLNK(statsrc.st_mode):
+                    minimal_mode = (stat.S_IRUSR | stat.S_IWUSR |
+                                    stat.S_IRGRP | stat.S_IWGRP |
+                                    stat.S_IROTH)
+                    if stat.S_ISDIR(statsrc.st_mode):
+                        minimal_mode |= stat.S_IXUSR
+                    os.chmod(path, statsrc.st_mode | minimal_mode)
+
+        # Remove /var from the install - components are required to
+        # auto-create these directories on demand
+        varpath = os.path.join(build_result_dir, 'var')
+        if os.path.isdir(varpath):
+            shutil.rmtree(varpath)
+
+        # Python .co files contain timestamps and .la files are
+        # generally evil
+        delete_patterns = map(re.compile, [r'.*\.(py[co])|(la)$', r'.*\.la$'])
+        for pattern in delete_patterns:
+            for dirpath, subdirs, files in os.walk(build_result_dir):
+                for filename in files:
+                    path = os.path.join(dirpath, filename)
+                    if pattern.match(path):
+                        os.unlink(path)
+
+        libdir = os.path.join(build_result_dir, 'usr/lib')
+
+        # Process libraries
+        if os.path.exists(libdir):
+            for filename in os.listdir(libdir):
+                path = os.path.join(libdir, filename)
+                if os.path.isdir(path):
+                    continue
+                if filename.endswith('.so') and os.path.islink(path):
+                    # Move symbolic links for shared libraries to devel
+                    self._install_and_unlink(build_result_dir, path, devel_path)
+                elif filename.endswith(".a"):
+                    # Just delete static libraries, no one should ever use them
+                    os.unlink(path)
+
+        # Split debuginfo
+        for subpath, subdirs, files in os.walk(build_result_dir):
+            for filename in files:
+                path = os.path.join(subpath, filename)
+                self._process_build_result_split_debuginfo(build_result_dir, debug_path, path)
+
+        # Move development stuff to devel
+        for dirname in DEVEL_DIRS:
+            path = os.path.join(build_result_dir, dirname)
+            if os.path.isdir(path):
+                self._install_and_unlink(build_result_dir, path, devel_path)
+
+        # Move documentation to doc
+        for dirname in DOC_DIRS:
+            rpath = os.path.join(build_result_dir, dirname)
+            if os.path.isdir(path):
+                self._install_and_unlink(build_result_dir, path, doc_path)
+
+        # Move everything else to runtime
+        self._install_and_unlink(build_result_dir, build_result_dir, runtime_path)
+
+    def _on_build_complete(self, taskset, success, msg, loop):
+        self._current_build_succeded = success
+        self._current_build_success_msg = msg
+        loop.quit()
 
     def _component_build_ref(self, component, architecture):
         arch_buildname = "%s/%s" % (component["name"], architecture)
