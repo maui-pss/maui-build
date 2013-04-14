@@ -619,7 +619,7 @@ class TaskBuild(TaskDef):
                   '--from-file=' + contents_tmppath, compose_rootdir])
         os.unlink(contents_tmppath)
 
-        contents_path = os.path.join(compose_rootdir, 'contents.json')
+        contents_path = os.path.join(compose_rootdir, 'usr/share/contents.json')
         jsonutil.write_json_file_atomic(contents_path, self._snapshot.data)
 
         treename = 'trees/%s' % (target['name'], )
