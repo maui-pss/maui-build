@@ -280,7 +280,6 @@ class TaskDef(GObject.GObject):
         current_ymd = current_time.strftime("%Y%m%d")
 
         version = None
-        print all_versions
         if len(all_versions) > 0:
             (last_success, last_version) = all_versions[-1]
             m = self._VERSION_RE.match(last_version)
