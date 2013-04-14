@@ -300,7 +300,8 @@ class TaskDef(GObject.GObject):
             os.makedirs(self._workdir)
 
         base_args = [sys.argv[0], "run-task", "--task-name", self.name]
-        base_args.extend(self.argv)
+        if len(self.argv) > 0:
+            base_args.extend(["--",] + self.argv)
         env_copy = os.environ.copy()
         env_copy["_OSTBUILD_WORKDIR"] = self.workdir
         if self.preserve_stdout:

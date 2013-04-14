@@ -53,6 +53,11 @@ class BuiltinRunTask(builtins.Builtin):
             self._loop.quit()
             return
 
+        if len(args.parameters) > 1:
+            sep = args.parameters.pop(0)
+            if sep != "--":
+                self.logger.fatal("Wrong arguments separator %r" % sep)
+
         task_def = taskset.get_task(args.task_name)
         instance = task_def(self, None, args.task_name, args.parameters)
         if args.task_help:
