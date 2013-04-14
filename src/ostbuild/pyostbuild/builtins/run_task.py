@@ -59,5 +59,7 @@ class BuiltinRunTask(builtins.Builtin):
             sys.exit(0)
         instance.prepare()
         instance.execute()
+
+        self._loop.quit()
  
 builtins.register(BuiltinRunTask)

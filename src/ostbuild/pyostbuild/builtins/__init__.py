@@ -18,6 +18,7 @@
 # Boston, MA 02111-1307, USA.
 
 import os, sys, stat, argparse, json, types
+from gi.repository import GLib, GObject
 import __builtin__
 
 from .. import buildutil
@@ -67,6 +68,11 @@ class Builtin(object):
             path = db.get_latest_path()
             data = db.load_from_path(path)
         self._snapshot = Snapshot(data, path)
+
+    def run(self, args):
+        GLib.idle_add(self.execute, args)
+        self._loop = GObject.MainLoop()
+        return self._loop.run()
 
     def execute(self, args):
         raise NotImplementedError()

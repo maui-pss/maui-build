@@ -20,20 +20,27 @@
 import os, sys, re, argparse, shutil, datetime, json
 import __builtin__
 from multiprocessing import cpu_count
+from gi.repository import GLib, GObject
 
-from . import event
 from . import buildutil
 from . import jsondb
 from . import jsonutil
 from . import timeutil
 from . import taskset
-from .subprocess_helpers import run_sync
+from .subprocess_helpers import run_async
 from .logger import Logger
 
-class TaskMaster(event.Event):
-    __events__ = ("task_complete", "task_executing")
+class TaskMaster(GObject.GObject):
+    __gsignals__ = {
+        "task_executing": (GObject.SIGNAL_RUN_FIRST, None,
+                           (GObject.GObject,)),
+        "task_complete": (GObject.SIGNAL_RUN_FIRST, None,
+                          (GObject.GObject, bool, str,))
+    }
 
     def __init__(self, builtin, path, on_empty=None, process_after=True, skip=[]):
+        GObject.GObject.__init__(self)
+
         self.logger = Logger()
         self.builtin = builtin
         self.path = path
@@ -76,7 +83,7 @@ class TaskMaster(event.Event):
         name = taskdef.name
         if not self._is_task_pending(name):
             instance = taskdef(self.builtin, self, name, args)
-            instance.complete.connect(self._on_complete, task=instance)
+            instance.connect("complete", self._on_complete, instance)
             instance.prepare()
             self._pending_tasks_list.append(instance)
             self._queue_recalculate()
@@ -90,8 +97,7 @@ class TaskMaster(event.Event):
     def _queue_recalculate(self):
         if self._idle_recalculate_id > 0:
             return
-        self._idle_recalculate_id += 1
-        self._recalculate()
+        self._idle_recalculate_id = GObject.idle_add(self._recalculate)
 
     def _recalculate(self):
         self._idle_recalculate_id = 0
@@ -114,19 +120,19 @@ class TaskMaster(event.Event):
         self._reschedule()
 
     def _reschedule(self):
-        while ((len(self._executing) < self.max_concurrent)
-                and (len(self._pending_tasks_list) > 0)
-                and not self.is_task_executing(self._pending_tasks_list[0].name)):
+        while ((len(self._executing) < self.max_concurrent) and
+                (len(self._pending_tasks_list) > 0) and
+                not self.is_task_executing(self._pending_tasks_list[0].name)):
             task = self._pending_tasks_list.pop(0)
             version = task.query_version()
             if version is not None:
                 self._task_versions[task.name] = version
             task._execute_in_subprocess_internal()
             self._executing.append(task)
-            self.task_executing(task)
+            self.emit("task_executing", task)
 
-    def _on_complete(self, success, error, task=None):
-        self.logger.warning("____ %s %s %s" % (task.name, str(success), str(error)))
+    def _on_complete(self, success, error, *extra):
+        task = extra[1]
         idx = -1
         for i in range(len(self._executing)):
             executing_task = self._executing[i]
@@ -135,9 +141,9 @@ class TaskMaster(event.Event):
             idx = i
             break
         if idx == -1:
-            raise Exception("TaskMaster: Internal error - Failed to find completed task %s" % (task.name, ))
+            self.logger.fatal("TaskMaster: Internal error - Failed to find completed task %r" % task.name)
         self._executing.pop(idx)
-        self.task_complete(task, success, error)
+        self.emit("task_complete", task, success, error)
         if success and self._process_after:
             changed = True
             version = task.query_version()
@@ -154,8 +160,11 @@ class TaskMaster(event.Event):
                         self._push_task_def(after, {})
         self._queue_recalculate()
 
-class TaskDef(event.Event):
-    __events__ = ("complete",)
+class TaskDef(GObject.GObject):
+    __gsignals__ = {
+        "complete": (GObject.SIGNAL_RUN_FIRST, None,
+                     (bool, str,))
+    }
 
     name = None
     short_description = None
@@ -170,6 +179,8 @@ class TaskDef(event.Event):
     _VERSION_RE = re.compile(r'^(\d+\d\d\d\d)\.(\d+)$')
 
     def __init__(self, builtin, taskmaster, name, argv):
+        GObject.GObject.__init__(self)
+
         self.builtin = builtin
         self.taskmaster = taskmaster
         self.name = name
@@ -297,9 +308,10 @@ class TaskDef(event.Event):
             err_path = os.path.join(self._workdir, "errors.txt")
             stdout = open("/dev/null", "w")
             stderr = open(err_path, "w")
-        (success, exitcode) = run_sync(base_args, cwd=self._workdir, stdout=stdout,
-                                       stderr=stderr, env=env_copy, return_exitcode=True)
-        self._on_child_exited(success, exitcode)
+        proc = run_async(base_args, cwd=self._workdir, stdout=stdout,
+                         stderr=stderr, env=env_copy)
+        self.logger.debug("waiting for pid %d" % proc.pid)
+        GLib.child_watch_add(proc.pid, self._on_child_exited)
 
     def _update_index(self):
         all_versions = self._load_all_versions()
@@ -312,7 +324,9 @@ class TaskDef(event.Event):
         index = {"files": file_list}
         jsonutil.write_json_file_atomic(os.path.join(self.dir, "index.json"), index)
 
-    def _on_child_exited(self, success, exitcode):
+    def _on_child_exited(self, pid, exitcode):
+        success = (exitcode == 0)
+        self.logger.debug("child %d exited with code %d" % (pid, exitcode))
         errmsg = None
         if not success:
             errmsg = "Child process exited with code %d" % exitcode
@@ -322,21 +336,25 @@ class TaskDef(event.Event):
             "success": success, "errmsg": errmsg, "elapsed-millis": elapsed_millis}
         jsonutil.write_json_file_atomic(os.path.join(self._workdir, "meta.json"), meta)
 
-        if not success:
-            target = os.path.join(self._failed_dir, self._version)
-            shutil.move(self._workdir, target)
-            self._workdir = target
-            self._clean_old_versions(self._failed_dir, self.retain_failed)
-            self.on_complete(success, errmsg, task=self)
-        else:
+        if success:
             target = os.path.join(self._success_dir, self._version)
+            if os.path.exists(target):
+                self.logger.fatal("%s already exists" % target)
             shutil.move(self._workdir, target)
             self._workdir = target
             self._clean_old_versions(self._success_dir, self.retain_success)
-            self.on_complete(success, None, task=self)
+            self.emit("complete", success, None)
+        else:
+            target = os.path.join(self._failed_dir, self._version)
+            if os.path.exists(target):
+                self.logger.fatal("%s already exists" % target)
+            shutil.move(self._workdir, target)
+            self._workdir = target
+            self._clean_old_versions(self._failed_dir, self.retain_failed)
+            self.emit("complete", success, errmsg)
 
         # Also remove any old interrupted versions
-        self._clean_old_versions(self.dir, 0, None)
+        self._clean_old_versions(self.dir, 0)
 
         self._update_index()
 

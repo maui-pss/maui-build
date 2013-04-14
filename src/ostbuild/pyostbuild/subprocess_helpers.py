@@ -108,6 +108,30 @@ def run_sync_with_input_get_output(args, input, cwd=None, env=None, stderr=None,
         return output
     return None
 
+def run_async(args, cwd=None, env=None, log_initiation=True, stdout=None,
+              stderr=None):
+    logger = Logger()
+
+    if log_initiation:
+        logger.info("Running: %s" % (subprocess.list2cmdline(args),))
+
+    env_copy = _get_env_for_cwd(cwd, env)
+
+    if stdout is None:
+        stdout_target = sys.stdout
+    else:
+        stdout_target = stdout
+
+    if stderr is None:
+        stderr_target = sys.stderr
+    else:
+        stderr_target = stderr
+
+    proc = subprocess.Popen(args, stdin=subprocess.PIPE,
+                            stdout=stdout_target, stderr=stderr_target,
+                            close_fds=True, cwd=cwd, env=env_copy)
+    return proc
+
 def run_sync(args, cwd=None, env=None, fatal_on_error=True, keep_stdin=False,
              log_success=True, log_initiation=True, stdin=None, stdout=None,
              stderr=None, return_exitcode=False):

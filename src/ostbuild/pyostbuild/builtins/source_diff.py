@@ -164,4 +164,6 @@ class OstbuildSourceDiff(builtins.Builtin):
                 else:
                     assert False
 
+        self._loop.quit()
+
 builtins.register(OstbuildSourceDiff)

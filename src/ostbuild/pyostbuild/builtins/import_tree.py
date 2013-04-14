@@ -91,4 +91,6 @@ class OstbuildImportTree(builtins.Builtin):
         else:
             self.logger.info("Source snapshot unchanged: %s" % (path, ))
 
+        self._loop.quit()
+
 builtins.register(OstbuildImportTree)

@@ -74,8 +74,8 @@ class BuiltinMake(builtins.Builtin):
                                        process_after=(not args.only),
                                        on_empty=self._on_tasks_complete,
                                        skip=args.skip)
-        self._task_master.task_executing += self._on_task_executing
-        self._task_master.task_complete += self._on_task_completed
+        self._task_master.connect("task_executing", self._on_task_executing)
+        self._task_master.connect("task_complete", self._on_task_completed)
 
         self._task_master.push_task(args.task_name, args.parameters)
 
@@ -95,5 +95,6 @@ class BuiltinMake(builtins.Builtin):
     def _on_tasks_complete(self, success, err):
         if not success:
             self._err = err
+        self._loop.quit()
 
 builtins.register(BuiltinMake)

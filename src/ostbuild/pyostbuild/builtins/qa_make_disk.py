@@ -90,4 +90,6 @@ class BuiltinQaMakeDisk(builtins.Builtin):
         os.rename(tmppath, path)
         self.logger.info("Created: %s" % path)
 
+        self._loop.quit()
+
 builtins.register(BuiltinQaMakeDisk)

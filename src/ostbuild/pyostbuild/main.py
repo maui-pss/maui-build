@@ -19,9 +19,8 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-import os
-import sys
-import argparse
+import os, sys, argparse
+from gi.repository import GObject
 
 from . import builtins
 from builtins import checkout
@@ -46,4 +45,10 @@ def main(args):
         if builtin is None:
             print "error: Unknown builtin '%s'" % (args[0], )
             return usage(1)
-        return builtin.execute(args[1:])
+        GObject.threads_init()
+        ecode = 0
+        try:
+            builtin.run(args[1:])
+        except KeyboardInterrupt:
+            ecode = 1
+        return ecode

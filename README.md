@@ -20,6 +20,7 @@ Also install the following packages:
  * autoconf
  * automake
  * python (2.x version, it must be the default python interpreter)
+ * python-gi
  * fontconfig (for fc-cache, needed during the Yocto build)
  * guestfish
  * guestfsd
@@ -27,7 +28,7 @@ Also install the following packages:
  * libguestfs-tools
  * elfutils (for eu-readelf)
 
-You also need at least Linux 2.6.28.
+You also need Linux 2.6.28 or newer.
 
 To run ```ostbuild qa-make-disk``` or ```ostbuild qa-pull-deploy``` on Ubuntu 12.10 you will need to make a symbolic link to the right libguestfs path:
 

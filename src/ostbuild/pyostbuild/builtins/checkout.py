@@ -66,6 +66,8 @@ class BuiltinCheckout(builtins.Builtin):
                                          patches_path=args.patches_path,
                                          overwrite=args.overwrite)
 
+        self._loop.quit()
+
     def _checkout_one_component(self, component, checkoutdir=None, clean=False, patches_path=None, overwrite=False):
         (keytype, uri) = vcs.parse_src_key(component['src'])
 
