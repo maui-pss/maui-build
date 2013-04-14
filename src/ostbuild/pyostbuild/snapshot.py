@@ -59,6 +59,7 @@ class Snapshot(object):
             data["patches"] = self._resolve_component(data, data["patches"])
             data["base"] = self._resolve_component(data, data["base"])
             data["components"] = [self._resolve_component(data, component) for component in data["components"]]
+            data["components"] = [component for component in data["components"] if not component.get("disabled", False)]
         self._dict = _component_dict(data)
         self._names = []
         for name in self._dict:
