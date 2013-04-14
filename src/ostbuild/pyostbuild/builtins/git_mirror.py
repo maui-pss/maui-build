@@ -64,7 +64,7 @@ class BuiltinGitMirror(builtins.Builtin):
             if not args.fetch:
                 vcs.ensure_vcs_mirror(self.mirrordir, component)
             else:
-                self.logger.info("Running git fetch for %r" % name)
+                self.logger.info("Running git fetch for \"%s\"" % name)
                 vcs.fetch(self.mirrordir, component,
                           keep_going=args.keep_going,
                           timeout_sec=args.timeout_sec)
