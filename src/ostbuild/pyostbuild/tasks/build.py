@@ -17,7 +17,7 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-import os, sys, re, tempfile, shutil
+import os, sys, re, tempfile, shutil, hashlib
 
 from .. import taskset
 from .. import jsondb
@@ -232,8 +232,17 @@ class TaskBuild(TaskDef):
             devel_target_name = "buildmaster/" + architecture + "-devel"
             devel_target = self._find_target_in_list(devel_target_name, targets_list)
 
+            # Gather a list of components upon which the initramfs depends
+            initramfs_depends = []
+            for component in components:
+                if not component.get("initramfs-depends"):
+                    continue
+                archname = "%s/%s" % (component["name"], architecture)
+                build_rev = component_build_revs[archname]
+                initramfs_depends.append("%s:%s" % (component["name"], build_rev)
+
             (compose_rootdir, related_tmppath) = self._checkout_one_tree(devel_target, component_build_revs)
-            (kernel_release, initramfs_path) = self._generate_initramfs(architecture, compose_rootdir)
+            (kernel_release, initramfs_path) = self._generate_initramfs(architecture, compose_rootdir, initramfs_depends)
             arch_initramfs_images[architecture] = (kernel_release, initramfs_path)
             initramfs_target_name = "initramfs-" + kernel_release + ".img"
             target_initramfs_path = os.path.join(compose_rootdir, "boot", initramfs_target_name)
@@ -819,7 +828,7 @@ class TaskBuild(TaskDef):
         shutil.rmtree(compose_rootdir)
         return (treename, ostree_revision)
 
-    def _generate_initramfs(self, architecture, compose_rootdir):
+    def _generate_initramfs(self, architecture, compose_rootdir, initramfs_depends):
         boot_dir = os.path.join(compose_rootdir, "boot")
         kernel_path = None
         for filename in os.listdir(bootdir):
@@ -833,6 +842,29 @@ class TaskBuild(TaskDef):
         kernel_name = os.path.basename(kernel_path)
         release_idx = kernel_name.find("-")
         kernel_release = kernel_name[i+1:]
+
+        initramfs_cachedir = os.path.join(self.cachedir, "initramfs", architecture)
+        fileutil.ensure_dir(initramfs_cachedir)
+
+        initramfs_epoch = self._snapshot.data.get("initramfs-build-epoch")
+        initramfs_epoch_version = 0
+        if initramfs_epoch:
+            initramfs_epoch_version = initramfs_epoch["version"]
+        full_initramfs_depends_string = "epoch:%s;kernel:%s;%s" % (initramfs_epoch_version,
+                                                                   kernel_release,
+                                                                   ";".join(initramfs_depends))
+        depends_checksum = hashlib.sha256(full_initramfs_depends_string).hexdigest()
+
+        cached_initramfs_path = os.path.join(initramfs_cachedir, depends_checksum)
+        if os.path.exists(cached_initramfs_path):
+            self.logger.info("Reusing cached initramfs %s" % cached_initramfs_path)
+            return (kernel_release, cached_initramfs_path)
+        else:
+            self.logger.info("No cached initramfs matching %s" % full_initramfs_depends_string)
+
+        # Clean out all old initramfs images
+        shutil.rmtree(initramfs_cachedir)
+        fileutil.ensure_dir(initramfs_cachedir)
 
         workdir = os.path.join(os.getcwd(), "tmp-initramfs-" + architecture)
         var_tmp = os.path.join(workdir, "var/tmp")
@@ -853,7 +885,9 @@ class TaskBuild(TaskDef):
 
         os.chmod(initramfs_tmp, 420)
 
-        return (kernel_release, initramfs_tmp)
+        shutil.move(initramfs_tmp, cached_initramfs_path)
+
+        return (kernel_release, cached_initramfs_path)
 
     def _build_base(self, architecture):
         """Build the Yocto base system."""
