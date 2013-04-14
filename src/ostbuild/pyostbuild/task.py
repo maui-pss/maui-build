@@ -280,6 +280,7 @@ class TaskDef(GObject.GObject):
         current_ymd = current_time.strftime("%Y%m%d")
 
         version = None
+        print all_versions
         if len(all_versions) > 0:
             (last_success, last_version) = all_versions[-1]
             m = self._VERSION_RE.match(last_version)
@@ -287,7 +288,7 @@ class TaskDef(GObject.GObject):
                 raise Exception("Invalid version")
             last_ymd = m.group(1)
             last_serial = m.group(2)
-            if last_ymd == last_serial:
+            if last_ymd == current_ymd:
                 version = current_ymd + "." + str(int(last_serial) + 1)
         if version is None:
             version = current_ymd + ".0"
