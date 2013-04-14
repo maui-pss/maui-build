@@ -56,7 +56,7 @@ def _process_checkout_submodules(mirrordir, parent_uri, cwd):
         run_sync(['git', 'submodule', 'update', '--init', sub_name], cwd=cwd)
         _process_checkout_submodules(mirrordir, sub_url, os.path.join(cwd, sub_name))
 
-def get_vcs_checkout(mirrordir, component, dest, branch, overwrite=True, quiet=False):
+def get_vcs_checkout(mirrordir, component, dest, overwrite=True, quiet=False):
     logger = Logger()
     (keytype, uri) = parse_src_key(component["src"])
     if keytype in ("git", "local"):
@@ -99,7 +99,7 @@ def get_vcs_checkout(mirrordir, component, dest, branch, overwrite=True, quiet=F
         run_sync(['git', 'fetch', 'localmirror'], cwd=tmp_dest,
                  log_initiation=(not quiet),
                  log_success=(not quiet))
-    run_sync(['git', 'checkout', '-q', branch], cwd=tmp_dest,
+    run_sync(['git', 'checkout', '-q', revision], cwd=tmp_dest,
              log_initiation=(not quiet),
              log_success=(not quiet))
     _process_checkout_submodules(mirrordir, uri, tmp_dest)

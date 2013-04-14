@@ -21,6 +21,7 @@ import os, sys, re, tempfile, shutil, hashlib
 
 from .. import taskset
 from .. import jsondb
+from .. import buildutil
 from .. import fileutil
 from .. import jsonutil
 from .. import vcs
@@ -100,12 +101,13 @@ class TaskBuild(TaskDef):
 
         latest_build_path = builddb.get_latest_path()
         if latest_build_path is not None:
-            last_build_source_data = builddb.load_from_path(latest_build_path)
-            last_build_source_version = builddb.parse_version_str(last_build_source_data["snapshot-name"])
-            self.logger.info("Already built source snapshot %s" % last_built_source_version)
-            return
-        else:
-            self.logger.info("Last successful build was " + last_built_source_version)
+            last_built_source_data = builddb.load_from_path(latest_build_path)
+            last_built_source_version = builddb.parse_version_str(last_build_source_data["snapshot-name"])
+            if (not have_local_component) and last_built_source_version == target_source_version:
+                self.logger.info("Already built source snapshot %s" % last_built_source_version)
+                return
+            else:
+                self.logger.info("Last successful build was " + last_built_source_version)
         self.logger.info("Building " + target_source_version)
 
         self.repo = os.path.join(self.workdir, "repo")
@@ -246,7 +248,7 @@ class TaskBuild(TaskDef):
                     continue
                 archname = "%s/%s" % (component["name"], architecture)
                 build_rev = component_build_revs[archname]
-                initramfs_depends.append("%s:%s" % (component["name"], build_rev)
+                initramfs_depends.append("%s:%s" % (component["name"], build_rev))
 
             (compose_rootdir, related_tmppath) = self._checkout_one_tree(devel_target, component_build_revs)
             (kernel_release, initramfs_path) = self._generate_initramfs(architecture, compose_rootdir, initramfs_depends)
@@ -909,7 +911,7 @@ class TaskBuild(TaskDef):
         #                 basemeta['src'][:6] == 'local')
         force_rebuild = False
 
-        previous_build = self._component_build_cahce[buildname]
+        previous_build = self._component_build_cache.get(buildname)
         if previous_build is not None:
             previous_vcs_version = previous_build["revision"]
         else:

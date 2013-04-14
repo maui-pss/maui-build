@@ -156,7 +156,7 @@ class TaskMaster(GObject.GObject):
             if changed:
                 tasks_after = taskset.get_task_after(task.name)
                 for after in tasks_after:
-                    if not self._skip_tasks[after.name]:
+                    if not self._skip_tasks.get(after.name):
                         self._push_task_def(after, {})
         self._queue_recalculate()
 
@@ -193,7 +193,7 @@ class TaskDef(GObject.GObject):
     def get_depends(self):
         return []
 
-    def query_versions(self):
+    def query_version(self):
         return None
 
     def prepare(self):
