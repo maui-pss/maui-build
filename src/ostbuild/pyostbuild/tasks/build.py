@@ -225,6 +225,37 @@ class TaskBuild(TaskDef):
                       "snapshot": self._snapshot.data,
                       "targets": target_revisions}
 
+        # First loop over -devel trees per architecture, and
+        # generate an initramfs
+        arch_initramfs_images = {}
+        for architecture in architectures:
+            devel_target_name = "buildmaster/" + architecture + "-devel"
+            devel_target = self._find_target_in_list(devel_target_name, targets_list)
+
+            (compose_rootdir, related_tmppath) = self._checkout_one_tree(devel_target, component_build_revs)
+            (kernel_release, initramfs_path) = self._generate_initramfs(architecture, compose_rootdir)
+            arch_initramfs_images[architecture] = (kernel_release, initramfs_path)
+            initramfs_target_name = "initramfs-" + kernel_release + ".img"
+            target_initramfs_path = os.path.join(compose_rootdir, "boot", initramfs_target_name)
+            shutil.copy2(initramfs_path, target_initramfs_path)
+            (treename, ostree_rev) = self._commit_composed_tree(devel_target_name, compose_rootdir, related_tmppath)
+            target_revisions[treename] = ostree_rev
+
+        # Now loop over the other targets per architecture, reusing
+        # the initramfs cached from -devel generation
+        non_devel_targets = ("runtime", "runtime-debug", "devel-debug")
+        for target in non_devel_targets:
+            for architecture in architectures:
+                runtime_target_name = "buildmaster/" + architecture + "-" + target
+                runtime_target = self._find_target_in_list(runtime_target_name, targets_list)
+
+                (composed_rootdir, related_tmppath) = self._checkout_one_tree(runtime_target, component_build_revs)
+                (kernel_release, initramfs_path) = arch_initramfs_images[architecture]
+                target_initramfs_path = os.path.join(composed_rootdir, "boot", os.path.basename(initramfs_path))
+                shutil.copy2(initramfs_path, target_initramfs_path)
+                (treename, ostree_rev) = self._commit_composed_tree(runtime_target_name, compose_rootdir, related_tmppath)
+                target_revisions[treename] = ostree_rev
+
         (path, modified) = builddb.store(build_data)
         self.logger.info("Build complete: " + path)
 
@@ -706,7 +737,7 @@ class TaskBuild(TaskDef):
 
         return ostree_revision
 
-    def _compose_one_target(self, target, component_build_revs):
+    def _compose_one_tree(self, target, component_build_revs):
         base = target['base']
         base_name = '%s/bases/%s' % (self.osname, base['name'])
         runtime_name = '%s/bases/%s' % (self.osname, base['runtime'])
@@ -715,7 +746,7 @@ class TaskBuild(TaskDef):
         compose_rootdir = os.path.join(self.subworkdir, target['name'])
         if os.path.isdir(compose_rootdir):
             shutil.rmtree(compose_rootdir)
-        fileutil.ensure_parent_dir(compose_rootdir)
+        fileutil.ensure_dir(compose_rootdir)
 
         related_refs = {}
 
@@ -725,6 +756,7 @@ class TaskBuild(TaskDef):
         runtime_revision = run_sync_get_output(['ostree', '--repo=' + self.repo,
                                                 'rev-parse', runtime_name])
         related_refs[runtime_name] = runtime_revision
+
         devel_revision = run_sync_get_output(['ostree', '--repo=' + self.repo,
                                               'rev-parse', devel_name])
         related_refs[devel_name] = devel_revision
@@ -760,25 +792,68 @@ class TaskBuild(TaskDef):
         contents_f.close()
 
         run_sync(['ostree', '--repo=' + self.repo,
-                  'checkout', '--user-mode', '--no-triggers', '--union', 
+                  'checkout', '--user-mode', '--union',
                   '--from-file=' + contents_tmppath, compose_rootdir])
         os.unlink(contents_tmppath)
 
         contents_path = os.path.join(compose_rootdir, 'usr/share/contents.json')
         jsonutil.write_json_file_atomic(contents_path, self._snapshot.data)
 
-        treename = 'trees/%s' % (target['name'], )
-        
-        child_args = ['ostree', '--repo=' + self.repo,
-                      'commit', '-b', treename, '-s', 'Compose',
-                      '--owner-uid=0', '--owner-gid=0', '--no-xattrs', 
-                      '--related-objects-file=' + related_tmppath,
-                      ]
-        if not self.buildopts.no_skip_if_unchanged:
-            child_args.append('--skip-if-unchanged')
-        run_sync(child_args, cwd=compose_rootdir)
+        share_ostree = os.path.join(compose_rootdir, "usr/share/ostree")
+        fileutil.ensure_dir(share_ostree)
+        triggers_run_path = os.path.join(share_ostree, "triggers_run")
+        f = open(triggers_run_path, "w")
+        f.write("")
+        f.close()
+
+        return (composed_rootdir, related_tmppath)
+
+    def _commit_composed_tree(self, target_name, compose_rootdir, related_tmppath):
+        treename = self.osname + "/" + target_name
+        ostree_revision = run_sync_get_output(["ostree", "--repo=" + self.repo,
+                                               "commit", "-b", treename, "-s", "Compose",
+                                               "--owner-uid=0", "--owner-gid=0", "--no-xattrs",
+                                               "--related-objects-file=" + related_tmppath,
+                                               "--skip-if-unchanged"], cwd=compose_rootdir).strip()
         os.unlink(related_tmppath)
         shutil.rmtree(compose_rootdir)
+        return (treename, ostree_revision)
+
+    def _generate_initramfs(self, architecture, compose_rootdir):
+        boot_dir = os.path.join(compose_rootdir, "boot")
+        kernel_path = None
+        for filename in os.listdir(bootdir):
+            if not filename.startswith("vmlinuz-"):
+                continue
+            kernel_path = os.path.join(bootdir, filename)
+            break
+        if kernel_path is None:
+            self.logger.fatal("Couldn't find a kernel in compose root")
+
+        kernel_name = os.path.basename(kernel_path)
+        release_idx = kernel_name.find("-")
+        kernel_release = kernel_name[i+1:]
+
+        workdir = os.path.join(os.getcwd(), "tmp-initramfs-" + architecture)
+        var_tmp = os.path.join(workdir, "var/tmp")
+        fileutil.ensure_dir(var_tmp)
+        var_dir = os.path.abspath(os.path.join(var_tmp, os.pardir))
+        tmp_dir = os.path.join(workdir, "tmp")
+        fileutil.ensure_dir(tmp_dir)
+        initramfs_tmp = os.path.join(tmp_dir, "initramfs-ostree.img")
+
+        run_sync(["linux-user-chroot", "--mount-readonly", "/",
+                "--mount-proc", "/proc",
+                "--mount-bind", "/dev", "/dev",
+                "--mount-bind", var_dir, "/var",
+                "--mount-bind", tmp_dir, "/tmp",
+                compose_rootdir,
+                "dracut", "--tmpdir=/tmp", "-f", "/tmp/initramfs-ostree.img",
+                kernel_release])
+
+        os.chmod(initramfs_tmp, 420)
+
+        return (kernel_release, initramfs_tmp)
 
     def _build_base(self, architecture):
         """Build the Yocto base system."""
@@ -844,5 +919,11 @@ class TaskBuild(TaskDef):
         shutil.rmtree(checkoutdir)
 
         self._write_component_cache(buildname, basemeta)
+
+    def _find_target_in_list(self, name, targets_list):
+        for target in targets_list:
+            if target["name"] == name:
+                return target
+        self.logger.fatal("Failed to find target %s" % name)
 
 taskset.register(TaskBuild)
