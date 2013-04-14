@@ -152,7 +152,7 @@ class TaskMaster(GObject.GObject):
                 if old_version == version:
                     changed = False
                 elif old_version is not None:
-                    self.logger.info("task %s new version: %s" % (task.name, version))
+                    self.logger.info("Task %s new version: %s" % (task.name, version))
             if changed:
                 tasks_after = taskset.get_task_after(task.name)
                 for after in tasks_after:
