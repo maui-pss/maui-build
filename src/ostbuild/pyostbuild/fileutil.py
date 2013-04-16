@@ -19,6 +19,8 @@
 
 import os, json, shutil
 
+from .logger import Logger
+
 def ensure_dir(path):
     if not os.path.isdir(path):
         os.makedirs(path)
@@ -40,6 +42,8 @@ def find_program_in_path(program, env=None):
     return program_path
 
 def file_linkcopy(src, dest, overwrite=False):
+    logger = Logger()
+
     src_stat = os.lstat(src)
     dest_stat = os.lstat(os.path.abspath(os.path.join(dest, os.pardir)))
 
@@ -50,7 +54,7 @@ def file_linkcopy(src, dest, overwrite=False):
 
     # Can't overwrite a file that already exist
     if not overwrite and os.path.exists(dest):
-        error("Cannot copy %s to %s: destination file already exist" % (src, dest))
+        logger.error("Cannot copy %s to %s: destination file already exist" % (src, dest))
         return False
 
     # If the files are on separate devices copy the file instead of

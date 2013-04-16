@@ -38,8 +38,6 @@ class BuildSystem(object):
     builddir = '_build'
     args = []
     makeargs = ['make']
-    tempdir = None
-    tempfiles = []
 
     def __init__(self, args):
         self.logger = Logger()
@@ -49,9 +47,6 @@ class BuildSystem(object):
         kernel = uname[0].lower()
         machine = uname[4]
         self.build_target = '%s-%s' % (machine, kernel)
-
-        self.chdir = None
-        self.opt_install = False
 
         for arg in self.args:
             if arg.startswith('--ostbuild-resultdir='):

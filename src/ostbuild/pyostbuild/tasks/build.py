@@ -17,7 +17,7 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-import os, sys, re, time, tempfile, shutil, hashlib
+import os, sys, re, time, tempfile, shutil, stat, hashlib
 
 from .. import taskset
 from .. import jsondb
@@ -476,11 +476,11 @@ class TaskBuild(TaskDef):
         return cachedata['ostree']
 
     def _install_and_unlink(self, build_result_dir, src_file, final_result_dir):
-        relpath = os.path.join(build_result_dir, src_file)
+        relpath = os.path.relpath(src_file, build_result_dir)
         if relpath is None:
             dest_file = final_result_dir
         else:
-            dest_file = os.path.join(final_result_dir, relpath)
+            dest_file = os.path.abspath(os.path.join(final_result_dir, relpath))
         fileutil.ensure_parent_dir(dest_file)
 
         if os.path.isdir(src_file):
@@ -491,7 +491,7 @@ class TaskBuild(TaskDef):
                     self._install_and_unlink(build_result_dir, path, final_result_dir)
             shutil.rmtree(src_file)
         else:
-            shutil.copy2(src_file, dest_file)
+            fileutil.file_linkcopy(src_file, dest_file)
             os.unlink(src_file)
 
     def _process_build_result_split_debuginfo(self, build_result_dir, debug_path, path):
@@ -508,11 +508,11 @@ class TaskBuild(TaskDef):
             self.logger.warning("No build-id for ELF object %s" % path)
             return
         build_id = m.group(1)
-        self.logger.info("ELF object %s buildid=%s" % (path, build_id))
-        dbg_name = "%s/%s.debug" % (s[:2], s[2:])
-        objdebug_path = os.path.abspath(os.path.join(debug_path, "usr/lib/debug/.build-id/" + dbg_name))
-        if not os.path.isdir(objdebug_path):
-            os.makedirs(objdebug_path)
+        relpath = os.path.relpath(path, build_result_dir)
+        self.logger.info("ELF object %s buildid=%s" % (relpath, build_id))
+        dbg_name = "%s/%s.debug" % (build_id[:2], build_id[2:])
+        objdebug_path = os.path.join(debug_path, "usr/lib/debug/.build-id/%s" % dbg_name)
+        fileutil.ensure_parent_dir(objdebug_path)
         run_sync(["objcopy", "--only-keep-debug", path, objdebug_path])
 
         strip_args = ["strip", "--remove-section=.comment", "--remove-section=.note"]
@@ -593,7 +593,7 @@ class TaskBuild(TaskDef):
 
         # Move documentation to doc
         for dirname in DOC_DIRS:
-            rpath = os.path.join(build_result_dir, dirname)
+            path = os.path.join(build_result_dir, dirname)
             if os.path.isdir(path):
                 self._install_and_unlink(build_result_dir, path, doc_path)
 

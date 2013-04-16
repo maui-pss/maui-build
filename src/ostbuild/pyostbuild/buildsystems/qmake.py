@@ -97,7 +97,5 @@ class QMakeBuildSystem(BuildSystem):
             args.extend(self.default_make_jobs)
         run_sync(args, cwd=self.builddir)
 
-        self.tempdir = tempfile.mkdtemp(prefix='ostbuild-destdir-%s' % (self.metadata['name'].replace('/', '_'), ))
-        self.tempfiles.append(self.tempdir)
-        args = ['make', 'install', 'INSTALL_ROOT=' + self.tempdir]
+        args = ['make', 'install', 'INSTALL_ROOT=' + self.ostbuild_resultdir]
         run_sync(args, cwd=self.builddir)

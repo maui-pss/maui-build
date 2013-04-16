@@ -129,7 +129,5 @@ class BuildApiBuildSystem(BuildSystem):
 
         run_sync(args, cwd=self.builddir)
 
-        self.tempdir = tempfile.mkdtemp(prefix='ostbuild-destdir-%s' % (self.metadata['name'].replace('/', '_'), ))
-        self.tempfiles.append(self.tempdir)
-        args = ['make', 'install', 'DESTDIR=' + self.tempdir]
+        args = ['make', 'install', 'DESTDIR=' + self.ostbuild_resultdir]
         run_sync(args, cwd=self.builddir)
