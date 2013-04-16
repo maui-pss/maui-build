@@ -46,8 +46,6 @@ def main(args):
             print "error: Unknown builtin '%s'" % (args[0], )
             return usage(1)
 
-        ecode = 0
-
         GObject.threads_init()
 
         loop = GObject.MainLoop()
@@ -57,12 +55,12 @@ def main(args):
             try:
                 builtin.execute(args[1:])
             except KeyboardInterrupt:
-                ecode = 1
                 loop.quit()
-            except Exception, e:
-                loop.quit()
-                raise
+            except Exception:
+                import traceback
+                traceback.print_exc()
+                quit(loop)
         GLib.idle_add(run_builtin)
 
         loop.run()
-        return ecode
+        return 0

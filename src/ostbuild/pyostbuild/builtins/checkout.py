@@ -22,6 +22,7 @@ import os, shutil, argparse
 from .. import builtins
 from .. import buildutil
 from .. import fileutil
+from .. import jsonutil
 from .. import vcs
 from ..subprocess_helpers import run_sync
 
@@ -45,6 +46,8 @@ class BuiltinCheckout(builtins.Builtin):
         args = self.parser.parse_args(argv)
 
         component_name = args.component
+
+        self._init_snapshot(args.workdir, args.snapshot)
 
         if component_name == '*':
             for name in self._snapshot.get_all_component_names():

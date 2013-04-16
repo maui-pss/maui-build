@@ -24,9 +24,10 @@ from ..task import TaskDef
 from ..subprocess_helpers import run_sync
 from ..fileutil import find_program_in_path
 
-class TaskQaSmoketest(TaskDef):
-    name = "qa-smoketest"
+class TaskSmoketest(TaskDef):
+    name = "smoketest"
     short_description = "Basic smoke testing via parsing serial console"
+    after = ["builddisks",]
 
     def __init__(self, builtin, taskmaster, name, argv):
         TaskDef.__init__(self, builtin, taskmaster, name, argv)
@@ -54,4 +55,4 @@ class TaskQaSmoketest(TaskDef):
                   "-drive", "file=" + diskpath + ",if=virtio"])
         self.logger.info("Complete!")
 
-taskset.register(TaskQaSmoketest)
+taskset.register(TaskSmoketest)

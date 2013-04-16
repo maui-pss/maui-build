@@ -131,8 +131,7 @@ class TaskMaster(GObject.GObject):
             self._executing.append(task)
             self.emit("task_executing", task)
 
-    def _on_complete(self, success, error, *extra):
-        task = extra[1]
+    def _on_complete(self, task, success, error, *extra):
         idx = -1
         for i in range(len(self._executing)):
             executing_task = self._executing[i]
@@ -181,6 +180,8 @@ class TaskDef(GObject.GObject):
     def __init__(self, builtin, taskmaster, name, argv):
         GObject.GObject.__init__(self)
 
+        self.logger = Logger()
+
         self.builtin = builtin
         self.taskmaster = taskmaster
         self.name = name
@@ -188,7 +189,6 @@ class TaskDef(GObject.GObject):
                                                         description=self.short_description)
         self.subparser = self.subparsers.add_parser(self.name, add_help=False)
         self.argv = argv
-        self.logger = Logger()
 
     def get_depends(self):
         return []

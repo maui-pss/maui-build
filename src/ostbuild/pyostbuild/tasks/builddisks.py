@@ -29,8 +29,9 @@ from ..subprocess_helpers import run_sync
 from ..guestfish import GuestFish, GuestMount
 
 class TaskBuildDisks(TaskDef):
-    name = "build-disks"
+    name = "builddisks"
     short_description = "Generate disk images"
+    after = ["build",]
 
     def __init__(self, builtin, taskmaster, name, argv):
         TaskDef.__init__(self, builtin, taskmaster, name, argv)

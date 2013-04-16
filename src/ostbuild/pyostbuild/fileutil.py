@@ -41,7 +41,7 @@ def find_program_in_path(program, env=None):
 
 def file_linkcopy(src, dest, overwrite=False):
     src_stat = os.lstat(src)
-    dest_stat = os.lstat(os.path.abspath(os.path.join(dest, "..")))
+    dest_stat = os.lstat(os.path.abspath(os.path.join(dest, os.pardir)))
 
     # Don't copy if source and destination are the same
     if os.path.exists(dest) and src_stat.st_dev == dest_stat.st_dev \
@@ -56,7 +56,7 @@ def file_linkcopy(src, dest, overwrite=False):
     # If the files are on separate devices copy the file instead of
     # making a hard link
     if src_stat.st_dev != dest_stat.st_dev:
-        shutil.copy(src, dest)
+        shutil.copy2(src, dest)
     else:
         os.link(src, dest)
     return True

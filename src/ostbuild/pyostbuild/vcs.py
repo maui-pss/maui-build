@@ -45,14 +45,15 @@ def _process_checkout_submodules(mirrordir, parent_uri, cwd):
     for line in submodule_status_lines:
         if line == '': continue
         have_submodules = True
-        (sub_checksum, sub_name) = _parse_submodule_status(line)
+        line = line[1:]
+        (sub_checksum, sub_name) = line.split(' ', 2)[:2]
         sub_url = run_sync_get_output(['git', 'config', '-f', '.gitmodules',
                                        'submodule.%s.url' % (sub_name, )], cwd=cwd)
         logger.info("Processing submodule %s" % sub_url)
         if sub_url.find('../') == 0:
             sub_url = _make_absolute_url(parent_uri, sub_url)
         local_mirror = get_mirrordir(mirrordir, 'git', sub_url)
-        run_sync(['git', 'config', 'submodule.%s.url' % (sub_name, ), 'file://' + local_mirror], cwd=cwd)
+        run_sync(['git', 'config', 'submodule.%s.url' % sub_name, 'file://' + local_mirror], cwd=cwd)
         run_sync(['git', 'submodule', 'update', '--init', sub_name], cwd=cwd)
         _process_checkout_submodules(mirrordir, sub_url, os.path.join(cwd, sub_name))
 
@@ -138,13 +139,6 @@ def get_lastfetch_path(mirrordir, keytype, uri, branch):
     branch_safename = branch.replace('/','_').replace('.', '_')
     return mirror + '.lastfetch-%s' % (branch_safename, )
 
-def _parse_submodule_status(line):
-    line = line[1:]
-    (sub_checksum, sub_name) = line.split(' ', 2)[:2]
-    if sub_name.find('/') > 0:
-        sub_name = os.path.basename(sub_name)
-    return [sub_checksum, sub_name]
-
 def _list_submodules(mirrordir, mirror, keytype, uri, branch):
     current_vcs_version = run_sync_get_output(['git', 'rev-parse', branch], cwd=mirror)
     tmp_checkout = get_mirrordir(mirrordir, keytype, uri, prefix='_tmp-checkouts')
@@ -160,9 +154,10 @@ def _list_submodules(mirrordir, mirror, keytype, uri, branch):
     submodule_status_lines = submodules_status_text.split('\n')
     for line in submodule_status_lines:
         if line == '': continue
-        (sub_checksum, sub_name) = _parse_submodule_status(line)
+        line = line[1:]
+        (sub_checksum, sub_name) = line.split(' ', 2)[:2]
         sub_url = run_sync_get_output(['git', 'config', '-f', '.gitmodules',
-                                       'submodule.%s.url' % (sub_name, )], cwd=tmp_checkout)
+                                       'submodule.%s.url' % sub_name], cwd=tmp_checkout)
         submodules.append((sub_checksum, sub_name, sub_url))
     shutil.rmtree(tmp_checkout)
     return submodules
@@ -225,14 +220,15 @@ def _ensure_vcs_mirror_git(mirrordir, uri, branch, fetch=False,
         last_fetch_contents = f.read()
         f.close()
         last_fetch_contents = last_fetch_contents.strip()
+
+        if timeout_sec > 0:
+            t = os.path.getmtime(last_fetch_path)
+            last_fetch_time = datetime.datetime.fromtimestamp(t)
+            diff = current_time - last_fetch_time
+            if diff.total_seconds() < timeout_sec:
+                fetch = False
     else:
         last_fetch_contents = None
-    if timeout_sec > 0:
-        t = os.path.getmtime(last_fetch_path)
-        last_fetch_time = datetime.datetime.fromtimestamp(t)
-        diff = current_time - last_fetch_time
-        if diff.total_seconds() < timeout_sec:
-            fetch = False
     if os.path.isdir(tmp_mirror):
         shutil.rmtree(tmp_mirror)
     if not os.path.isdir(mirror):

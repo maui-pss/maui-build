@@ -37,7 +37,7 @@ def get_task(name, allow_none=False):
 
 def get_task_after(name):
     ret = []
-    for task_name in _all_tasks:
+    for task_name in _all_tasks.keys():
         taskdef = _all_tasks[task_name]
         for after_name in taskdef.after:
             if after_name == name:

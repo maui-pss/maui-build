@@ -22,6 +22,7 @@ import __builtin__
 
 from .. import buildutil
 from .. import fileutil
+from .. import jsonutil
 from .. import jsondb
 from ..logger import Logger
 from ..snapshot import Snapshot

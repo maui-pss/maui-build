@@ -17,7 +17,7 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-import os, sys, re, tempfile, shutil, hashlib
+import os, sys, re, time, tempfile, shutil, hashlib
 
 from .. import taskset
 from .. import jsondb
@@ -52,6 +52,7 @@ DOC_DIRS = ['usr/share/doc',
 class TaskBuild(TaskDef):
     name = "build"
     short_description = "Build multiple components and generate trees"
+    after = ["resolve",]
 
     def __init__(self, builtin, taskmaster, name, argv):
         TaskDef.__init__(self, builtin, taskmaster, name, argv)
@@ -114,7 +115,7 @@ class TaskBuild(TaskDef):
         if not os.path.isdir(self.repo):
             os.makedirs(self.repo)
 
-        if os.path.exists(os.path.join(self.repo, "objects")):
+        if not os.path.exists(os.path.join(self.repo, "objects")):
             run_sync(["ostree", "--repo=" + self.repo, "init", "--archive"])
 
         self._component_build_cache_path = os.path.join(self.cachedir, "component-builds.json")
@@ -155,15 +156,15 @@ class TaskBuild(TaskDef):
 
         for component in components:
             for architecture in architectures:
-                components_to_build.append((component, architectures))
+                components_to_build.append((component, architecture))
 
-        previous_build_epoch = self._component_build_cache["build-apoch"]
-        current_build_epoch = self._snapshot.data["build-epoch"]
+        previous_build_epoch = self._component_build_cache.get("build-epoch")
+        current_build_epoch = self._snapshot.data.get("build-epoch")
         if ((previous_build_epoch is None) or
             ((current_build_epoch is not None) and
              previous_build_epoch["version"] < current_build_epoch["version"])):
             current_epoch_ver = current_build_epoch["version"]
-            rebuild_all = current_build_epoch["all"]
+            rebuild_all = current_build_epoch.get("all", False)
             rebuilds = []
             if rebuild_all:
                 for component in components:
@@ -176,7 +177,8 @@ class TaskBuild(TaskDef):
                 self.logger.info("Component %r build forced via epoch" % name)
                 for architecture in architectures:
                     build_ref = self._component_build_ref(component, architecture)
-                    del self._component_build_cache[build_ref]
+                    if self._component_build_cache.has_key(build_ref):
+                        del self._component_build_cache[build_ref]
 
         self._component_build_cache["build-epoch"] = current_build_epoch
         jsonutil.write_json_file_atomic(self._component_build_cache_path, self._component_build_cache)
@@ -288,7 +290,7 @@ class TaskBuild(TaskDef):
     def _clean_stale_buildroots(self, buildroot_cachedir, keep_root):
         roots = os.listdir(buildroot_cachedir)
         for root in roots:
-            if root == keep_root:
+            if root == os.path.basename(keep_root):
                 continue
             self.logger.info("Removing old cached buildroot %s" % (root, ))
             path = os.path.join(buildroot_cachedir, root)
@@ -298,7 +300,7 @@ class TaskBuild(TaskDef):
         starttime = time.time()
 
         buildname = '%s/%s/%s' % (self.osname, component_name, architecture)
-        buildroot_cachedir = os.path.join(self.workdir, 'roots', buildname)
+        buildroot_cachedir = os.path.join(self.cachedir, 'roots', buildname)
         fileutil.ensure_dir(buildroot_cachedir)
 
         components = self._snapshot.data['components']
@@ -374,6 +376,7 @@ class TaskBuild(TaskDef):
         cached_root_tmp = cached_root + '.tmp'
         if os.path.isdir(cached_root_tmp):
             shutil.rmtree(cached_root_tmp)
+        fileutil.ensure_dir(cached_root_tmp)
         run_sync(['ostree', '--repo=' + self.repo,
                   'checkout', '--user-mode', '--union',
                   '--from-file=' + tmppath, cached_root_tmp])
@@ -609,7 +612,9 @@ class TaskBuild(TaskDef):
     def _build_one_component(self, component, architecture):
         basename = component['name']
 
-        arch_buildname = "%s/%s" % (component["name"], architecture)
+        self.logger.info("== Building %s for %s ==" % (basename, architecture))
+
+        arch_buildname = "%s/%s" % (basename, architecture)
         unix_buildname = arch_buildname.replace("/", "_")
         build_ref = self._component_build_ref(component, architecture)
 
@@ -622,7 +627,7 @@ class TaskBuild(TaskDef):
             previous_build_version = previous_metadata['ostree']
             previous_vcs_version = previous_metadata["revision"]
         else:
-            self.logger("No previous build for %s" % arch_buildname)
+            self.logger.info("No previous build for %s" % arch_buildname)
 
         if 'patches' in expanded_component:
             patches_revision = expanded_component['patches']['revision']
@@ -664,11 +669,11 @@ class TaskBuild(TaskDef):
         build_workdir = os.path.join(os.getcwd(), "tmp-" + unix_buildname)
         fileutil.ensure_dir(build_workdir)
 
-        temp_metadata_path = os.path.join(workdir, '_ostbuild-meta.json')
+        temp_metadata_path = os.path.join(build_workdir, '_ostbuild-meta.json')
         jsonutil.write_json_file_atomic(temp_metadata_path, expanded_component)
 
         component_src = os.path.join(build_workdir, basename)
-        child_args = ['ostbuild', 'checkout', '--snapshot=' + self._snapshot.get_path(),
+        child_args = ['ostbuild', 'checkout', '--snapshot=' + self._snapshot.path,
                       "--workdir=" + self.workdir,
                       '--checkoutdir=' + component_src,
                       '--metadata-path=' + temp_metadata_path,
@@ -691,6 +696,7 @@ class TaskBuild(TaskDef):
         src_compile_one_mods_path = os.path.join(self.libdir, 'ostbuild', 'pyostbuild')
         dest_compile_one_path = os.path.join(rootdir, 'ostree-build-compile-one')
         dest_compile_one_mods_path = os.path.join(rootdir, 'ostbuild', 'pyostbuild')
+        fileutil.ensure_parent_dir(dest_compile_one_path)
         shutil.copy(src_compile_one_path, dest_compile_one_path)
         if os.path.exists(dest_compile_one_mods_path):
             shutil.rmtree(dest_compile_one_mods_path)
@@ -721,7 +727,8 @@ class TaskBuild(TaskDef):
         run_sync(child_args, env=env_copy)
 
         final_build_result_dir = os.path.join(build_workdir, "post-results")
-        shutil.rmtree(final_build_result_dir)
+        if os.path.isdir(final_build_result_dir):
+            shutil.rmtree(final_build_result_dir)
         fileutil.ensure_dir(final_build_result_dir)
 
         self._process_build_results(component, component_resultdir, final_build_result_dir)
@@ -950,9 +957,8 @@ class TaskBuild(TaskDef):
         env['SSTATE_DIR'] = sstate_dir
         run_sync(cmd, env=env)
 
-        component_types = ['runtime', 'devel']
-        for component_type in component_types:
-            treename = '%s/bases/%s/%s-%s' % (self.osname, basename, architecture, component_type)
+        for component_type in ("runtime", "devel"):
+            treename = '%s/bases/%s/%s-%s' % (self.osname, basemeta["name"], architecture, component_type)
             tar_path = os.path.join(builddir, 'maui-contents-%s-%s.tar.gz' % (component_type, architecture))
             cmd = ['ostree', '--repo=' + self.repo, 'commit', '-s', 'Build', '--skip-if-unchanged',
                    '-b', treename, '--tree=tar=' + tar_path]
