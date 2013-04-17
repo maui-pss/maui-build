@@ -34,6 +34,8 @@ class TaskResolve(TaskDef):
     def __init__(self, builtin, taskmaster, name, argv):
         TaskDef.__init__(self, builtin, taskmaster, name, argv)
 
+        self.subparser.add_argument('--fetch-base', action='store_true',
+                                    help="git fetch base system")
         self.subparser.add_argument('--fetch-patches', action='store_true',
                                     help="git fetch patches")
         self.subparser.add_argument('--fetch-all', action='store_true',
@@ -51,6 +53,16 @@ class TaskResolve(TaskDef):
         manifest_path = os.path.join(self.workdir, "manifest.json")
         data = jsonutil.load_json(manifest_path)
         self._snapshot = Snapshot(data, manifest_path, prepare_resolve=True)
+
+        # Fetch everything if asked
+        if args.fetch_all:
+            args.fetch_base = True
+            args.fetch_patches = True
+
+        # Fetch base system
+        if args.fetch_base:
+            component = self._snapshot.data["base"]
+            mirrordir = vcs.ensure_vcs_mirror(self.mirrordir, component, fetch=True)
 
         # Fetch patches
         if args.fetch_patches and self._snapshot.data.has_key("patches"):
