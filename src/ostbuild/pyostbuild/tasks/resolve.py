@@ -34,6 +34,8 @@ class TaskResolve(TaskDef):
     def __init__(self, builtin, taskmaster, name, argv):
         TaskDef.__init__(self, builtin, taskmaster, name, argv)
 
+        self.subparser.add_argument('--fetch-patches', action='store_true',
+                                    help="git fetch patches")
         self.subparser.add_argument('--fetch-all', action='store_true',
                                     help="git fetch patches, base system and all components")
         self.subparser.add_argument('--timeout-sec', default=10, metavar="SECONS",
@@ -50,6 +52,12 @@ class TaskResolve(TaskDef):
         data = jsonutil.load_json(manifest_path)
         self._snapshot = Snapshot(data, manifest_path, prepare_resolve=True)
 
+        # Fetch patches
+        if args.fetch_patches and self._snapshot.data.has_key("patches"):
+            component = self._snapshot.data["patches"]
+            mirrordir = vcs.ensure_vcs_mirror(self.mirrordir, component, fetch=True)
+
+        # Fetch components
         git_mirror_args = [sys.argv[0], "git-mirror", "--timeout-sec=" + str(args.timeout_sec),
                            "--workdir=" + self.workdir, "--manifest=" + manifest_path]
         if args.fetch_all or len(args.components) > 0:
