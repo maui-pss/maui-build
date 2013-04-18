@@ -531,6 +531,25 @@ class TaskBuild(TaskDef):
         debug_path = os.path.join(final_result_dir, "debug")
         fileutil.ensure_dir(debug_path)
 
+        # Some components might need static files around
+        keep_static = component.get("keep-static", False)
+
+        # List of files to keep
+        keep_files = component.get("keep-files", {})
+        keep_files_list = []
+        def flatten(d):
+            ret = []
+            for v in d.values():
+                if isinstance(v, dict):
+                    ret.extend(flatten(v))
+                elif isinstance(v, list):
+                    ret.extend(v)
+                else:
+                    ret.append(v)
+            return ret
+        if len(keep_files.keys()):
+            keep_files_list = flatten(keep_files)
+
         # Some components install files that are read-only even for the user,
         # this will make stripping debugging information fail so we need
         # to change file modes before we continue
@@ -561,7 +580,8 @@ class TaskBuild(TaskDef):
             for dirpath, subdirs, files in os.walk(build_result_dir):
                 for filename in files:
                     path = os.path.join(dirpath, filename)
-                    if pattern.match(path):
+                    relpath = os.path.relpath(path, build_result_dir)
+                    if pattern.match(path) and relpath not in keep_files_list:
                         os.unlink(path)
 
         libdir = os.path.join(build_result_dir, 'usr/lib')
@@ -575,9 +595,11 @@ class TaskBuild(TaskDef):
                 if filename.endswith('.so') and os.path.islink(path):
                     # Move symbolic links for shared libraries to devel
                     self._install_and_unlink(build_result_dir, path, devel_path)
-                elif filename.endswith(".a"):
-                    # Just delete static libraries, no one should ever use them
-                    os.unlink(path)
+                elif filename.endswith(".a") and not keep_static:
+                    # Just delete static libraries, unless told otherwise
+                    relpath = os.path.relpath(path, build_result_dir)
+                    if relpath not in keep_files_list:
+                        os.unlink(path)
 
         # Split debuginfo
         for subpath, subdirs, files in os.walk(build_result_dir):
@@ -590,12 +612,20 @@ class TaskBuild(TaskDef):
             path = os.path.join(build_result_dir, dirname)
             if os.path.isdir(path):
                 self._install_and_unlink(build_result_dir, path, devel_path)
+        devel_keep_files_list = keep_files.get("devel", [])
+        for path in devel_keep_files_list:
+            fullpath = os.path.join(build_result_dir, path)
+            self._install_and_unlink(build_result_dir, fullpath, devel_path)
 
         # Move documentation to doc
         for dirname in DOC_DIRS:
             path = os.path.join(build_result_dir, dirname)
             if os.path.isdir(path):
                 self._install_and_unlink(build_result_dir, path, doc_path)
+        doc_keep_files_list = keep_files.get("doc", [])
+        for path in doc_keep_files_list:
+            fullpath = os.path.join(build_result_dir, path)
+            self._install_and_unlink(build_result_dir, fullpath, doc_path)
 
         # Move everything else to runtime
         self._install_and_unlink(build_result_dir, build_result_dir, runtime_path)
