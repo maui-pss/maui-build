@@ -35,7 +35,7 @@ class BuiltinGitMirror(builtins.Builtin):
         self.parser.add_argument('--workdir')
         self.parser.add_argument('--manifest')
         self.parser.add_argument('--snapshot')
-        self.parser.add_argument('--timeout-sec', default=0, metavar="SECONDS",
+        self.parser.add_argument('--timeout-sec', type=int, default=0, metavar="SECONDS",
                                  help="Cache fetch results for provided number of seconds")
         self.parser.add_argument('--fetch', action='store_true',
                                  help="Also do a git fetch for components")
