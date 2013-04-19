@@ -42,7 +42,8 @@ DEVEL_DIRS = ['usr/include',
               'usr/share/cmake',
               'usr/lib/cmake',
               'usr/lib/qt5/cmake',
-              'usr/lib/qt5/mkspecs']
+              'usr/lib/qt5/mkspecs',
+              'usr/share/qt5/examples']
 
 DOC_DIRS = ['usr/share/doc',
             'usr/share/gtk-doc',
