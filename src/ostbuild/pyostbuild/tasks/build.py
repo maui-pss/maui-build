@@ -1003,7 +1003,8 @@ class TaskBuild(TaskDef):
 
         for component_type in ("runtime", "devel"):
             treename = '%s/bases/%s/%s-%s' % (self.osname, basemeta["name"], architecture, component_type)
-            tar_path = os.path.join(builddir, 'maui-contents-%s-%s.tar.gz' % (component_type, architecture))
+            tar_filename = "%s-%s-%s.tar.gz" % (basemeta.get("tarball-prefix", "maui-contents"), component_type, architecture)
+            tar_path = os.path.join(builddir, tar_filename)
             cmd = ['ostree', '--repo=' + self.repo, 'commit', '-s', 'Build', '--skip-if-unchanged',
                    '-b', treename, '--tree=tar=' + tar_path]
             run_sync(cmd, env=env)
