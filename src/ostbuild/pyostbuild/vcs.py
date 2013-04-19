@@ -231,7 +231,7 @@ def _ensure_vcs_mirror_git(mirrordir, uri, branch, fetch=False,
         last_fetch_contents = None
     if os.path.isdir(tmp_mirror):
         shutil.rmtree(tmp_mirror)
-    if not os.path.isdir(mirror):
+    if not os.path.exists(mirror):
         run_sync(['git', 'clone', '--mirror', uri, tmp_mirror])
         run_sync(['git', 'config', 'gc.auto', '0'], cwd=tmp_mirror)
         os.rename(tmp_mirror, mirror)
