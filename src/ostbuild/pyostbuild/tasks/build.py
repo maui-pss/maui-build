@@ -43,15 +43,9 @@ COMMON_BUILD_FLAGS = {
 DEVEL_DIRS = ['usr/include',
               'usr/share/aclocal',
               'usr/share/pkgconfig',
-              'usr/lib/pkgconfig',
-              'usr/share/cmake',
-              'usr/lib/cmake',
-              'usr/lib/qt5/cmake',
-              'usr/lib/qt5/mkspecs',
-              'usr/share/qt5/examples']
+              'usr/lib/pkgconfig']
 
 DOC_DIRS = ['usr/share/doc',
-            'usr/share/gtk-doc',
             'usr/share/man',
             'usr/share/info']
 
@@ -537,6 +531,9 @@ class TaskBuild(TaskDef):
         debug_path = os.path.join(final_result_dir, "debug")
         fileutil.ensure_dir(debug_path)
 
+        # Additional paths defined by manifest
+        additional_paths = self._snapshot.data.get("paths", {})
+
         # Some components might need static files around
         keep_static = component.get("keep-static", False)
 
@@ -617,7 +614,9 @@ class TaskBuild(TaskDef):
                 self._process_build_result_split_debuginfo(build_result_dir, debug_path, path)
 
         # Move development stuff to devel
-        for dirname in DEVEL_DIRS:
+        devel_paths = DEVEL_DIRS
+        devel_paths += additional_paths.get("devel", [])
+        for dirname in devel_paths:
             path = os.path.join(build_result_dir, dirname)
             if os.path.isdir(path):
                 self._install_and_unlink(build_result_dir, path, devel_path)
@@ -627,7 +626,9 @@ class TaskBuild(TaskDef):
             self._install_and_unlink(build_result_dir, fullpath, devel_path)
 
         # Move documentation to doc
-        for dirname in DOC_DIRS:
+        doc_paths = DOC_DIRS
+        doc_paths += additional_paths.get("doc", [])
+        for dirname in doc_paths:
             path = os.path.join(build_result_dir, dirname)
             if os.path.isdir(path):
                 self._install_and_unlink(build_result_dir, path, doc_path)
