@@ -29,11 +29,16 @@ from ..task import TaskDef
 from ..snapshot import Snapshot
 from ..subprocess_helpers import run_sync, run_sync_get_output
 
-OPT_COMMON_CFLAGS = {'i686': '-O2 -pipe -g -m32 -march=i686 -mtune=atom -fasynchronous-unwind-tables',
-                     'x86_64': '-O2 -pipe -g -m64 -march=x86-64 -mtune=generic'}
-
-OPT_COMMON_LDFLAGS = {'i686': '-Wl,-O1,--sort-common,--as-needed,-z,relro',
-                      'x86_64': '-Wl,-O1,--sort-common,--as-needed,-z,relro'}
+COMMON_BUILD_FLAGS = {
+    "i686": {
+        "cflags": "-O2 -pipe -g -m32 -march=i686 -mtune=atom -fasynchronous-unwind-tables",
+        "ldflags": "-Wl,-O1,--sort-common,--as-needed,-z,relro"
+    },
+    "x86_64": {
+        "cflags": "-O2 -pipe -g -m64 -march=x86-64 -mtune=generic",
+        "ldflags": "-Wl,-O1,--sort-common,--as-needed,-z,relro"
+    }
+}
 
 DEVEL_DIRS = ['usr/include',
               'usr/share/aclocal',
@@ -652,6 +657,10 @@ class TaskBuild(TaskDef):
         unix_buildname = arch_buildname.replace("/", "_")
         build_ref = self._component_build_ref(component, architecture)
 
+        build_flags = COMMON_BUILD_FLAGS[architecture]
+        override_build_flags = self._snapshot.data.get("build-flags", {})
+        build_flags.update(override_build_flags.get(architecture, {}))
+
         current_vcs_version = component.get('revision')
         expanded_component = self._snapshot.get_expanded(basename)
         previous_metadata = self._component_build_cache.get(build_ref)
@@ -754,9 +763,9 @@ class TaskBuild(TaskDef):
                 '--ostbuild-meta=_ostbuild-meta.json'])
         env_copy = dict(buildutil.BUILD_ENV)
         env_copy['PWD'] = chroot_sourcedir
-        env_copy['CFLAGS'] = OPT_COMMON_CFLAGS[architecture]
-        env_copy['CXXFLAGS'] = OPT_COMMON_CFLAGS[architecture]
-        env_copy['LDFLAGS'] = OPT_COMMON_LDFLAGS[architecture]
+        env_copy['CFLAGS'] = build_flags["cflags"]
+        env_copy['CXXFLAGS'] = build_flags["cflags"]
+        env_copy['LDFLAGS'] = build_flags["ldflags"]
 
         run_sync(child_args, env=env_copy)
 
