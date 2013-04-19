@@ -596,6 +596,9 @@ class TaskBuild(TaskDef):
                 if filename.endswith('.so') and os.path.islink(path):
                     # Move symbolic links for shared libraries to devel
                     self._install_and_unlink(build_result_dir, path, devel_path)
+                elif filename.endswith(".prl"):
+                    # Move Qt prl files to devel
+                    self._install_and_unlink(build_result_dir, path, devel_path)
                 elif filename.endswith(".a") and not keep_static:
                     # Just delete static libraries, unless told otherwise
                     relpath = os.path.relpath(path, build_result_dir)
