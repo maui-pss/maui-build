@@ -37,25 +37,39 @@ def get_mirrordir(mirrordir, keytype, uri, prefix=''):
     if prefix: prefix += '/'
     return os.path.join(mirrordir, prefix, keytype, scheme, rest)
 
+def _process_submodules(cwd):
+    if not os.path.exists(os.path.join(cwd, ".gitmodules")):
+        return {}
+    submodules = {}
+    output = run_sync_get_output(["git", "config", "-f", ".gitmodules", "--list"], cwd=cwd)
+    lines = output.split("\n")
+    for line in lines:
+        m = re.match(r'^submodule\.(.*)\.(path|url)=(.*)$', line)
+        if m:
+            (name, key, value) = m.groups()
+            if not submodules.has_key(name):
+                submodules[name] = {}
+            submodules[name].update({key: value})
+            if key == "path":
+                status_line = run_sync_get_output(["git", "submodule", "status", value], cwd=cwd).strip()
+                status_line = status_line[1:]
+                (checksum, path) = status_line.split(" ", 2)[:2]
+                submodules[name]["checksum"] = checksum
+    return submodules
+
 def _process_checkout_submodules(mirrordir, parent_uri, cwd):
     logger = Logger()
-    submodules_status_text = run_sync_get_output(['git', 'submodule', 'status'], cwd=cwd)
-    submodule_status_lines = submodules_status_text.split('\n')
-    have_submodules = False
-    for line in submodule_status_lines:
-        if line == '': continue
-        have_submodules = True
-        line = line[1:]
-        (sub_checksum, sub_name) = line.split(' ', 2)[:2]
-        sub_url = run_sync_get_output(['git', 'config', '-f', '.gitmodules',
-                                       'submodule.%s.url' % (sub_name, )], cwd=cwd)
-        logger.info("Processing submodule %s" % sub_url)
-        if sub_url.find('../') == 0:
-            sub_url = _make_absolute_url(parent_uri, sub_url)
-        local_mirror = get_mirrordir(mirrordir, 'git', sub_url)
-        run_sync(['git', 'config', 'submodule.%s.url' % sub_name, 'file://' + local_mirror], cwd=cwd)
-        run_sync(['git', 'submodule', 'update', '--init', sub_name], cwd=cwd)
-        _process_checkout_submodules(mirrordir, sub_url, os.path.join(cwd, sub_name))
+    submodules = _process_submodules(cwd)
+    have_submodules = len(submodules.keys()) > 0
+    for name in submodules.keys():
+        submodule = submodules[name]
+        logger.info("Processing submodule \"%s\" (%s)" % (name, submodule["url"]))
+        if submodule["url"].find("../") == 0:
+            sub_url = _make_absolute_url(parent_uri, submodule["url"])
+        local_mirror = get_mirrordir(mirrordir, "git", sub_url)
+        run_sync(['git', 'config', 'submodule.%s.url' % name, 'file://' + local_mirror], cwd=cwd)
+        run_sync(['git', 'submodule', 'update', '--init', name], cwd=cwd)
+        _process_checkout_submodules(mirrordir, sub_url, os.path.join(cwd, name))
 
 def get_vcs_checkout(mirrordir, component, dest, overwrite=True, quiet=False):
     logger = Logger()
@@ -149,18 +163,13 @@ def _list_submodules(mirrordir, mirror, keytype, uri, branch):
         os.makedirs(parent)
     run_sync(['git', 'clone', '-q', '--no-checkout', mirror, tmp_checkout])
     run_sync(['git', 'checkout', '-q', '-f', current_vcs_version], cwd=tmp_checkout)
-    submodules = []
-    submodules_status_text = run_sync_get_output(['git', 'submodule', 'status'], cwd=tmp_checkout)
-    submodule_status_lines = submodules_status_text.split('\n')
-    for line in submodule_status_lines:
-        if line == '': continue
-        line = line[1:]
-        (sub_checksum, sub_name) = line.split(' ', 2)[:2]
-        sub_url = run_sync_get_output(['git', 'config', '-f', '.gitmodules',
-                                       'submodule.%s.url' % sub_name], cwd=tmp_checkout)
-        submodules.append((sub_checksum, sub_name, sub_url))
+    ret = []
+    submodules = _process_submodules(tmp_checkout)
+    for name in submodules.keys():
+        submodule = submodules[name]
+        ret.append((submodule["checksum"], name, submodule["url"]))
     shutil.rmtree(tmp_checkout)
-    return submodules
+    return ret
 
 def _make_absolute_url(parent, relpath):
     logger = Logger()
