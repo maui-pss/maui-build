@@ -725,7 +725,7 @@ class TaskBuild(TaskDef):
         jsonutil.write_json_file_atomic(temp_metadata_path, expanded_component)
 
         component_src = os.path.join(build_workdir, basename)
-        child_args = ['ostbuild', 'checkout', '--snapshot=' + self._snapshot.path,
+        child_args = [sys.argv[0], 'checkout', '--snapshot=' + self._snapshot.path,
                       "--workdir=" + self.workdir,
                       '--checkoutdir=' + component_src,
                       '--metadata-path=' + temp_metadata_path,

@@ -17,7 +17,7 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-import os, argparse, shutil
+import sys, os, argparse, shutil
 
 from .. import libqa
 from .. import jsondb
@@ -78,7 +78,7 @@ class TaskBuildDisks(TaskDef):
 
         osname = self._build_data["snapshot"]["osname"]
 
-        run_sunc(["ostbuild", "qa-pull-deploy", tmppath, self.repo, osname,
+        run_sunc([sys.argv[0], "qa-pull-deploy", tmppath, self.repo, osname,
                  default_target, default_revision])
         shutil.move(tmppath, self._default_disk_path)
 
@@ -91,7 +91,7 @@ class TaskBuildDisks(TaskDef):
             tmppath = os.path.abspath(os.path.join(disk_path, "..", os.path.basename(disk_path) + ".tmp"))
             shutil.rmtree(tmppath)
             libqa.create_disk_snapshot(self._default_disk_path, tmppath)
-            run_sync(["ostbuild", "qa-pull-deploy", tmppath, self.repo, osname, target_name, target_revision])
+            run_sync([sys.argv[0], "qa-pull-deploy", tmppath, self.repo, osname, target_name, target_revision])
 
         fileutil.file_linkcopy(latest_path, os.path.join(image_dir, os.path.basename(latest_path)), overwrite=True)
 
