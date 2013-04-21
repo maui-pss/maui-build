@@ -67,7 +67,7 @@ class TaskBuild(TaskDef):
         self.force_build_components = {}
         for name in args.components:
             self.force_build_components[name] = True
-        self.cached_patchdir_revision = None
+        self._cached_patchdir_revision = None
 
         snapshot_dir = os.path.join(self.workdir, "snapshots")
         srcdb = jsondb.JsonDB(snapshot_dir)
@@ -675,14 +675,14 @@ class TaskBuild(TaskDef):
 
         if 'patches' in expanded_component:
             patches_revision = expanded_component['patches']['revision']
-            if self.cached_patchdir_revision == patches_revision:
+            if self._cached_patchdir_revision == patches_revision:
                 patchdir = self.patchdir
             else:
                 patchdir = vcs.checkout_patches(self.mirrordir,
                                                 self.patchdir,
                                                 expanded_component)
                 self.patchdir = patchdir
-                self.cached_patchdir_revision = patches_revision
+                self._cached_patchdir_revision = patches_revision
             if ((previous_metadata is not None) and
                 'patches' in previous_metadata and
                 not previous_metadata['patches']['src'].startswith("local:") and

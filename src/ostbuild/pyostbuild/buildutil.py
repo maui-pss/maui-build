@@ -38,12 +38,12 @@ def get_patch_paths_for_component(patchdir, component):
         return []
     patch_subdir = patches.get('subdir', None)
     if patch_subdir is not None:
-        patchdir = os.path.join(patchdir, patch_subdir)
+        sub_patchdir = os.path.join(patchdir, patch_subdir)
     else:
-        patchdir = self.patchdir
+        sub_patchdir = self.patchdir
     result = []
     for patch in patches['files']:
-        result.append(os.path.join(patchdir, patch))
+        result.append(os.path.join(sub_patchdir, patch))
     return result
 
 def find_user_chroot_path():
