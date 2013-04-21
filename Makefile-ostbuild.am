@@ -86,4 +86,5 @@ pyostbuildtasks_PYTHON =				\
 	src/ostbuild/pyostbuild/tasks/build.py		\
 	src/ostbuild/pyostbuild/tasks/resolve.py	\
 	src/ostbuild/pyostbuild/tasks/smoketest.py	\
+	src/ostbuild/pyostbuild/tasks/zdisks.py		\
 	$(NULL)
