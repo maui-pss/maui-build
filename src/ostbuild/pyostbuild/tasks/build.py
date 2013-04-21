@@ -269,9 +269,9 @@ class TaskBuild(TaskDef):
                 runtime_target_name = "buildmaster/" + architecture + "-" + target
                 runtime_target = self._find_target_in_list(runtime_target_name, targets_list)
 
-                (composed_rootdir, related_tmppath) = self._checkout_one_tree(runtime_target, component_build_revs)
+                (compose_rootdir, related_tmppath) = self._checkout_one_tree(runtime_target, component_build_revs)
                 (kernel_release, initramfs_path) = arch_initramfs_images[architecture]
-                target_initramfs_path = os.path.join(composed_rootdir, "boot", os.path.basename(initramfs_path))
+                target_initramfs_path = os.path.join(compose_rootdir, "boot", os.path.basename(initramfs_path))
                 shutil.copy2(initramfs_path, target_initramfs_path)
                 (treename, ostree_rev) = self._commit_composed_tree(runtime_target_name, compose_rootdir, related_tmppath)
                 target_revisions[treename] = ostree_rev
@@ -806,7 +806,7 @@ class TaskBuild(TaskDef):
 
         return ostree_revision
 
-    def _compose_one_tree(self, target, component_build_revs):
+    def _checkout_one_tree(self, target, component_build_revs):
         base = target['base']
         base_name = '%s/bases/%s' % (self.osname, base['name'])
         runtime_name = '%s/bases/%s' % (self.osname, base['runtime'])
@@ -875,7 +875,7 @@ class TaskBuild(TaskDef):
         f.write("")
         f.close()
 
-        return (composed_rootdir, related_tmppath)
+        return (compose_rootdir, related_tmppath)
 
     def _commit_composed_tree(self, target_name, compose_rootdir, related_tmppath):
         treename = self.osname + "/" + target_name
@@ -891,17 +891,17 @@ class TaskBuild(TaskDef):
     def _generate_initramfs(self, architecture, compose_rootdir, initramfs_depends):
         boot_dir = os.path.join(compose_rootdir, "boot")
         kernel_path = None
-        for filename in os.listdir(bootdir):
+        for filename in os.listdir(boot_dir):
             if not filename.startswith("vmlinuz-"):
                 continue
-            kernel_path = os.path.join(bootdir, filename)
+            kernel_path = os.path.join(boot_dir, filename)
             break
         if kernel_path is None:
             self.logger.fatal("Couldn't find a kernel in compose root")
 
         kernel_name = os.path.basename(kernel_path)
         release_idx = kernel_name.find("-")
-        kernel_release = kernel_name[i+1:]
+        kernel_release = kernel_name[release_idx+1:]
 
         initramfs_cachedir = os.path.join(self.cachedir, "initramfs", architecture)
         fileutil.ensure_dir(initramfs_cachedir)
