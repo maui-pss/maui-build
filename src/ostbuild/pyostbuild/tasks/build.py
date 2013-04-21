@@ -1019,7 +1019,10 @@ class TaskBuild(TaskDef):
             run_sync(cmd, env=env)
             os.remove(tar_path)
 
-        shutil.rmtree(checkoutdir)
+        if keytype == "local":
+            os.unlink(checkoutdir)
+        else:
+            shutil.rmtree(checkoutdir)
 
         self._write_component_cache(buildname, basemeta)
 
