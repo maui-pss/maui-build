@@ -17,82 +17,113 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-import sys, os, argparse, shutil
+import os, shutil
 
-from .. import libqa
-from .. import jsondb
 from .. import fileutil
-from .. import libqa
 from .. import taskset
 from ..task import TaskDef
 from ..subprocess_helpers import run_sync
-from ..guestfish import GuestFish, GuestMount
+
+IMAGE_RETAIN_COUNT = 2
 
 class TaskBuildDisks(TaskDef):
     name = "builddisks"
     short_description = "Generate disk images"
     after = ["build",]
 
+    _image_subdir = "images"
+    _inherit_previous_disk = True
+
     def __init__(self, builtin, taskmaster, name, argv):
         TaskDef.__init__(self, builtin, taskmaster, name, argv)
 
-    def _disk_path_for_target(self, target_name, is_snap=False):
-        squashed_name = target_name.replace("/", "_")
-        if is_snap:
-            suffix = "-snap.qcow2"
-        else:
-            suffix = "-disk.qcow2"
-
     def execute(self, argv):
-        self.get_prefix()
+        subworkdir = os.getcwd()
 
-        self.image_dir = os.path.join(self.workdir, "images", self.prefix)
-        self.current_image_link = os.path.join(self.image_dir, "current")
-        self.previous_image_link = os.path.join(self.image_dir, "previous")
-        fileutil.ensure_dir(self.image_dir)
+        base_image_dir = os.path.join(self.workdir, self._image_subdir)
+        fileutil.ensure_dir(base_image_dir)
+        current_image_link = os.path.join(base_image_dir, "current")
+        previous_image_link = os.path.join(base_image_dir, "previous")
 
-        buildresult_dir = os.path.join(self.workdir, "builds", self.prefix)
-        builddb = jsondb.JsonDB(buildresult_dir)
+        builddb = self._get_result_db("build")
 
         latest_path = builddb.get_latest_path()
-        build_version = builddb.parse_version(os.path.basename(latest_path))
-        self._build_data = builddb.load_from_path(latest_path)
+        build_version = builddb.parse_version_str(os.path.basename(latest_path))
+        build_data = builddb.load_from_path(latest_path)
 
-        targets = self._build_data["targets"]
+        target_image_dir = os.path.join(base_image_dir, build_version)
+        if os.path.exists(target_image_dir):
+            self.logger.info("Already created %s" % target_image_dir)
+            return
 
-        # Special case the default target - we do a pull, then clone
-        # that disk for further tests.  This is a speedup under the
-        # assumption that the trees are relatively close, so we avoid
-        # copying data via libguestfs repeatedly.
-        default_target = self._build_data["snapshot"]["default-target"]
-        default_revision = self._build_data["targets"][default_target]
-        self._default_disk_path = self._disk_path_for_target(default_target, False)
+        work_image_dir = os.path.join(subworkdir, "images")
+        fileutil.ensure_dir(work_image_dir)
 
-        tmppath = os.path.abspath(os.path.join(self._default_disk_path, "..", os.path.basename(self._default_disk_path() + ".tmp")))
-        shutil.rmtree(tmppath)
+        targets = build_data["targets"]
 
-        if not os.path.exist(self._default_disk_path):
-            libqa.create_disk(tmppath)
-        else:
-            libqa.copy_disk(self._default_disk_path, tmppath)
-
-        osname = self._build_data["snapshot"]["osname"]
-
-        run_sunc([sys.argv[0], "qa-pull-deploy", tmppath, self.repo, osname,
-                 default_target, default_revision])
-        shutil.move(tmppath, self._default_disk_path)
-
+        osname = build_data["snapshot"]["osname"]
+        repo = build_data["snapshot"]["repo"]
 
         for target_name in targets:
-            if target_name == default_target:
+            if not target_name.endswith("-runtime"):
                 continue
-            target_revision = self._build_data["targets"][target_name]
-            disk_path = self._disk_path_for_target(target_name, True)
-            tmppath = os.path.abspath(os.path.join(disk_path, "..", os.path.basename(disk_path) + ".tmp"))
-            shutil.rmtree(tmppath)
-            libqa.create_disk_snapshot(self._default_disk_path, tmppath)
-            run_sync([sys.argv[0], "qa-pull-deploy", tmppath, self.repo, osname, target_name, target_revision])
+            target_revision = build_data["targets"][target_name]
+            squashed_name = target_name.replace("\/", "_")
+            disk_name = "%s-%s-disk.qcow2" % (osname, squashed_name)
+            disk_path = os.path.join(work_image_dir, disk_name)
+            prev_path = os.path.join(current_image_link, disk_name)
+            if os.path.exists(disk_path):
+                shutil.rmtree(disk_path)
+            if self._inherit_previous_disk and os.path.exists(prev_path):
+                libqa.copy_disk(prev_path, disk_path)
+            else:
+                libqa.create_disk(disk_path)
+            mntdir = os.path.join(subworkdir, "mnt-%s-%s" % (osname, squashed_name))
+            fileutil.ensure_dir(mntdir)
 
-        fileutil.file_linkcopy(latest_path, os.path.join(image_dir, os.path.basename(latest_path)), overwrite=True)
+            gfmnt = GuestMount(disk_path, partition_opts=None, read_write=True)
+            gfmnt.mount(mntdir)
+            try:
+                libqa.pull_deploy(mntdir, self.repo, osname, target_name, target_revision)
+                libqa.configure_bootloader(mntdir, osname)
+                if repo:
+                    repo_dir = os.path.join(mntdir, "ostree", "repo")
+                    run_sync(["ostree", "--repo=" + repo_dir, "remote", "add", osname, repo, target_name])
+            finally:
+                gfmnt.umount()
+            libqa.bootloader_install(disk_path, subworkdir, osname)
+
+            self._post_disk_creation(disk_path)
+
+        os.rename(work_image_dir, target_image_dir)
+
+        if os.path.exists(current_image_link):
+            new_previous_tmppath = os.path.join(base_image_dir, "previous-new.tmp")
+            current_link_target = ll
+            shutil.rmtree(new_previous_tmppath)
+            os.rename(new_previous_tmppath, previous_image_link)
+
+        buildutil.atomic_symlink_swap(os.path.join(base_image_dir, "current"), target_image_dir)
+
+        self._clean_old_versions(base_image_dir, IMAGE_RETAIN_COUNT)
+
+    def _post_disk_creation(self, disk_path):
+        # Move along, this is for zdisks
+        pass
+
+    def _load_versions_from(self, path):
+        results = []
+        for name in os.listdir(path):
+            if re.search(self._VERSION_RE, name):
+                results.append(name)
+        results.sort(cmp=buildutil.compare_versions)
+        return results
+
+    def _clean_old_versions(self, path, retain):
+        versions = self._load_versions_from(path)
+        while len(versions) > retain:
+            child = os.path.join(path, versions.pop(0))
+            if os.path.exists(child):
+                shutil.rmtree(child)
 
 taskset.register(TaskBuildDisks)
