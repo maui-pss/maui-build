@@ -171,7 +171,6 @@ class TaskDef(GObject.GObject):
     pattern = None
     after = []
 
-    preserve_stdout = False
     retain_failed = 1
     retain_success = 5
 
@@ -304,14 +303,10 @@ class TaskDef(GObject.GObject):
             base_args.extend(["--",] + self.argv)
         env_copy = os.environ.copy()
         env_copy["_OSTBUILD_WORKDIR"] = self.workdir
-        if self.preserve_stdout:
-            out_path = os.path.join(self._workdir, "output.txt")
-            stdout = open(out_path, "w")
-            stderr = stdout
-        else:
-            err_path = os.path.join(self._workdir, "errors.txt")
-            stdout = open("/dev/null", "w")
-            stderr = open(err_path, "w")
+        out_path = os.path.join(self._workdir, "output.txt")
+        err_path = os.path.join(self._workdir, "errors.txt")
+        stdout = open(out_path, "w")
+        stderr = open(err_path, "w")
         proc = run_async(base_args, cwd=self._workdir, stdout=stdout,
                          stderr=stderr, env=env_copy)
         self.logger.debug("waiting for pid %d" % proc.pid)
