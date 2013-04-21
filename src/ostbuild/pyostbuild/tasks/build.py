@@ -87,16 +87,24 @@ class TaskBuild(TaskDef):
 
         target_source_version = builddb.parse_version_str(os.path.basename(self._snapshot.path))
 
-        # Pick up overrides from $workdir/overrides/$name
+        base_name = self._snapshot.data["base"]["name"]
+
+        # Pick up base override from $workdir/overrides/base/$name
+        base_override_path = os.path.join(self.workdir, "overrides", "base", base_name)
+        if os.path.exists(base_override_path):
+            self.logger.info("Using override for base %s: %s" % (base_name, base_override_path))
+            self._snapshot.data["base"]["src"] = "local:%s" % base_override_path
+
+        # Pick up components overrides from $workdir/overrides/components/$name
         for component in components:
-            override_path = os.path.join(self.workdir, "overrides", component["name"])
+            override_path = os.path.join(self.workdir, "overrides", "components", component["name"])
             if os.path.exists(override_path):
                 self.logger.info("Using override: %s" % override_path)
                 component["src"] = "local:%s" % override_path
 
         have_local_component = False
         for component in components:
-            if component["src"][:6] == "local:":
+            if component["src"].startswith("local:"):
                 have_local_component = True
                 break
 
@@ -124,7 +132,7 @@ class TaskBuild(TaskDef):
         else:
             self._component_build_cache = {}
 
-        base_name = self._snapshot.data["base"]["name"]
+        # Build base system
         architectures = self._snapshot.data["architectures"]
         for architecture in architectures:
             self._build_base(architecture)
@@ -959,8 +967,8 @@ class TaskBuild(TaskDef):
         buildname = "bases/%s-%s" % (basemeta["name"], architecture)
 
         #force_rebuild = (basemeta['name'] in self.force_build_components or
-        #                 basemeta['src'][:6] == 'local')
-        force_rebuild = False
+        #                 basemeta['src'].startswith('local:'))
+        force_rebuild = basemeta["src"].startswith("local:")
 
         previous_build = self._component_build_cache.get(buildname)
         if previous_build is not None:
@@ -981,7 +989,8 @@ class TaskBuild(TaskDef):
 
         (keytype, uri) = vcs.parse_src_key(basemeta["src"])
         if keytype == "local":
-            shutil.rmtree(checkoutdir)
+            if os.path.exists(checkoutdir):
+                shutil.rmtree(checkoutdir)
             os.symlink(uri, checkoutdir)
         else:
             vcs.get_vcs_checkout(self.mirrordir, basemeta, checkoutdir, overwrite=False)
