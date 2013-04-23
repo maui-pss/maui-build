@@ -109,7 +109,7 @@ class GuestMount(LibGuestfs):
 
         for i in range(0, 30):
             if run_sync(["kill", "-0", pid_str], stderr=None):
-                self.log.info("Awaiting termination of guestfish, pid=%s timeout=%ss" % (pid_str, str(30 - i)))
+                self.logger.info("Awaiting termination of guestfish, pid=%s timeout=%ss" % (pid_str, str(30 - i)))
                 time.sleep(1)
             else:
                 guestfish_exited = True
