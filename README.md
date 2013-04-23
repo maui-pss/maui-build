@@ -28,17 +28,35 @@ Also install the following packages:
  * libguestfs-tools
  * elfutils (for eu-readelf)
 
-You also need Linux 2.6.28 or newer.
+You also need:
 
-To run ```ostbuild qa-make-disk``` or ```ostbuild qa-pull-deploy``` on Ubuntu 12.10 you will need to make a symbolic link to the right libguestfs path:
+ * Linux 2.6.28 or newer
+ * *linux-user-chroot* and *ostree*, follow the next sections for more information
+ * The *termcolor* Python module if you want *ostbuild* to print colored output
+
+### Setup guestfs on Ubuntu
+
+To build disk images on Ubuntu 12.10 you will need to make a symbolic link to the right libguestfs path:
 
 ```sh
-sudo ln -s /usr/lib/guestfs /usr/lib/x86_64-linux-gnu/guestf
+sudo ln -s /usr/lib/guestfs /usr/lib/x86_64-linux-gnu/guestfs
 ```
 
-You also need to build and install *linux-user-chroot* and *ostree*, follow the next sections for more information.
+This might be needed on other Ubuntu versions as well, although only Ubuntu 12.10 was tested so far.
 
-If you want *ostbuild* to print colored output, install the *termcolor* Python module.
+### Configure FUSE
+
+If you build disk images with an unprivileged user (i.e. not root), your user must be in the *fuse* group
+and FUSE must be configured to allow non-root users to specify the *allow_other* or *allow_root*
+mount options.
+
+To add the currently logged-in user to the *fuse* group on Debian and Ubuntu systems:
+
+```sh
+sudo adduser $USER fuse
+```
+
+Now edit */etc/fuse.conf* and uncomment `user_allow_other`.
 
 ### Download and install linux-user-chroot
 

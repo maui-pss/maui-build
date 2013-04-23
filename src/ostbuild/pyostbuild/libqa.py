@@ -18,9 +18,12 @@
 # Boston, MA 02111-1307, USA.
 
 import os, re, shutil
+from gi.repository import GLib
+import __builtin__
+
 from .guestfish import GuestFish, GuestMount
 from .logger import Logger
-from .subprocess_helpers import run_sync
+from .subprocess_helpers import run_sync, run_async
 from .fileutil import find_program_in_path
 
 DEFAULT_GF_PARTITION_OPTS = ['-m', '/dev/sda3', '-m', '/dev/sda1:/boot']
@@ -35,9 +38,9 @@ def new_read_write_mount(diskpath):
     gfmnt = GuestMount(diskpath, partition_opts=DEFAULT_GF_PARTITION_OPTS,
                                  read_write=True)
     gfmnt.mount(mntdir)
-    return [gfmnt, mntdir]
+    return (gfmnt, mntdir)
 
-def create_disk(diskpath):
+def create_disk(diskpath, osname):
     logger = Logger()
 
     size_mb = 8 * 1024
@@ -47,9 +50,9 @@ def create_disk(diskpath):
     run_sync(["qemu-img", "create", "-f", "qcow2", diskpath, "%iM" % size_mb])
 
     make_disk_cmd = """launch
-part-init /dev/vda mbr
-blockdev-getsize64 /dev/vda
-blockdev-getss /dev/vda
+part-init /dev/sda mbr
+blockdev-getsize64 /dev/sda
+blockdev-getss /dev/sda
 """
     gf = GuestFish(diskpath, partition_opts=[], read_write=True)
     lines = gf.run(make_disk_cmd)
@@ -60,25 +63,27 @@ blockdev-getss /dev/vda
     logger.debug("bytesize: %d sectorsize: %d" % (disk_bytesize, disk_sectorsize))
 
     bootsize_sectors = bootsize_mb * 1024 / disk_sectorsize * 1024
-    rootsize_sectors = disk_bytesize / disk_sectorsize - bootsize_sectors - swapsize_sectors - 65
+    swapsize_sectors = swapsize_mb * 1024 / disk_sectorsize * 1024
+    rootsize_sectors = disk_bytesize / disk_sectorsize - bootsize_sectors - swapsize_sectors - 64
     boot_offset = 64
     swap_offset = boot_offset + bootsize_sectors
     root_offset = swap_offset + swapsize_sectors
     end_offset = root_offset + rootsize_sectors
 
     partconfig = """launch
-part-add /dev/vda p %d %d
-part-add /dev/vda p %d %d
-part-add /dev/vda p %d %d
-mkfs ext4 /dev/vda1
-set-e2label /dev/vda1 maui-boot
-mkswap-L maui-swap /dev/vda2
-mkfs ext4 /dev/vda3
-set-e2label /dev/vda3 maui-root
-mount /dev/vda3 /
+part-add /dev/sda p %d %d
+part-add /dev/sda p %d %d
+part-add /dev/sda p %d %d
+part-set-bootable /dev/sda 1 true
+mkfs ext4 /dev/sda1
+set-e2label /dev/sda1 %s-boot
+mkswap-L %s-swap /dev/sda2
+mkfs ext4 /dev/sda3
+set-e2label /dev/sda3 %s-root
+mount /dev/sda3 /
 mkdir /boot
-""" % (boot_offset, swap_offset - 1, swap_offset, root_offset - 1, root_offset, end_offset - 1)
-    logger.debug("partition config: %s" % partconfig)
+""" % (boot_offset, swap_offset - 1, swap_offset, root_offset - 1, root_offset, end_offset - 1, osname, osname, osname)
+    logger.debug("Partition config: %s" % partconfig.rstrip())
     gf.run(partconfig)
 
 def create_disk_snapshot(diskpath, newdiskpath):
@@ -103,41 +108,41 @@ def get_qemu_path():
     return qemu_path_string
 
 def get_deploy_dirs(mntdir, osname):
-    basedir = os.path.abspath(os.path.join(mntdir, "ostree", "deploy", osname))
+    basedir = os.path.join(mntdir, "ostree", "deploy", osname)
     return [os.path.join(basedir, "current"), os.path.join(basedir, "current-etc")]
 
 def modify_bootloader_append_kernel_args(mntdir, kernel_args):
-    grub_conf_path = os.path.abspath(os.path.join(mntdir, "boot", "grub", "grub.conf"))
-    grub_conf = open(grub_conf_path, "r")
-    lines = grub_conf.read().split("\n")
-    grub_conf.close()
+    conf_path = os.path.join(mntdir, "boot", "syslinux", "syslinux.cfg")
+    conf = open(conf_path, "r")
+    lines = conf.read().split("\n")
+    conf.close()
 
     modified_lines = []
-    kernel_arg = kernel_args.join(" ")
-    kernel_line_re = re.compile(r"kernel \/")
+    kernel_arg = " ".join(kernel_args)
+    kernel_line_re = re.compile(r'APPEND \/')
     for line in lines:
         if kernel_line_re.match(line):
             modified_lines.append(line + " " + kernel_arg)
         else:
             modified_lines.append(line)
 
-    modified_grub_conf = modified_lines.join("\n")
-    grub_conf = open(grub_conf_path, "w")
-    grub_conf.write(modified_grub_conf)
-    grub_conf.close()
+    modified_conf = modified_lines.join("\n")
+    conf = open(conf_path, "w")
+    conf.write(modified_conf)
+    conf.close()
 
 def get_multiuser_wants_dir(current_etc_dir):
-    return os.path.abspath(os.path.join(current_etc_dir, "systemd", "system", "multi-user.target.wants"))
+    return os.path.join(current_etc_dir, "systemd", "system", "multi-user.target.wants")
 
 def get_datadir():
-    return os.environ["OSTBUILD_DATADIR"]
+    return __builtin__.__dict__["DATADIR"]
 
 def inject_export_journal(current_dir, current_etc_dir):
-    bin_dir = os.path.abspath(os.path.join(current_dir, "usr", "bin"))
+    bin_dir = os.path.join(current_dir, "usr", "bin")
     multiuser_wants_dir = get_multiuser_wants_dir(current_etc_dir)
     datadir = get_datadir()
-    export_script = os.path.abspath(os.path.join(datadir, "tests", "gnome-ostree-export-journal-to-serialdev"))
-    export_script_service = os.path.abspath(os.path.join(datadir, "tests", "gnome-ostree-export-journal-to-serialdev.service"))
+    export_script = os.path.join(datadir, "tests", "ostbuild-export-journal-to-serialdev")
+    export_script_service = os.path.join(datadir, "tests", "ostbuild-export-journal-to-serialdev.service")
     export_bin = os.path.join(bin_dir, os.path.basename(export_script))
     shutil.copy_file(export_script, export_bin)
     os.chmod(export_bin, 493)
@@ -145,19 +150,19 @@ def inject_export_journal(current_dir, current_etc_dir):
 
 def inject_test_user_creation(current_dir, current_etc_dir, username, password=None):
     if password:
-        exec_line = "/bin/sh -c \"/usr/sbin/useradd %s; echo %s | passwd --stdin %s\""
+        exec_line = "/bin/sh -c \"/usr/sbin/useradd %s; echo %s | passwd --stdin %s\"" % (username, password, username)
     else:
-        exec_line = "/bin/sh -c \"/usr/sbin/useradd %s; passwd -d %s\""
+        exec_line = "/bin/sh -c \"/usr/sbin/useradd %s; passwd -d %s\"" % (username, username)
 
     add_user_service = """[Unit]
 Description=Add user %s
-Before=hawaii-login-manager.service
+Before=sddm.service
 
 [Service]
 ExecStart=%s
 Type=oneshot
 """ % (username, exec_line)
-    add_user_service_path = os.path.join(get_multiuser_wants_dir(current_etc_dir), "gnome-ostree-add-user-" + username + ".service")
+    add_user_service_path = os.path.join(get_multiuser_wants_dir(current_etc_dir), osname + "-add-user-" + username + ".service")
     add_user_service_file = open(add_user_service_path, "w")
     add_user_service_file.write(add_user_service)
     add_user_service_file.close()
@@ -178,19 +183,18 @@ def enable_autologin(current_dir, current_etc_dir, username):
 
 def _find_current_kernel(mntdir, osname):
     logger = Logger()
-    deploy_bootdir = os.path.abspath(os.path.join(mntdir, "ostree", "deploy", osname, "current", "boot"))
+    deploy_bootdir = os.path.join(mntdir, "ostree", "deploy", osname, "current", "boot")
     for item in os.listdir(deploy_bootdir):
         child = os.path.join(deploy_bootdir, item)
-        if os.path.basename(child)[:8] == "vmlinuz-":
+        if os.path.basename(child).startswidth("vmlinuz-"):
             return child
     logger.fatal("Couldn't find vmlinuz- in %s" % deploy_bootdir)
 
 def _parse_kernel_release(kernel_path):
     logger = Logger()
     name = os.path.basename(kernel_path)
-    try:
-        index = name.index("-")
-    except ValueError:
+    index = name.find("-")
+    if index == -1:
         logger.fatal("Invalid kernel name %s" % kernel_path)
     return name[index+1:]
 
@@ -217,10 +221,10 @@ def pull_deploy(mntdir, srcrepo, osname, target, revision):
     env_copy = os.environ.copy()
     env_copy["LIBGSYSTEM_ENABLE_GUESTFS_FUSE_WORKAROUND"] = "1"
 
-    procdir = os.path.join(self._mntdir, "proc")
+    procdir = os.path.join(mntdir, "proc")
     if not os.path.exists(procdir):
         args = copy.copy(admin_args)
-        args.extend(["init-fs", self._mntdir])
+        args.extend(["init-fs", mntdir])
         run_sync(args, env=env_copy)
 
     # *** NOTE ***
@@ -232,7 +236,8 @@ def pull_deploy(mntdir, srcrepo, osname, target, revision):
     # deployment starts clean, and callers can use libguestfs
     # to crack the FS open afterwards and modify config files
     # or the like.
-    shutil.rmtree(ostree_osdir)
+    if os.path.exists(ostree_osdir):
+        shutil.rmtree(ostree_osdir)
 
     if revision:
         rev_or_target = revision
@@ -258,37 +263,90 @@ def pull_deploy(mntdir, srcrepo, osname, target, revision):
     args.extend(["prune", osname])
     run_sync(args, env=env_copy)
 
+def configure_bootloader(mntdir, osname):
+    logger = Logger()
+
+    boot_dir = os.path.join(mntdir, "boot")
+    ostree_dir = os.path.join(mntdir, "ostree")
+
+    default_fstab = """LABEL=%s-root / ext4 defaults 1 1
+LABEL=%s-boot /boot ext4 defaults 1 2
+LABEL=%s-swap swap swap defaults 0 0
+""" % (osname, osname, osname)
+    fstab_path = os.path.join(ostree_dir, "deploy", osname, "current-etc", "fstab")
+    f = open(fstab_path, "w")
+    f.write("")
+    f.close()
+
     deploy_kernel_path = _find_current_kernel(mntdir, osname)
-    boot_kernel_path = os.path.join(bootdir, "ostree", os.path.basename(deploy_kernel_path))
+    boot_kernel_path = os.path.join(boot_dir, "ostree", os.path.basename(deploy_kernel_path))
     if not os.path.exists(boot_kernel_path):
         logger.fatal("%s doesn't exist" % boot_kernel_path)
     kernel_release = _parse_kernel_release(deploy_kernel_path)
     initramfs_path = _get_initramfs_path(mntdir, kernel_release)
 
-    default_fstab = "LABEL=maui-root / ext4 defaults 1 1\n" \
-        "LABEL=maui-boot /boot ext4 defaults 1 2\n" \
-        "LABEL=maui-swap swap swap defaults 0 0\n"
-    fstab_path = os.path.abspath(os.path.join(ostreedir, "deploy", osname, "current-etc", "fstab"))
-    fstab_file = open(fstab_path, "w")
-    fstab_file.write(default_fstab)
-    fstab_file.close()
-
-    grub_dir = os.path.join(mntdir, "boot", "grub")
-    if not os.path.exists(grub_dir):
-        os.mkdir(grub_dir, 0755)
     boot_relative_kernel_path = os.path.relpath(boot_kernel_path, bootdir)
     boot_relative_initramfs_path = os.path.relpath(initramfs_path, bootdir)
-    grub_conf_path = os.path.join(grub_dir, "grub.conf")
-    grub_conf = "default=0\n" \
-        "timeout=5\n" \
-        "title %s\n" \
-        "root (hd0,0)\n" \
-        "kernel /%s root=LABEL=maui-root ostree=%s/current\n" \
-        "initrd /%s\n" % (osname, boot_relative_kernel_path, osname, boot_relative_initramfs_path)
-    grub_conf_file = open(grub_conf_path, "w")
-    grub_conf_file.write(grub_conf)
-    grub_conf_file.close()
 
-def grub_install(diskpath):
-    gf = GuestFish(diskpath, partition_opts=["-m", "/dev/sda3", "-m", "/dev/sda1:/boot"], read_write=True)
-    gf.run("grub-install / /dev/vda\n")
+    syslinux_dir = os.path.join(mntdir, "boot", "syslinux")
+    fileutil.ensure_dir(syslinux_dir)
+    conf_path = os.path.join(syslinux_dir, "syslinux.cfg")
+    conf = """PROMPT 1
+TIMEOUT 50
+DEFAULT %s
+
+LABEL %s
+    LINUX /%s
+    APPEND root=LABEL=%s-root rw quiet splash ostree=%s/current
+    INITRD /%s
+""" % (osname, osname, boot_relative_kernel_path, osname, osname, boot_relative_initramfs_path)
+    conf_file = open(conf_path, "w")
+    conf_file.write(conf)
+    conf_file.close()
+
+def bootload_install(diskpath, workdir, osname):
+    logger = Logger()
+
+    qemu_args = [get_qemu_path(),] + DEFAULT_QEMU_OPTS
+
+    tmp_kernel_path = os.path.join(workdir, "kernel.img")
+    tmp_initrd_path = os.path.join(workdir, "initrd.img")
+
+    (gfmnt, mntdir) = new_read_write_mount(diskpath)
+    try:
+        (current_dir, current_etc_dir) = get_deploy_dirs(mntdir, osname)
+
+        inject_export_journal(current_dir, current_etc_dir)
+
+        kernel_path = _find_current_kernel(mntdir, osname)
+        kernel_release = _parse_kernel_release(kernel_path)
+        initrd_path = _get_initramfs_path(mntdir)
+
+        shutil.copy2(kernel_path, tmp_kernel_path)
+        shutil.copy2(initrd_path, tmp_initrd_path)
+    finally:
+        gfmnt.umount()
+
+    console_output = os.path.join(workdir, "bootloader-console.out")
+    journal_output = os.path.join(workdir, "bootloader-journal-json.txt")
+
+    qemu_args += ["-drive", "file=" + diskpath + ",if=virtio",
+        "-vnc", "none",
+        "-serial", "file:" + console_output,
+        "-chardev", "socket,id=charmonitor,path=qemu.monitor,server,nowait",
+        "-mon", "chardev=charmonitor,id=monitor,mode=control",
+        "-device", "virtio-serial",
+        "-chardev", "file,id=journaljson,path=" + journal_output,
+        "-device", "virtserialport,chardev=journaljson,name=org.maui.journaljson",
+        "-kernel", tmp_kernel_path,
+        "-initrd", tmp_initrd_path,
+        "-append", "console=ttyS0 root=LABEL=" + osname + "-root rw ostree=" + osname + "/current systemd.unit=" + osname + "-install-bootloader.target"
+    ]
+    proc = run_async(qemu_args, cwd=workdir)
+    logger.debug("waiting for pid %d" % proc.pid)
+    def on_child_exited(pid, exitcode):
+        os.unlink(tmp_kernel_path)
+        os.unlink(tmp_initrd_path)
+        if exitcode != 0:
+            logger.error("Couldn't install bootloader through qemu, error code: %d" % exitcode)
+    GLib.child_watch_add(proc.pid, on_child_exited)

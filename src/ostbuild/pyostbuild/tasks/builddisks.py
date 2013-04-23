@@ -17,11 +17,14 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-import os, shutil
+import os, re, shutil
 
+from .. import buildutil
 from .. import fileutil
+from .. import libqa
 from .. import taskset
 from ..task import TaskDef
+from ..guestfish import GuestMount
 from ..subprocess_helpers import run_sync
 
 IMAGE_RETAIN_COUNT = 2
@@ -31,13 +34,14 @@ class TaskBuildDisks(TaskDef):
     short_description = "Generate disk images"
     after = ["build",]
 
+    _VERSION_RE = re.compile(r'^(\d+)\.(\d+)$')
     _image_subdir = "images"
     _inherit_previous_disk = True
 
     def __init__(self, builtin, taskmaster, name, argv):
         TaskDef.__init__(self, builtin, taskmaster, name, argv)
 
-    def execute(self, argv):
+    def execute(self):
         subworkdir = os.getcwd()
 
         base_image_dir = os.path.join(self.workdir, self._image_subdir)
@@ -69,20 +73,22 @@ class TaskBuildDisks(TaskDef):
                 continue
             target_revision = build_data["targets"][target_name]
             squashed_name = target_name.replace("\/", "_")
-            disk_name = "%s-%s-disk.qcow2" % (osname, squashed_name)
-            disk_path = os.path.join(work_image_dir, disk_name)
+            disk_name = "%s-disk.qcow2" % squashed_name
+            diskpath = os.path.join(work_image_dir, disk_name)
             prev_path = os.path.join(current_image_link, disk_name)
-            if os.path.exists(disk_path):
-                shutil.rmtree(disk_path)
+            if os.path.exists(diskpath):
+                os.unlink(diskpath)
+            fileutil.ensure_parent_dir(diskpath)
             if self._inherit_previous_disk and os.path.exists(prev_path):
-                libqa.copy_disk(prev_path, disk_path)
+                libqa.copy_disk(prev_path, diskpath)
             else:
-                libqa.create_disk(disk_path)
+                libqa.create_disk(diskpath, osname)
             mntdir = os.path.join(subworkdir, "mnt-%s-%s" % (osname, squashed_name))
             fileutil.ensure_dir(mntdir)
 
-            gfmnt = GuestMount(disk_path, partition_opts=None, read_write=True)
-            gfmnt.mount(mntdir)
+            gfmnt = GuestMount(diskpath, partition_opts=libqa.DEFAULT_GF_PARTITION_OPTS, read_write=True)
+            if not gfmnt.mount(mntdir):
+                self.logger.fatal("Unable to mount %s on %s" % (diskpath, mntdir))
             try:
                 libqa.pull_deploy(mntdir, self.repo, osname, target_name, target_revision)
                 libqa.configure_bootloader(mntdir, osname)
@@ -91,9 +97,9 @@ class TaskBuildDisks(TaskDef):
                     run_sync(["ostree", "--repo=" + repo_dir, "remote", "add", osname, repo, target_name])
             finally:
                 gfmnt.umount()
-            libqa.bootloader_install(disk_path, subworkdir, osname)
+            libqa.bootloader_install(diskpath, subworkdir, osname)
 
-            self._post_disk_creation(disk_path)
+            self._post_disk_creation(diskpath)
 
         os.rename(work_image_dir, target_image_dir)
 
@@ -107,7 +113,7 @@ class TaskBuildDisks(TaskDef):
 
         self._clean_old_versions(base_image_dir, IMAGE_RETAIN_COUNT)
 
-    def _post_disk_creation(self, disk_path):
+    def _post_disk_creation(self, diskpath):
         # Move along, this is for zdisks
         pass
 

@@ -27,66 +27,64 @@ class LibGuestfs(object):
     def __init__(self, diskpath, use_lock_file=True, partition_opts=["-i"], read_write=False):
         self.logger = Logger()
 
-        if os.geteuid() != 0:
-            self.logger.fatal("guestfish needs elevated privileges otherwise it will not work")
-
         self._diskpath = diskpath
-        self._use_lock_file = use_lock_file
-        self._partition_opts = partition_opts
         self._read_write = read_write
-        if self._use_lock_file:
-            self._lockfile_path = os.path.realpath(os.path.join(self._diskpath, "..",
-                                      os.path.basename(self._diskpath) + ".guestfish-lock"))
+        self._partition_opts = partition_opts
+        if use_lock_file:
+            self._lockfile_path = diskpath + ".guestfish-lock"
         else:
             self._lockfile_path = None
 
-    def lock(self):
+    def _lock(self):
         if self._lockfile_path:
             stream = open(self._lockfile_path, "w")
             stream.close()
 
-    def unlock(self):
-        if self._lockfile_path:
+    def _unlock(self):
+        if self._lockfile_path is not None:
             os.unlink(self._lockfile_path)
 
-    def arguments(self):
-        args = ["-a", self._diskpath]
+    def _append_opts(self, argv):
+        argv.extend(["-a", self._diskpath])
         if self._read_write:
-            args.append("--rw")
+            argv.append("--rw")
         else:
-            args.append("--ro")
-        args.extend(self._partition_opts)
-        return args
+            argv.append("--ro")
+        argv.extend(self._partition_opts)
 
 class GuestFish(LibGuestfs):
     def run(self, input):
-        self.lock()
-        args = ["guestfish"]
-        args.extend(self.arguments())
+        self._lock()
+        args = ["guestfish",]
+        self._append_opts(args)
         result = run_sync_with_input_get_output(args, input,
                                                 log_initiation=True,
                                                 log_success=True)
-        self.unlock()
-        return result
+        self._unlock()
+        return result.split("\n")
 
 class GuestMount(LibGuestfs):
     def mount(self, mntdir):
-        self.lock()
+        self._lock()
 
         self._mntdir = mntdir
-        self._mount_pid_file = os.path.realpath(os.path.join(mntdir, "..",
-                                   os.path.basename(mntdir) + ".guestmount-pid"))
+        self._mount_pid_file = mntdir + ".guestmount-pid"
+
+        if os.path.exists(self._mount_pid_file):
+            self.logger.fatal("guestfish pid file exists: %s" % self._mount_pid_file)
 
         args = ["guestmount", "-o", "allow_root", "--pid-file", self._mount_pid_file]
-        args.extend(self.arguments())
-        args.append(self._mntdir)
+        self._append_opts(args)
+        args.append(mntdir)
 
-        try:
-            self._mounted = False
-            if run_sync(args):
-                self._mounted = True
-        except:
-            self.unlock()
+        self.logger.info("Mounting %s: %s" % (mntdir, " ".join(args)))
+
+        self._mounted = False
+        if run_sync(args, log_initiation=False):
+            self._mounted = True
+        else:
+            self._unlock()
+        return self._mounted
 
     def umount(self):
         if not self._mounted:
@@ -107,9 +105,8 @@ class GuestMount(LibGuestfs):
             else:
                 run_sync(["fuser", "-m", self._mntdir])
                 run_sync(["ls", "-al", "/proc/" + str(os.getpid()) + "/fd"])
-                sleep(1)
+                time.sleep(1)
 
-        guestfish_exited = False
         for i in range(0, 30):
             if run_sync(["kill", "-0", pid_str], stderr=None):
                 self.log.info("Awaiting termination of guestfish, pid=%s timeout=%ss" % (pid_str, str(30 - i)))
@@ -122,4 +119,4 @@ class GuestMount(LibGuestfs):
             self.logger.fatal("guestfish failed to exit")
         self._mounted = false
 
-        self.unlock()
+        self._unlock()

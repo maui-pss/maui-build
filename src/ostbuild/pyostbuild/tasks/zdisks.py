@@ -36,14 +36,14 @@ class TaskZDisks(TaskBuildDisks):
     def __init__(self, builtin, taskmaster, name, argv):
         TaskBuildDisks.__init__(self, builtin, taskmaster, name, argv)
 
-    def _post_disk_creation(self, disk_path):
-        parent = os.path.abspath(os.path.join(disk_path, os.pardir))
-        out_path = os.path.join(parent, os.path.basename(disk_path) + ".gz")
-        in_stream = open(disk_path, "rb")
+    def _post_disk_creation(self, diskpath):
+        parent = os.path.abspath(os.path.join(diskpath, os.pardir))
+        out_path = os.path.join(parent, os.path.basename(diskpath) + ".gz")
+        in_stream = open(diskpath, "rb")
         out_stream = gzip.open(out_path, "wb")
         out_stream.write(in_stream.read())
         in_stream.close()
         out_stream.close()
-        os.unlink(disk_path)
+        os.unlink(diskpath)
 
 taskset.register(TaskZDisks)
