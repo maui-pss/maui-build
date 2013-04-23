@@ -35,7 +35,7 @@ class BuiltinRunTask(builtins.Builtin):
     def execute(self, argv):
         self.parser.add_argument("-l", "--list", action="store_true",
                                  help="list all available tasks and exit")
-        self.parser.add_argument("--task-name", metavar="NAME",
+        self.parser.add_argument("-n", "--task-name", metavar="NAME",
                                  help="task name")
         self.parser.add_argument("--task-help", action="store_true",
                                  help="show help message for the specified task and exit")
