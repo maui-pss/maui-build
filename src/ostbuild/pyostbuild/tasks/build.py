@@ -873,12 +873,12 @@ class TaskBuild(TaskDef):
                   '--from-file=' + contents_tmppath, compose_rootdir])
         os.unlink(contents_tmppath)
 
-        contents_path = os.path.join(compose_rootdir, 'usr/share/contents.json')
+        contents_path = os.path.join(compose_rootdir, "usr", "share", "contents.json")
         jsonutil.write_json_file_atomic(contents_path, self._snapshot.data)
 
-        share_ostree = os.path.join(compose_rootdir, "usr/share/ostree")
+        share_ostree = os.path.join(compose_rootdir, "usr", "share", "ostree")
         fileutil.ensure_dir(share_ostree)
-        triggers_run_path = os.path.join(share_ostree, "triggers_run")
+        triggers_run_path = os.path.join(share_ostree, "triggers-run")
         f = open(triggers_run_path, "w")
         f.write("")
         f.close()
