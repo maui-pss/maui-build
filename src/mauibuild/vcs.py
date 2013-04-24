@@ -64,8 +64,9 @@ def _process_checkout_submodules(mirrordir, parent_uri, cwd):
     for name in submodules.keys():
         submodule = submodules[name]
         logger.info("Processing submodule \"%s\" (%s)" % (name, submodule["url"]))
-        if submodule["url"].find("../") == 0:
-            sub_url = _make_absolute_url(parent_uri, submodule["url"])
+        sub_url = submodule["url"]
+        if sub_url.find("../") == 0:
+            sub_url = _make_absolute_url(parent_uri, sub_url)
         local_mirror = get_mirrordir(mirrordir, "git", sub_url)
         run_sync(['git', 'config', 'submodule.%s.url' % name, 'file://' + local_mirror], cwd=cwd)
         run_sync(['git', 'submodule', 'update', '--init', name], cwd=cwd)
