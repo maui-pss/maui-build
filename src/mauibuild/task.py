@@ -213,6 +213,7 @@ class TaskDef(GObject.GObject):
         if not os.path.isdir(self.cachedir):
             os.makedirs(self.cachedir)
         self.libdir = __builtin__.__dict__["LIBDIR"]
+        self.libexecdir = __builtin__.__dict__["LIBEXECDIR"]
         self.repo = os.path.join(self.workdir, "repo")
 
     def execute(self):

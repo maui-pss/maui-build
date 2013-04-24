@@ -1,7 +1,8 @@
 #!/usr/bin/env @PYTHON@
+# vim: et:ts=4:sw=4
 #
 # Copyright (C) 2012-2013 Pier Luigi Fiorini <pierluigi.fiorini@gmail.com>
-# Copyright (C) 2011 Colin Walters <walters@verbum.org>
+# Copyright (C) 2011-2012 Colin Walters <walters@verbum.org>
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -20,15 +21,34 @@
 
 import os
 import sys
-import __builtin__
 
-__builtin__.__dict__['DATADIR'] = '@datarootdir@'
-__builtin__.__dict__['LIBDIR'] = '@libdir@'
 # This is a private directory, we don't want to pollute the global
 # namespace.
-path = os.path.join('@libdir@', 'ostbuild')
-sys.path.insert(0, path)
+sys.path.insert(0, "/mauibuild")
 
-from pyostbuild.main import main
+from mauibuild.buildsystems.buildapi import BuildApiBuildSystem
+from mauibuild.buildsystems.cmake import CMakeBuildSystem
+from mauibuild.buildsystems.qmake import QMakeBuildSystem
 
-sys.exit(main(sys.argv[1:]))
+def main(args):
+    buildsys = None
+    for b in (QMakeBuildSystem, CMakeBuildSystem, BuildApiBuildSystem):
+        obj = b(args)
+
+        buildsystem_name = obj.metadata.get("build-system")
+
+        # Respect build system forced by metadata
+        if buildsystem_name and buildsystem_name != obj.name:
+            continue
+
+        # Detect if this is the right build system
+        if obj.detect():
+            buildsys = obj
+            break
+
+    if not buildsys:
+        buildsys.logger.fatal("Unsupported build system!")
+
+    buildsys.build()
+
+main(sys.argv[1:])

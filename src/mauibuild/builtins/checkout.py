@@ -109,7 +109,7 @@ class BuiltinCheckout(builtins.Builtin):
             for patch in patches:
                 run_sync(['git', 'am', '--ignore-date', '-3', patch], cwd=checkoutdir)
 
-        metadata_path = os.path.join(checkoutdir, '_ostbuild-meta.json')
+        metadata_path = os.path.join(checkoutdir, "_mauibuild-meta.json")
         jsonutil.write_json_file_atomic(metadata_path, component)
  
         self.logger.info("Checked out %r at %s in %r" % (component["name"], component["revision"], checkoutdir))

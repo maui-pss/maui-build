@@ -97,5 +97,5 @@ class QMakeBuildSystem(BuildSystem):
             args.extend(self.default_make_jobs)
         run_sync(args, cwd=self.builddir)
 
-        args = ['make', 'install', 'INSTALL_ROOT=' + self.ostbuild_resultdir]
+        args = ['make', 'install', 'INSTALL_ROOT=' + self.mauibuild_resultdir]
         run_sync(args, cwd=self.builddir)

@@ -17,6 +17,6 @@
 # Boston, MA 02111-1307, USA.
 
 testdatadir = $(pkgdatadir)/tests
-testdata_DATA = src/tests/ostbuild-export-journal-to-serialdev \
-	src/tests/ostbuild-export-journal-to-serialdev.service \
+testdata_DATA = src/tests/mauibuild-export-journal-to-serialdev \
+	src/tests/mauibuild-export-journal-to-serialdev.service \
 	$(NULL)

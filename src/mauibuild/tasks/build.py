@@ -111,7 +111,7 @@ class TaskBuild(TaskDef):
         latest_build_path = builddb.get_latest_path()
         if latest_build_path is not None:
             last_built_source_data = builddb.load_from_path(latest_build_path)
-            last_built_source_version = builddb.parse_version_str(last_build_source_data["snapshot-name"])
+            last_built_source_version = builddb.parse_version_str(last_built_source_data["snapshot-name"])
             if (not have_local_component) and last_built_source_version == target_source_version:
                 self.logger.info("Already built source snapshot %s" % last_built_source_version)
                 return
@@ -349,7 +349,7 @@ class TaskBuild(TaskDef):
         etc_passwd = 'root:x:0:0:root:/root:/bin/bash\nbuilduser:x:%u:%u:builduser:/:/bin/bash\n' % (uid, gid)
         etc_group = 'root:x:0:root\nbuilduser:x:%u:builduser\n' % (gid, )
 
-        (fd, tmppath) = tempfile.mkstemp(suffix='.txt', prefix='ostbuild-buildroot-')
+        (fd, tmppath) = tempfile.mkstemp(suffix='.txt', prefix='mauibuild-buildroot-')
         f = os.fdopen(fd, 'w')
         for (branch, subpath) in checkout_trees:
             f.write(ref_to_rev[branch])
@@ -390,7 +390,7 @@ class TaskBuild(TaskDef):
                   '--from-file=' + tmppath, cached_root_tmp])
         os.unlink(tmppath)
 
-        builddir_tmp = os.path.join(cached_root_tmp, 'ostbuild')
+        builddir_tmp = os.path.join(cached_root_tmp, 'mauibuild')
         fileutil.ensure_dir(os.path.join(builddir_tmp, 'source', component_name))
         fileutil.ensure_dir(os.path.join(builddir_tmp, 'results'))
         f = open(os.path.join(cached_root_tmp, 'etc', 'passwd'), 'w')
@@ -721,7 +721,7 @@ class TaskBuild(TaskDef):
         build_workdir = os.path.join(os.getcwd(), "tmp-" + unix_buildname)
         fileutil.ensure_dir(build_workdir)
 
-        temp_metadata_path = os.path.join(build_workdir, '_ostbuild-meta.json')
+        temp_metadata_path = os.path.join(build_workdir, '_mauibuild-meta.json')
         jsonutil.write_json_file_atomic(temp_metadata_path, expanded_component)
 
         component_src = os.path.join(build_workdir, basename)
@@ -744,10 +744,10 @@ class TaskBuild(TaskDef):
         tmpdir = os.path.join(build_workdir, 'tmp')
         fileutil.ensure_dir(tmpdir)
 
-        src_compile_one_path = os.path.join(self.libdir, 'ostbuild', 'ostree-build-compile-one')
-        src_compile_one_mods_path = os.path.join(self.libdir, 'ostbuild', 'pyostbuild')
-        dest_compile_one_path = os.path.join(rootdir, 'ostree-build-compile-one')
-        dest_compile_one_mods_path = os.path.join(rootdir, 'ostbuild', 'pyostbuild')
+        src_compile_one_path = os.path.join(self.libexecdir, "mauibuild-compile-one")
+        src_compile_one_mods_path = os.path.join(self.libdir, "mauibuild")
+        dest_compile_one_path = os.path.join(rootdir, "mauibuild-compile-one")
+        dest_compile_one_mods_path = os.path.join(rootdir, "mauibuild", "mauibuild")
         fileutil.ensure_parent_dir(dest_compile_one_path)
         shutil.copy(src_compile_one_path, dest_compile_one_path)
         if os.path.exists(dest_compile_one_mods_path):
@@ -755,7 +755,7 @@ class TaskBuild(TaskDef):
         shutil.copytree(src_compile_one_mods_path, dest_compile_one_mods_path)
         os.chmod(dest_compile_one_path, 0755)
         
-        chroot_sourcedir = os.path.join('/ostbuild', 'source', basename)
+        chroot_sourcedir = os.path.join('/mauibuild', 'source', basename)
 
         child_args = ['setarch', architecture]
         child_args.extend(buildutil.get_base_user_chroot_args())
@@ -765,11 +765,11 @@ class TaskBuild(TaskDef):
                 '--mount-bind', '/dev', '/dev',
                 '--mount-bind', tmpdir, '/tmp',
                 '--mount-bind', component_src, chroot_sourcedir,
-                '--mount-bind', component_resultdir, '/ostbuild/results',
+                '--mount-bind', component_resultdir, '/mauibuild/results',
                 '--chdir', chroot_sourcedir,
-                rootdir, '/ostree-build-compile-one',
-                '--ostbuild-resultdir=/ostbuild/results',
-                '--ostbuild-meta=_ostbuild-meta.json'])
+                rootdir, '/mauibuild-compile-one',
+                '--mauibuild-resultdir=/mauibuild/results',
+                '--mauibuild-meta=_mauibuild-meta.json'])
         env_copy = dict(buildutil.BUILD_ENV)
         env_copy['PWD'] = chroot_sourcedir
         env_copy['CFLAGS'] = build_flags["cflags"]
@@ -785,7 +785,7 @@ class TaskBuild(TaskDef):
 
         self._process_build_results(component, component_resultdir, final_build_result_dir)
 
-        recorded_meta_path = os.path.join(final_build_result_dir, '_ostbuild-meta.json')
+        recorded_meta_path = os.path.join(final_build_result_dir, '_mauibuild-meta.json')
         jsonutil.write_json_file_atomic(recorded_meta_path, expanded_component)
 
         args = ['ostree', '--repo=' + self.repo,
@@ -796,7 +796,7 @@ class TaskBuild(TaskDef):
         setuid_files = expanded_component.get('setuid', [])
         statoverride_path = None
         if len(setuid_files) > 0:
-            (fd, statoverride_path) = tempfile.mkstemp(suffix='.txt', prefix='ostbuild-statoverride-')
+            (fd, statoverride_path) = tempfile.mkstemp(suffix='.txt', prefix='mauibuild-statoverride-')
             f = os.fdopen(fd, 'w')
             for path in setuid_files:
                 f.write('+2048 ' + path)
@@ -842,7 +842,7 @@ class TaskBuild(TaskDef):
             build_ref = '%s/components/%s' % (self.osname, name)
             related_refs[build_ref] = rev
 
-        (related_fd, related_tmppath) = tempfile.mkstemp(suffix='.txt', prefix='ostbuild-compose-')
+        (related_fd, related_tmppath) = tempfile.mkstemp(suffix='.txt', prefix='mauibuild-compose-')
         related_f = os.fdopen(related_fd, 'w')
         for (name, rev) in related_refs.iteritems():
             related_f.write(name) 
@@ -859,7 +859,7 @@ class TaskBuild(TaskDef):
             for subpath in subtrees:
                 compose_contents.append((rev, subpath))
 
-        (contents_fd, contents_tmppath) = tempfile.mkstemp(suffix='.txt', prefix='ostbuild-compose-')
+        (contents_fd, contents_tmppath) = tempfile.mkstemp(suffix='.txt', prefix='mauibuild-compose-')
         contents_f = os.fdopen(contents_fd, 'w')
         for (branch, subpath) in compose_contents:
             contents_f.write(branch)
@@ -1001,7 +1001,7 @@ class TaskBuild(TaskDef):
         downloads = os.path.join(old_builddir, 'downloads')
 
         cmd = ['linux-user-chroot', '--unshare-pid', '/',
-               os.path.join(self.libdir, 'ostbuild', 'ostree-build-yocto'),
+               os.path.join(self.libexecdir, "mauibuild-build-yocto"),
                checkoutdir, builddir, architecture, self.repo]
         # We specifically want to kill off any environment variables jhbuild
         # may have set.

@@ -23,7 +23,7 @@ from .logger import Logger
 
 BUILD_ENV = {
     'HOME' : '/', 
-    'HOSTNAME' : 'ostbuild',
+    'HOSTNAME' : 'mauibuild',
     'LANG': 'C',
     'PATH' : '/usr/bin:/bin:/usr/sbin:/sbin',
     'SHELL' : '/bin/bash',
@@ -50,15 +50,15 @@ def find_user_chroot_path():
     # We need to search PATH here manually so we correctly pick up an
     # ostree install in e.g. ~/bin even though we're going to set PATH
     # below for our children inside the chroot.
-    ostbuild_user_chroot_path = None
+    user_chroot_path = None
     for dirname in os.environ['PATH'].split(':'):
         path = os.path.join(dirname, 'linux-user-chroot')
         if os.access(path, os.X_OK):
-            ostbuild_user_chroot_path = path
+            user_chroot_path = path
             break
-    if ostbuild_user_chroot_path is None:
-        ostbuild_user_chroot_path = 'linux-user-chroot'
-    return ostbuild_user_chroot_path
+    if user_chroot_path is None:
+        user_chroot_path = 'linux-user-chroot'
+    return user_chroot_path
 
 def get_base_user_chroot_args():
     path = find_user_chroot_path()
@@ -105,4 +105,4 @@ def check_is_work_directory(path):
         logger.fatal("No manifest.json found in %s" % path)
     dot_git_path = os.path.join(path, ".git")
     if os.path.exists(dot_git_path):
-        logger.fatal(".git found in %s; are you in a ostbuild checkout?" % path)
+        logger.fatal(".git found in %s; are you in a mauibuild checkout?" % path)

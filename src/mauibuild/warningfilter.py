@@ -27,7 +27,7 @@ from . import filemonitor
 from . import mainloop
 
 warning_re = re.compile(r'(: ((warning)|(error)|(fatal error)): )|(make(\[[0-9]+\])?: \*\*\*)')
-output_whitelist_re = re.compile(r'^(make(\[[0-9]+\])?: Entering directory)|(ostbuild:)')
+output_whitelist_re = re.compile(r'^(make(\[[0-9]+\])?: Entering directory)|(mauibuild:)')
 
 _bold_sequence = None
 _normal_sequence = None
@@ -70,7 +70,7 @@ class WarningFilter(object):
         f = open(self.filename)
         lines = []
         for line in f:
-            if line.startswith('ostbuild '):
+            if line.startswith('mauibuild '):
                 continue
             lines.append(line)
             if len(lines) > _last_line_limit:
@@ -109,6 +109,6 @@ class WarningFilter(object):
         if not successful:
             self._write_last_log_lines()
             pass
-        self.output.write("ostbuild %s: %d warnings\n" % ('success' if successful else _bold('failed'),
+        self.output.write("mauibuild %s: %d warnings\n" % ('success' if successful else _bold('failed'),
                                                             self._warning_count, ))
-        self.output.write("ostbuild: full log path: %s\n" % (self.filename, ))
+        self.output.write("mauibuild: full log path: %s\n" % (self.filename, ))

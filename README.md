@@ -1,7 +1,7 @@
-Maui OSTree
-===========
+mauibuild
+=========
 
-This is the Maui build system for OSTree.
+This is the Maui build system.
 
 It takes care of building the Yocto base system and build all the
 components specified by a manifest JSON file into their own tree.
@@ -32,7 +32,7 @@ You also need:
 
  * Linux 2.6.28 or newer
  * *linux-user-chroot* and *ostree*, follow the next sections for more information
- * The *termcolor* Python module if you want *ostbuild* to print colored output
+ * The *termcolor* Python module if you want *mauibuild* to print colored output
 
 ### Setup guestfs on Ubuntu
 
@@ -117,9 +117,9 @@ cd ~/git
 git clone -b maui-0.1 git://github.com/mauios/maui.git
 ```
 
-## Install ostbuild
+## Install mauibuild
 
-From the ostbuild checkout directory type:
+From the *mauibuild* checkout directory type:
 
 ```sh
 ./autogen.sh --enable-maintainer-mode
@@ -127,29 +127,23 @@ make
 sudo make install
 ```
 
-## Configure ostbuild
+## Configure mauibuild
 
 ```sh
-mkdir -p ~/ostreebuild/src/mirrors
-mkdir -p ~/ostreebuild/build/tmp
-
-mkdir -p ~/.config
-cat > ~/.config/ostbuild.cfg <<EOF
-[global]
-mirrordir=~/ostreebuild/src/mirrors
-workdir=~/ostreebuild/build
-manifest=~/git/maui/manifest.json
-EOF
+mkdir -p ~/mauibuildwork
+cd ~/mauibuildwork
+ln -s ~/git/maui/manifest.json
 ```
 
 Now resolve the components and build:
 
 ```sh
-ostbuild resolve --fetch
-ostbuild build --prefix=maui-0.1
+mauibuild make -n resolve
 ```
 
-Every time the manifest file changes you have to time the above commands.
+Tasks are chained, so after a resolve a build will automatically be executed.
+
+Every time the manifest file changes you have to type the above command.
 
 ## Remarks
 

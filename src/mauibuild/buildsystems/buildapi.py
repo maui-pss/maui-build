@@ -129,5 +129,5 @@ class BuildApiBuildSystem(BuildSystem):
 
         run_sync(args, cwd=self.builddir)
 
-        args = ['make', 'install', 'DESTDIR=' + self.ostbuild_resultdir]
+        args = ['make', 'install', 'DESTDIR=' + self.mauibuild_resultdir]
         run_sync(args, cwd=self.builddir)

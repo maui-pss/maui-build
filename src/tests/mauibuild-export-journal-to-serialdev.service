@@ -2,4 +2,4 @@
 Description=QA: Copy bootup journal log to /dev/ttyS1
 
 [Service]
-ExecStart=/usr/bin/ostbuild-export-journal-to-serialdev
+ExecStart=/usr/bin/mauibuild-export-journal-to-serialdev

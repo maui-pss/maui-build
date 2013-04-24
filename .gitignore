@@ -1,5 +1,6 @@
-Makefile
-Makefile.in
+Makefile*
+!Makefile-mauibuild.am
+!Makefile-tests.am
 aclocal.m4
 autom4te.cache/
 build-aux/
@@ -8,6 +9,6 @@ config.h.in*
 config.log
 config.status
 configure
-/ostbuild
-/ostree-build-compile-one
+/mauibuild
+/mauibuild-compile-one
 stamp-h1

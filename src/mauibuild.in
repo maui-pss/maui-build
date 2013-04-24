@@ -1,7 +1,8 @@
 #!/usr/bin/env @PYTHON@
+# vim: et:ts=4:sw=4
 #
 # Copyright (C) 2012-2013 Pier Luigi Fiorini <pierluigi.fiorini@gmail.com>
-# Copyright (C) 2011-2012 Colin Walters <walters@verbum.org>
+# Copyright (C) 2011 Colin Walters <walters@verbum.org>
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -18,34 +19,17 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-import os
-import sys
+import os, sys
+import __builtin__
+
+__builtin__.__dict__["DATADIR"] = "@datarootdir@"
+__builtin__.__dict__["LIBDIR"] = "@libdir@"
+__builtin__.__dict__["LIBEXECDIR"] = "@libexecdir@"
 
 # This is a private directory, we don't want to pollute the global
 # namespace.
-sys.path.insert(0, '/ostbuild')
+sys.path.insert(0, "@libdir@")
 
-from pyostbuild.buildsystems.buildapi import BuildApiBuildSystem
-from pyostbuild.buildsystems.cmake import CMakeBuildSystem
-from pyostbuild.buildsystems.qmake import QMakeBuildSystem
+from mauibuild.main import main
 
-def main(args):
-    buildsys = None
-    for b in (QMakeBuildSystem, CMakeBuildSystem, BuildApiBuildSystem):
-        obj = b(args)
-
-        # Respect build system forced by metadata
-        if obj.metadata.get('build-system', None) and obj.metadata.get('build-system', None) != obj.name:
-            continue
-
-        # Detect if this is the right build system
-        if obj.detect():
-            buildsys = obj
-            break
-
-    if not buildsys:
-        buildsys.logger.fatal("Unsupported build system!")
-
-    buildsys.build()
-
-main(sys.argv[1:])
+sys.exit(main(sys.argv[1:]))

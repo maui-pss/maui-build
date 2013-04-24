@@ -1,5 +1,5 @@
 AC_PREREQ([2.63])
-AC_INIT([maui-ostree], [2013.1], [pierluigi.fiorini@gmail.com], [maui-ostree], [http://www.maui-project.org])
+AC_INIT([mauibuild], [0.0.9], [https://github.com/mauios/ostbuild/issues], [mauibuild], [http://www.maui-project.org])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_AUX_DIR([build-aux])
@@ -16,5 +16,5 @@ Makefile
 AC_OUTPUT
 
 echo "
-    Maui-OSTree $VERSION
+    Maui Build System (mauibuild) $VERSION
 "

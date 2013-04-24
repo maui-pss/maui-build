@@ -32,8 +32,8 @@ class BuildSystem(object):
     name = None
     default_make_jobs = ['-j', '%d' % (cpu_count() + 1), 
                          '-l', '%d' % (cpu_count() * 2)]
-    ostbuild_resultdir = '_ostbuild-results'
-    ostbuild_meta_path = '_ostbuild-meta.json'
+    mauibuild_resultdir = '_mauibuild-results'
+    mauibuild_meta_path = '_mauibuild-meta.json'
     metadata = None
     builddir = '_build'
     args = []
@@ -49,16 +49,16 @@ class BuildSystem(object):
         self.build_target = '%s-%s' % (machine, kernel)
 
         for arg in self.args:
-            if arg.startswith('--ostbuild-resultdir='):
-                self.ostbuild_resultdir = arg[len('--ostbuild-resultdir='):]
-            elif arg.startswith('--ostbuild-meta='):
-                self.ostbuild_meta_path = arg[len('--ostbuild-meta='):]
+            if arg.startswith('--mauibuild-resultdir='):
+                self.mauibuild_resultdir = arg[len('--mauibuild-resultdir='):]
+            elif arg.startswith('--mauibuild-meta='):
+                self.mauibuild_meta_path = arg[len('--mauibuild-meta='):]
             elif arg.startswith('--chdir='):
                 os.chdir(arg[len('--chdir='):])
             else:
                 self.makeargs.append(arg)
         
-        f = open(self.ostbuild_meta_path)
+        f = open(self.mauibuild_meta_path)
         self.metadata = json.load(f)
         f.close()
 
@@ -73,4 +73,4 @@ class BuildSystem(object):
 
         # Print results
         self.logger.info("Compilation succeeded; %d seconds elapsed" % int(self.endtime - self.starttime))
-        self.logger.info("Results placed in %s" % self.ostbuild_resultdir)
+        self.logger.info("Results placed in %s" % self.mauibuild_resultdir)

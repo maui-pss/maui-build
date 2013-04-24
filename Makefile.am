@@ -34,7 +34,7 @@ privlibdir = $(pkglibdir)
 privlib_LTLIBRARIES =
 INSTALL_DATA_HOOKS =
 
-include Makefile-ostbuild.am
+include Makefile-mauibuild.am
 include Makefile-tests.am
 
 install-data-hook: $(INSTALL_DATA_HOOKS)
