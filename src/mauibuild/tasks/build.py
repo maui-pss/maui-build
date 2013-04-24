@@ -72,6 +72,8 @@ class TaskBuild(TaskDef):
         snapshot_dir = os.path.join(self.workdir, "snapshots")
         srcdb = jsondb.JsonDB(snapshot_dir)
         snapshot_path = srcdb.get_latest_path()
+        if snapshot_path is None:
+            self.logger.fatal("No snapshot found, did you run the resolve task?")
         working_snapshot_path = os.path.join(self.subworkdir, os.path.basename(snapshot_path))
         fileutil.file_linkcopy(snapshot_path, working_snapshot_path, overwrite=True)
         data = srcdb.load_from_path(working_snapshot_path)
