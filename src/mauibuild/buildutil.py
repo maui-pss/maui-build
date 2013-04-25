@@ -40,7 +40,7 @@ def get_patch_paths_for_component(patchdir, component):
     if patch_subdir is not None:
         sub_patchdir = os.path.join(patchdir, patch_subdir)
     else:
-        sub_patchdir = self.patchdir
+        sub_patchdir = patchdir
     result = []
     for patch in patches['files']:
         result.append(os.path.join(sub_patchdir, patch))
