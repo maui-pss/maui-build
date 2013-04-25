@@ -73,7 +73,7 @@ class TaskBdiff(TaskDef):
 
             if component_b is None:
                 added.append(component_name)
-            elif component_b.revision != component_a.revision:
+            elif component_b.get("revision") != component_a.get("revision"):
                 modified_names.append(component_name)
         for component_name in previous_component_map:
             component_a = latest_build_snapshot.get_component(component_name, True)
@@ -84,8 +84,8 @@ class TaskBdiff(TaskDef):
         for component_name in modified_names:
             latest_component = latest_build_snapshot.get_component(component_name)
             previous_component = previous_build_snapshot.get_component(component_name)
-            latest_revision = latest_component.revision
-            previous_revision = previous_component.revision
+            latest_revision = latest_component.get("revision")
+            previous_revision = previous_component.get("revision")
             mirrordir = vcs.ensure_vcs_mirror(self.mirrordir, previous_component)
 
             gitlog = self._git_log_to_json(mirrordir, previous_revision + "..." + latest_revision)
