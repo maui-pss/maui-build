@@ -27,6 +27,7 @@ from ..tasks import builddisks
 from ..tasks import build
 from ..tasks import resolve
 from ..logger import Logger
+from ..subprocess_helpers import run_sync
 
 class BuiltinMake(builtins.Builtin):
     name = "make"
