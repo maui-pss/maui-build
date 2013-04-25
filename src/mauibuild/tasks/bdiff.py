@@ -94,7 +94,8 @@ class TaskBdiff(TaskDef):
                              "gitlog": gitlog, "diffstat": diffstat})
 
         bdiffdb = self._get_result_db("bdiff")
-        bdiffdb.store(result)
+        (path, modified) = bdiffdb.store(result)
+        self.logger.info("Build diff: %s" % path)
 
     def _git_log_to_json(self, repo_dir, specification):
         log = run_sync_get_output(["git", "log", "--format=email", specification], cwd=repo_dir)
