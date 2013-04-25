@@ -39,12 +39,14 @@ class TaskBdiff(TaskDef):
         builddb = self._get_result_db("build")
         latest_path = builddb.get_latest_path()
         if not latest_path:
-            self.logger.fatal("No builds!")
+            self.logger.error("No builds!")
+            return True
         latest_build_version = builddb.parse_version_str(os.path.basename(latest_path))
 
         previous_path = builddb.get_previous_path(latest_path)
         if not previous_path:
-            self.logger.fatal("No build previous to %s" % latest_build_version)
+            self.logger.error("No build previous to %s" % latest_build_version)
+            return True
 
         latest_build_data = builddb.load_from_path(latest_path)
         latest_build_snapshot = snapshot.Snapshot(latest_build_data["snapshot"], None)
