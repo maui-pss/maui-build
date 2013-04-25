@@ -94,7 +94,7 @@ class BuiltinMake(builtins.Builtin):
     def _on_task_completed(self, taskmaster, task, success, error):
         self._output_path = os.path.join(task._workdir, "output.txt")
         if self._one_only:
-            run_sync(["tail", "-f", self._output_path])
+            run_sync(["tail", self._output_path])
         if success:
             self.logger.info("Task %s complete: %s" % (task.name, task._workdir))
         else:
