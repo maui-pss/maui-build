@@ -28,6 +28,8 @@ Also install the following packages:
  * libguestfs-tools
  * elfutils (for eu-readelf)
 
+A 64-bit host operating system is required.
+
 You also need:
 
  * Linux 2.6.28 or newer
