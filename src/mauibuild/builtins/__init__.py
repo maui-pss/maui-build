@@ -37,6 +37,7 @@ class Builtin(object):
     def __init__(self):
         prog = "%s %s" % (os.path.basename(sys.argv[0]), self.name)
         self.parser = argparse.ArgumentParser(prog=prog, description=self.short_description)
+        self.subparsers = None
         self.logger = Logger()
         self._workdir_initialized = False
 

@@ -184,9 +184,9 @@ class TaskDef(GObject.GObject):
         self.builtin = builtin
         self.taskmaster = taskmaster
         self.name = name
-        self.subparsers = builtin.parser.add_subparsers(title=self.name,
-                                                        description=self.short_description)
-        self.subparser = self.subparsers.add_parser(self.name, add_help=False)
+        if builtin.subparsers is None:
+            builtin.subparsers = builtin.parser.add_subparsers()
+        self.subparser = builtin.subparsers.add_parser(self.name, add_help=False)
         self.argv = argv
 
     def get_depends(self):
