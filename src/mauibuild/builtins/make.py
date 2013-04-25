@@ -92,6 +92,7 @@ class BuiltinMake(builtins.Builtin):
         self._output_path = os.path.join(task._workdir, "output.txt")
 
     def _on_task_completed(self, taskmaster, task, success, error):
+        self._output_path = os.path.join(task._workdir, "output.txt")
         if self._one_only:
             run_sync(["tail", "-f", self._output_path])
         if success:
