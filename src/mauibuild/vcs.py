@@ -76,29 +76,31 @@ def get_vcs_checkout(mirrordir, component, dest, overwrite=True, quiet=False):
     logger = Logger()
     (keytype, uri) = parse_src_key(component["src"])
     if keytype in ("git", "local"):
-        revision = component.get("revision")
+        if not component.get("revision"):
+            logger.fatal("Component \"%s\" does not have revision key" % component["name"])
+        revision = component["revision"]
         module_mirror = get_mirrordir(mirrordir, keytype, uri)
         add_upstream = True
     elif keytype == "tarball":
         if not component.get("checksum"):
             logger.fatal("Tarball components must have the checksum key, "
-                         "please check the %r component" % component["name"])
+                         "please check the \"%s\" component" % component["name"])
         revision = "tarball-import-" + component["checksum"]
         module_mirror = get_mirrordir(mirrordir, "tarball", component["name"])
         add_upstream = False
     else:
         logger.fatal("Unsupported %r SRC uri" % keytype)
 
-    checkoutdir_parent = os.path.abspath(os.path.join(dest, os.pardir))
+    checkoutdir_parent = os.path.dirname(dest)
     if not os.path.isdir(checkoutdir_parent):
         os.makedirs(checkoutdir_parent)
-    tmp_dest = os.path.join(checkoutdir_parent, os.path.basename(dest) + ".tmp")
+    tmp_dest = dest + ".tmp"
     if os.path.isdir(tmp_dest):
         shutil.rmtree(tmp_dest)
     if os.path.islink(dest):
         os.unlink(dest)
     if os.path.isdir(dest):
-        if overwrite:
+        if overwrite and os.path.isdir(dest):
             shutil.rmtree(dest)
         else:
             tmp_dest = dest
@@ -136,28 +138,24 @@ def parse_src_key(srckey):
     uri = srckey[idx+1:]
     return (keytype, uri)
  
-def checkout_patches(mirrordir, patchdir, component):
-    patches = component.get('patches')
+def checkout_patches(mirrordir, patchdir, patches):
     (patches_keytype, patches_uri) = parse_src_key(patches['src'])
     if patches_keytype == 'local':
         return patches_uri
     elif patches_keytype != 'git':
-        raise Exception("Unhandled keytype %s" % (patches_keytype, ))
+        raise Exception("Unhandled keytype %s" % patches_keytype)
 
     patches_mirror = get_mirrordir(mirrordir, patches_keytype, patches_uri)
     get_vcs_checkout(mirrordir, patches, patchdir, overwrite=True, quiet=True)
 
     return patchdir
 
-def checkout_images(mirrordir, imagedir, component):
-    images = component.get('images')
-    if images is None:
-        raise StandardError("No images defined in component")
+def checkout_images(mirrordir, imagedir, images):
     (images_keytype, images_uri) = parse_src_key(images['src'])
     if images_keytype == 'local':
         return images_uri
     elif images_keytype != 'git':
-        raise StandardError("Unhandled keytype %s" % (images_keytype, ))
+        raise Exception("Unhandled keytype %s" % images_keytype)
 
     images_mirror = get_mirrordir(mirrordir, images_keytype, images_uri)
     get_vcs_checkout(mirrordir, images, imagedir, overwrite=True, quiet=True)

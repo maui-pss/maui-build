@@ -690,7 +690,7 @@ class TaskBuild(TaskDef):
             else:
                 patchdir = vcs.checkout_patches(self.mirrordir,
                                                 self.patchdir,
-                                                expanded_component)
+                                                expanded_component["patches"])
                 self.patchdir = patchdir
                 self._cached_patchdir_revision = patches_revision
             if ((previous_metadata is not None) and

@@ -62,20 +62,24 @@ class TaskResolve(TaskDef):
             args.fetch_patches = True
             args.fetch_images = True
 
+        # Can't fetch patches and images if not defined in manifest
+        args.fetch_patches = args.fetch_patches and self._snapshot.data.has_key("patches")
+        args.fetch_images = args.fetch_patches and self._snapshot.data.has_key("images")
+
         # Fetch base system
         if args.fetch_base:
             component = self._snapshot.data["base"]
-            mirrordir = vcs.ensure_vcs_mirror(self.mirrordir, component, fetch=True)
+            args.components.append(component["name"])
 
         # Fetch patches
-        if args.fetch_patches and self._snapshot.data.has_key("patches"):
+        if args.fetch_patches:
             component = self._snapshot.data["patches"]
-            mirrordir = vcs.ensure_vcs_mirror(self.mirrordir, component, fetch=True)
+            args.components.append(component["name"])
 
         # Fetch images
-        if args.fetch_images and self._snapshot.data.has_key("images"):
+        if args.fetch_images:
             component = self._snapshot.data["images"]
-            mirrordir = vcs.ensure_vcs_mirror(self.mirrordir, component, fetch=True)
+            args.components.append(component["name"])
 
         # Fetch components
         git_mirror_args = [sys.argv[0], "git-mirror", "--timeout-sec=" + str(args.timeout_sec),
@@ -92,6 +96,14 @@ class TaskResolve(TaskDef):
             mirrordir = vcs.ensure_vcs_mirror(self.mirrordir, component)
             revision = vcs.describe_version(mirrordir, branch_or_tag)
             component["revision"] = revision
+
+            if args.fetch_patches and self._snapshot.data["patches"]["name"] == name:
+                vcs.checkout_patches(self.mirrordir, os.path.join(self.workdir, "patches"),
+                                     component)
+
+            if args.fetch_images and self._snapshot.data["images"]["name"] == name:
+                vcs.checkout_images(self.mirrordir, os.path.join(self.workdir, "images"),
+                                     component)
 
         (path, modified) = self._get_db().store(self._snapshot.data)
         if modified:
