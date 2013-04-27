@@ -149,6 +149,25 @@ def checkout_patches(mirrordir, patchdir, component):
 
     return patchdir
 
+def checkout_images(mirrordir, imagedir, component):
+    images = component.get('images')
+    if images is None:
+        raise StandardError("No images defined in component")
+    (images_keytype, images_uri) = parse_src_key(images['src'])
+    if images_keytype == 'local':
+        return images_uri
+    elif images_keytype != 'git':
+        raise StandardError("Unhandled keytype %s" % (images_keytype, ))
+
+    images_mirror = get_mirrordir(mirrordir, images_keytype, images_uri)
+    get_vcs_checkout(mirrordir, images, imagedir, overwrite=True, quiet=True)
+
+    images_subdir = images.get("subdir", None)
+    if images_subdir is not None:
+        imagedir = os.path.join(imagedir, images_subdir)
+
+    return imagedir
+
 def get_lastfetch_path(mirrordir, keytype, uri, branch):
     mirror = get_mirrordir(mirrordir, keytype, uri)
     branch_safename = branch.replace('/','_').replace('.', '_')

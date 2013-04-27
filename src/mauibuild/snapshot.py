@@ -24,8 +24,12 @@ def _component_dict(snapshot):
     r = {}
     for component in snapshot['components']:
         r[component['name']] = component
-    patches = snapshot['patches']
-    r[patches['name']] = patches
+    patches = snapshot.get('patches')
+    if patches is not None:
+        r[patches['name']] = patches
+    images = snapshot.get('images')
+    if images is not None:
+        r[images['name']] = images
     base = snapshot['base']
     r[base['name']] = base
     return r
@@ -56,8 +60,11 @@ class Snapshot(object):
         self.data = data
         self.path = path
         if prepare_resolve:
-            data["patches"] = self._resolve_component(data, data["patches"])
             data["base"] = self._resolve_component(data, data["base"])
+            if "patches" in data:
+                data["patches"] = self._resolve_component(data, data["patches"])
+            if "images" in data:
+                data["images"] = self._resolve_component(data, data["images"])
             data["components"] = [self._resolve_component(data, component) for component in data["components"]]
             data["components"] = [component for component in data["components"] if not component.get("disabled", False)]
         self._dict = _component_dict(data)

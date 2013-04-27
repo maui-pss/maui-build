@@ -27,6 +27,8 @@ Also install the following packages:
  * guestmount
  * libguestfs-tools
  * elfutils (for eu-readelf)
+ * squashfs-tools
+ * xorriso
 
 A 64-bit host operating system is required.
 

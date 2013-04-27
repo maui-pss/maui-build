@@ -39,7 +39,7 @@ utilsdir = $(libexecdir)
 utils_SCRIPTS =						\
 	mauibuild-compile-one				\
 	src/mauibuild-build-yocto			\
-	src/mauibuild-qemu-pull-deploy			\
+	src/mauibuild-image-pull-deploy			\
 	$(NULL)
 
 mauibuilddir=$(libdir)/mauibuild
@@ -87,6 +87,7 @@ mauibuildtasks_PYTHON =				\
 	src/mauibuild/tasks/__init__.py		\
 	src/mauibuild/tasks/bdiff.py		\
 	src/mauibuild/tasks/builddisks.py	\
+	src/mauibuild/tasks/buildlive.py	\
 	src/mauibuild/tasks/build.py		\
 	src/mauibuild/tasks/resolve.py		\
 	src/mauibuild/tasks/smoketest.py	\

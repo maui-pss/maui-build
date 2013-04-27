@@ -38,6 +38,8 @@ class TaskResolve(TaskDef):
                                     help="git fetch base system")
         self.subparser.add_argument('--fetch-patches', action='store_true',
                                     help="git fetch patches")
+        self.subparser.add_argument('--fetch-images', action='store_true',
+                                    help="git fetch images contents")
         self.subparser.add_argument('--fetch-all', action='store_true',
                                     help="git fetch patches, base system and all components")
         self.subparser.add_argument('--timeout-sec', default=10, metavar="SECONS",
@@ -58,6 +60,7 @@ class TaskResolve(TaskDef):
         if args.fetch_all:
             args.fetch_base = True
             args.fetch_patches = True
+            args.fetch_images = True
 
         # Fetch base system
         if args.fetch_base:
@@ -67,6 +70,11 @@ class TaskResolve(TaskDef):
         # Fetch patches
         if args.fetch_patches and self._snapshot.data.has_key("patches"):
             component = self._snapshot.data["patches"]
+            mirrordir = vcs.ensure_vcs_mirror(self.mirrordir, component, fetch=True)
+
+        # Fetch images
+        if args.fetch_images and self._snapshot.data.has_key("images"):
+            component = self._snapshot.data["images"]
             mirrordir = vcs.ensure_vcs_mirror(self.mirrordir, component, fetch=True)
 
         # Fetch components

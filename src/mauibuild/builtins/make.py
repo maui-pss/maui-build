@@ -24,6 +24,7 @@ from .. import taskset
 from ..task import TaskMaster
 from ..tasks import bdiff
 from ..tasks import builddisks
+from ..tasks import buildlive
 from ..tasks import build
 from ..tasks import resolve
 from ..logger import Logger

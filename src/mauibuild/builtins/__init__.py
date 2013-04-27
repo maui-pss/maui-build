@@ -55,6 +55,7 @@ class Builtin(object):
         if not os.path.isdir(self.mirrordir):
             os.makedirs(self.mirrordir)
         self.patchdir = os.path.join(workdir, "patches")
+        self.imagesdir = os.path.join(workdir, "images")
         self.libdir = __builtin__.__dict__["LIBDIR"]
         self.repo = os.path.join(workdir, "repo")
 

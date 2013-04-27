@@ -22,6 +22,7 @@ from .. import builtins
 from .. import taskset
 from ..tasks import bdiff
 from ..tasks import builddisks
+from ..tasks import buildlive
 from ..tasks import build
 from ..tasks import resolve
 
