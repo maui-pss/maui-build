@@ -186,7 +186,7 @@ def _find_current_kernel(mntdir, osname):
     deploy_bootdir = os.path.join(mntdir, "ostree", "deploy", osname, "current", "boot")
     for item in os.listdir(deploy_bootdir):
         child = os.path.join(deploy_bootdir, item)
-        if os.path.basename(child).startswidth("vmlinuz-"):
+        if os.path.basename(child).startswith("vmlinuz-"):
             return child
     logger.fatal("Couldn't find vmlinuz- in %s" % deploy_bootdir)
 
