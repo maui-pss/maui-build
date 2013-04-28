@@ -29,6 +29,7 @@ sys.path.insert(0, "/mauibuild")
 from mauibuild.buildsystems.buildapi import BuildApiBuildSystem
 from mauibuild.buildsystems.cmake import CMakeBuildSystem
 from mauibuild.buildsystems.qmake import QMakeBuildSystem
+from mauibuild.logger import Logger
 
 def main(args):
     buildsys = None
@@ -47,7 +48,8 @@ def main(args):
             break
 
     if not buildsys:
-        buildsys.logger.fatal("Unsupported build system!")
+        logger = Logger()
+        logger.fatal("Unsupported build system!")
 
     buildsys.build()
 
