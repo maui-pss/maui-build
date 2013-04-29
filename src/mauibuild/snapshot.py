@@ -135,7 +135,9 @@ class Snapshot(object):
         return self._dict
 
     def get_component(self, name, allow_none=False):
-        if not self._dict.get(name) and not allow_none:
+        if not self._dict.get(name):
+            if allow_none:
+                return None
             self.logger.fatal("No component '%s' in snapshot" % (name, ))
         return self._dict[name]
 
