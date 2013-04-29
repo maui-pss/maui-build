@@ -68,6 +68,7 @@ class TaskBuildLive(TaskDef):
         targets = self.build_data["targets"]
 
         self.osname = self.build_data["snapshot"]["osname"]
+        self.version = self.build_data["snapshot"]["version"]
         repo = self.build_data["snapshot"]["repo"]
 
         data_filename = os.path.join(self.supportdir, "images", "index.json")
