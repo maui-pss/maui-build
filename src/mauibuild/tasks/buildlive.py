@@ -16,15 +16,15 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-import os, re, shutil, types, math
+import os, re, shutil, hashlib
 
 from .. import buildutil
 from .. import fileutil
 from .. import jsonutil
 from .. import libqa
-from .. import vcs
 from .. import taskset
 from ..task import TaskDef
+from ..snapshot import Snapshot
 from ..subprocess_helpers import run_sync, run_sync_get_output
 
 IMAGE_RETAIN_COUNT = 2
@@ -48,15 +48,16 @@ class TaskBuildLive(TaskDef):
 
         builddb = self._get_result_db("build")
 
-        latest_path = builddb.get_latest_path()
-        build_version = builddb.parse_version_str(os.path.basename(latest_path))
-        build_data = builddb.load_from_path(latest_path)
+        self.latest_path = builddb.get_latest_path()
+        self.build_version = builddb.parse_version_str(os.path.basename(self.latest_path))
+        self.build_data = builddb.load_from_path(self.latest_path)
 
-        self.imagesdir = vcs.checkout_images(self.mirrordir,
-                                             os.path.join(self.workdir, "images"),
-                                             build_data["snapshot"])
+        self.imagesdir = os.path.join(self.workdir, "images")
+        images_subdir = self.build_data["snapshot"]["images"].get("subdir", None)
+        if images_subdir:
+            self.imagesdir = os.path.join(self.imagesdir, images_subdir)
 
-        target_image_dir = os.path.join(base_image_dir, build_version)
+        target_image_dir = os.path.join(base_image_dir, self.build_version)
         if os.path.exists(target_image_dir):
             self.logger.info("Already created %s" % target_image_dir)
             return
@@ -64,16 +65,23 @@ class TaskBuildLive(TaskDef):
         work_image_dir = os.path.join(subworkdir, "images")
         fileutil.ensure_dir(work_image_dir)
 
-        targets = build_data["targets"]
+        targets = self.build_data["targets"]
 
-        osname = build_data["snapshot"]["osname"]
-        repo = build_data["snapshot"]["repo"]
+        self.osname = self.build_data["snapshot"]["osname"]
+        repo = self.build_data["snapshot"]["repo"]
+
+        self.data = jsonutil.load_json(os.path.join(self.imagesdir, "live.json"))
 
         for target_name in targets:
             if not target_name.endswith("-runtime"):
                 continue
-            target_revision = build_data["targets"][target_name]
+            target_revision = self.build_data["targets"][target_name]
             squashed_name = target_name.replace("/", "_")
+
+            m = re.match(r'^.+/.+/(.+)-(.+)$', target_name)
+            if not m:
+                self.logger.fatal("Target name \"%s\" is invalid" % target_name)
+            (architecture, target) = m.groups()
 
             # Create working directory for this target
             work_dir = os.path.join(work_image_dir, squashed_name)
@@ -82,17 +90,19 @@ class TaskBuildLive(TaskDef):
             iso_dir = os.path.join(work_dir, "iso")
             iso_isolinux_dir = os.path.join(iso_dir, "isolinux")
             shutil.copytree(os.path.join(self.imagesdir, "live"), iso_dir)
-            ##
-            shutil.rmtree(os.path.join(iso_dir, "os"))
 
             # Pull deploy the system and create SquashFS image
-            self._pull_deploy(work_dir, osname, target_name, target_revision)
+            self._pull_deploy(work_dir, target_name, target_revision)
 
             # Copy kernel and initramfs to the ISO directory
             deploy_dir = os.path.join(work_dir, "root-image")
-            deploy_kernel_path = libqa._find_current_kernel(deploy_dir, osname)
-            kernel_release = libqa._parse_kernel_release(deploy_kernel_path)
-            initramfs_path = _get_initramfs_path(deploy_dir, kernel_release)
+            deploy_kernel_path = libqa._find_current_kernel(deploy_dir, self.osname)
+            self.logger.debug("Found kernel: %s" % deploy_kernel_path)
+            if not self.build_data["initramfs-images"].has_key(architecture):
+                self.logger.fatal("No cached initramfs image found!")
+            (kernel_release, initramfs_path) = self.build_data["initramfs-images"][architecture]
+            self.logger.debug("Kernel release: %s" % kernel_release)
+            self.logger.debug("Found initramfs: %s" % initramfs_path)
             shutil.copy2(deploy_kernel_path, os.path.join(iso_isolinux_dir, "vmlinuz"))
             shutil.copy2(initramfs_path, os.path.join(iso_isolinux_dir, "initramfs.img"))
 
@@ -103,14 +113,14 @@ class TaskBuildLive(TaskDef):
             diskpath = os.path.join(work_image_dir, disk_name)
             if os.path.exists(diskpath):
                 os.unlink(diskpath)
-            self._make_iso(diskpath, iso_dir)
+            self._make_iso(architecture, diskpath, iso_dir)
 
         os.rename(work_image_dir, target_image_dir)
 
-    def _pull_deploy(self, work_dir, osname, target_name, target_revision):
+    def _pull_deploy(self, work_dir, target_name, target_revision):
         pull_deploy_program = os.path.join(self.libexecdir, "mauibuild-image-pull-deploy")
         run_sync(["pkexec", pull_deploy_program, work_dir,
-                  self.repo, osname, target_name, target_revision])
+                  self.repo, self.osname, target_name, target_revision])
 
         iso_os_dir = os.path.join(work_dir, "iso", "LiveOS")
         fileutil.ensure_dir(iso_os_dir)
@@ -119,18 +129,17 @@ class TaskBuildLive(TaskDef):
         shutil.move(squash_image_path, iso_os_dir)
         shutil.move(squash_md5_path, iso_os_dir)
 
-    def _make_iso(self, diskpath, iso_dir):
-        data = load_json(os.path.join(self.imagesdir, "live.json"))
+    def _make_iso(self, architecture, diskpath, iso_dir):
         iso_isolinux_dir = os.path.join(iso_dir, "isolinux")
-        run_sync(["xorriso", "-as", "mkisofs", "-iso-level", "3", "-full-iso9660-filenames",
-                  "-volid", data["label"], "-appid", data["application"],
-                  "-publisher", data["publisher"], "-preparer", "prepared by mauibuild",
-                  "-eltorito-boot", "isolinux/isolinux.bin",
-                  "-eltorito-catalog", "isolinux/boot.cat",
-                  "-no-emul-boot", "-boot-load-size", "4", "-boot-info-table",
-                  "--efi-boot", "EFI/buildimage/efiboot.img",
-                  "-isohybrid-mbr", os.path.join(iso_isolinux_dir, "isohdpfx.bin"),
-                  "-output", diskpath, iso_dir])
+        args = ["xorriso", "-as", "mkisofs", "-iso-level", "3", "-full-iso9660-filenames",
+                "-volid", self.data["label"], "-appid", self.data["application"],
+                "-publisher", self.data["publisher"], "-preparer", "prepared by mauibuild",
+                "-eltorito-boot", "isolinux/isolinux.bin",
+                "-eltorito-catalog", "isolinux/boot.cat",
+                "-no-emul-boot", "-boot-load-size", "4", "-boot-info-table"]
+        args += ["-isohybrid-mbr", os.path.join(iso_isolinux_dir, "isohdpfx.bin"),
+                 "-output", diskpath, iso_dir]
+        run_sync(args)
 
     def _load_versions_from(self, path):
         results = []
