@@ -951,6 +951,8 @@ class TaskBuild(TaskDef):
                 "--mount-bind", tmp_dir, "/tmp",
                 compose_rootdir,
                 "dracut", "--tmpdir=/tmp", "-f", "/tmp/initramfs-ostree.img",
+                "-a", "debug dmsquash-live",
+                "--add-drivers", "piix ide-gd_mod ata_piix ext3 sd_mod",
                 kernel_release])
 
         os.chmod(initramfs_tmp, 420)
