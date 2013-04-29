@@ -118,6 +118,10 @@ class TaskBuildLive(TaskDef):
             # Remove deployment
             #run_sync(["pkexec", "rm", "-rf", deploy_dir])
 
+            # Expand support files
+            self._expand_support_files(iso_dir)
+
+            # Make ISO image
             disk_name = "%s-live.iso" % squashed_name
             diskpath = os.path.join(work_image_dir, disk_name)
             if os.path.exists(diskpath):
@@ -137,6 +141,21 @@ class TaskBuildLive(TaskDef):
         squash_md5_path = os.path.join(work_dir, "squashfs.img.md5")
         shutil.move(squash_image_path, iso_os_dir)
         shutil.move(squash_md5_path, iso_os_dir)
+
+    def _expand_support_files(self, iso_dir):
+        data = self.data["live"].copy()
+        data.update({"osname": self.osname, "version": self.version})
+
+        files = self.data["live"].get("replace-files", [])
+        for filename in files:
+            path = os.path.join(iso_dir, filename)
+            if os.path.exists(path):
+                f = open(path, "r")
+                contents = f.read()
+                f.close()
+                f = open(path, "w")
+                f.write(contents % data)
+                f.close()
 
     def _make_iso(self, architecture, diskpath, iso_dir):
         iso_isolinux_dir = os.path.join(iso_dir, "isolinux")
