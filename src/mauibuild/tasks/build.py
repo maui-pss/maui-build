@@ -80,6 +80,7 @@ class TaskBuild(TaskDef):
         self._snapshot = Snapshot(data, working_snapshot_path)
         osname = self._snapshot.data["osname"]
         self.osname = osname
+        self.version = self._snapshot.data["version"]
 
         self.patchdir = os.path.join(self.workdir, "patches")
 
