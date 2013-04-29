@@ -150,21 +150,21 @@ def checkout_patches(mirrordir, patchdir, patches):
 
     return patchdir
 
-def checkout_images(mirrordir, imagedir, images):
-    (images_keytype, images_uri) = parse_src_key(images['src'])
-    if images_keytype == 'local':
-        return images_uri
-    elif images_keytype != 'git':
-        raise Exception("Unhandled keytype %s" % images_keytype)
+def checkout_support(mirrordir, supportdir, support):
+    (support_keytype, support_uri) = parse_src_key(support['src'])
+    if support_keytype == 'local':
+        return support_uri
+    elif support_keytype != 'git':
+        raise Exception("Unhandled keytype %s" % support_keytype)
 
-    images_mirror = get_mirrordir(mirrordir, images_keytype, images_uri)
-    get_vcs_checkout(mirrordir, images, imagedir, overwrite=True, quiet=True)
+    support_mirror = get_mirrordir(mirrordir, support_keytype, support_uri)
+    get_vcs_checkout(mirrordir, support, supportdir, overwrite=True, quiet=True)
 
-    images_subdir = images.get("subdir", None)
-    if images_subdir is not None:
-        imagedir = os.path.join(imagedir, images_subdir)
+    support_subdir = support.get("subdir", None)
+    if support_subdir is not None:
+        supportdir = os.path.join(supportdir, support_subdir)
 
-    return imagedir
+    return supportdir
 
 def get_lastfetch_path(mirrordir, keytype, uri, branch):
     mirror = get_mirrordir(mirrordir, keytype, uri)

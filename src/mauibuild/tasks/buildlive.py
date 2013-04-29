@@ -52,10 +52,10 @@ class TaskBuildLive(TaskDef):
         self.build_version = builddb.parse_version_str(os.path.basename(self.latest_path))
         self.build_data = builddb.load_from_path(self.latest_path)
 
-        self.imagesdir = os.path.join(self.workdir, "images")
-        images_subdir = self.build_data["snapshot"]["images"].get("subdir", None)
-        if images_subdir:
-            self.imagesdir = os.path.join(self.imagesdir, images_subdir)
+        self.supportdir = os.path.join(self.workdir, "support")
+        support_subdir = self.build_data["snapshot"]["support"].get("subdir", None)
+        if support_subdir:
+            self.supportdir = os.path.join(self.supportdir, support_subdir)
 
         target_image_dir = os.path.join(base_image_dir, self.build_version)
         if os.path.exists(target_image_dir):
@@ -70,7 +70,7 @@ class TaskBuildLive(TaskDef):
         self.osname = self.build_data["snapshot"]["osname"]
         repo = self.build_data["snapshot"]["repo"]
 
-        self.data = jsonutil.load_json(os.path.join(self.imagesdir, "live.json"))
+        self.data = jsonutil.load_json(os.path.join(self.supportdir, "images", "live.json"))
 
         for target_name in targets:
             if not target_name.endswith("-runtime"):
@@ -89,7 +89,7 @@ class TaskBuildLive(TaskDef):
             # Copy ISO contents
             iso_dir = os.path.join(work_dir, "iso")
             iso_isolinux_dir = os.path.join(iso_dir, "isolinux")
-            shutil.copytree(os.path.join(self.imagesdir, "live"), iso_dir)
+            shutil.copytree(os.path.join(self.supportdir, "images", "live"), iso_dir)
 
             # Pull deploy the system and create SquashFS image
             self._pull_deploy(work_dir, target_name, target_revision)

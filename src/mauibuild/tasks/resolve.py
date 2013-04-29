@@ -38,8 +38,8 @@ class TaskResolve(TaskDef):
                                     help="git fetch base system")
         self.subparser.add_argument('--fetch-patches', action='store_true',
                                     help="git fetch patches")
-        self.subparser.add_argument('--fetch-images', action='store_true',
-                                    help="git fetch images contents")
+        self.subparser.add_argument('--fetch-support', action='store_true',
+                                    help="git fetch support stuff")
         self.subparser.add_argument('--fetch-all', action='store_true',
                                     help="git fetch patches, base system and all components")
         self.subparser.add_argument('--timeout-sec', default=10, metavar="SECONS",
@@ -60,11 +60,11 @@ class TaskResolve(TaskDef):
         if args.fetch_all:
             args.fetch_base = True
             args.fetch_patches = True
-            args.fetch_images = True
+            args.fetch_support = True
 
-        # Can't fetch patches and images if not defined in manifest
+        # Can't fetch patches and support if not defined in manifest
         args.fetch_patches = args.fetch_patches and self._snapshot.data.has_key("patches")
-        args.fetch_images = args.fetch_patches and self._snapshot.data.has_key("images")
+        args.fetch_support = args.fetch_patches and self._snapshot.data.has_key("support")
 
         # Fetch base system
         if args.fetch_base:
@@ -76,9 +76,9 @@ class TaskResolve(TaskDef):
             component = self._snapshot.data["patches"]
             args.components.append(component["name"])
 
-        # Fetch images
-        if args.fetch_images:
-            component = self._snapshot.data["images"]
+        # Fetch support
+        if args.fetch_support:
+            component = self._snapshot.data["support"]
             args.components.append(component["name"])
 
         # Fetch components
@@ -101,8 +101,8 @@ class TaskResolve(TaskDef):
                 vcs.checkout_patches(self.mirrordir, os.path.join(self.workdir, "patches"),
                                      component)
 
-            if args.fetch_images and self._snapshot.data["images"]["name"] == name:
-                vcs.checkout_images(self.mirrordir, os.path.join(self.workdir, "images"),
+            if args.fetch_support and self._snapshot.data["support"]["name"] == name:
+                vcs.checkout_support(self.mirrordir, os.path.join(self.workdir, "support"),
                                      component)
 
         (path, modified) = self._get_db().store(self._snapshot.data)
