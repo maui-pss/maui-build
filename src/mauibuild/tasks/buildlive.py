@@ -70,7 +70,15 @@ class TaskBuildLive(TaskDef):
         self.osname = self.build_data["snapshot"]["osname"]
         repo = self.build_data["snapshot"]["repo"]
 
-        self.data = jsonutil.load_json(os.path.join(self.supportdir, "images", "live.json"))
+        data_filename = os.path.join(self.supportdir, "images", "index.json")
+        if not os.path.exists(data_filename):
+            self.logger.fatal("Couldn't find support index file \"%s\"" % data_filename)
+        self.data = jsonutil.load_json(data_filename)
+        if not self.data.has_key("live"):
+            self.logget.fatal("No live image definition found")
+        for k in ("label", "application", "publisher"):
+            if not self.data["live"].has_key(k):
+                self.logger.fatal("Live image definition doesn't have \"%s\" key" % k)
 
         for target_name in targets:
             if not target_name.endswith("-runtime"):
@@ -132,8 +140,8 @@ class TaskBuildLive(TaskDef):
     def _make_iso(self, architecture, diskpath, iso_dir):
         iso_isolinux_dir = os.path.join(iso_dir, "isolinux")
         args = ["xorriso", "-as", "mkisofs", "-iso-level", "3", "-full-iso9660-filenames",
-                "-volid", self.data["label"], "-appid", self.data["application"],
-                "-publisher", self.data["publisher"], "-preparer", "prepared by mauibuild",
+                "-volid", self.data["live"]["label"], "-appid", self.data["live"]["application"],
+                "-publisher", self.data["live"]["publisher"], "-preparer", "prepared by mauibuild",
                 "-eltorito-boot", "isolinux/isolinux.bin",
                 "-eltorito-catalog", "isolinux/boot.cat",
                 "-no-emul-boot", "-boot-load-size", "4", "-boot-info-table"]
