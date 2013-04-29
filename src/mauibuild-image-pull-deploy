@@ -36,7 +36,8 @@ shift
 test -n "$revision" || (echo 1>&2 "usage: $0: WORK_DIR SRC_REPO OSNAME TARGET REVISION"; exit 1)
  
 deploy_path=$work_dir/root-image
-root_fs_img=$work_dir/ext4fs.img
+root_fs_dir=$work_dir/squashfs-root/LiveOS
+root_fs_img=$root_fs_dir/ext3fs.img
 mountpoint=$work_dir/mnt
 
 boot_dir=$deploy_path/boot
@@ -73,9 +74,10 @@ _spc_used=$(du -sxm "${deploy_path}" | awk '{print $1}')
 _fs_size=$((_spc_used * 110 / (100 - 50)))
 
 # Create ext4 image that will be used as root file system by the live media
+mkdir -p $root_fs_dir
 dd of=$root_fs_img count=0 bs=1M seek=$_fs_size || abort "Unable to create root file system image"
-mkfs.ext4 -O ^has_journal -m 0 -F $root_fs_img || abort "Unable to create ext4 root file system"
-tune2fs -c 0 -i 0 $root_fs_img || abort "Unable to tune ext4 root file system"
+mkfs.ext3 -m 0 -F $root_fs_img || abort "Unable to create ext3 root file system"
+tune2fs -c 0 -i 0 $root_fs_img || abort "Unable to tune ext3 root file system"
 mkdir -p $mountpoint
 mount $root_fs_img $mountpoint || abort "Couldn't mount \"$root_fs_img\""
 cp -aT $deploy_path $mountpoint || abort "Failed to copy OS deployment over \"$mountpoint\""
@@ -85,12 +87,12 @@ rm -rf $mountpoint
 # Our squashfs.img contains
 squash_image_path=$work_dir/squashfs.img
 squash_md5_path=$work_dir/squashfs.img.md5
-mksquashfs $root_fs_img $squash_image_path -noappend \
+mksquashfs $(dirname $root_fs_dir) $squash_image_path -noappend \
     -comp xz -no-progress || abort "Failed to create SquashFS image"
 md5sum $squash_image_path | awk '{print $1}' > $squash_md5_path
 
 # Now we can remove the ext4 image
-rm -f $root_fs_img
+rm -fr $root_fs_dir
 
 # Make squashfs image accessible by the unprivileged user
 uid=
