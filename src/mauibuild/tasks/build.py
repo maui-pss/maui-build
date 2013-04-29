@@ -244,7 +244,8 @@ class TaskBuild(TaskDef):
         target_revisions = {}
         build_data = {"snapshot-name": os.path.basename(self._snapshot.path),
                       "snapshot": self._snapshot.data,
-                      "targets": target_revisions}
+                      "targets": target_revisions,
+                      "initramfs-images": {}}
 
         # First loop over -devel trees per architecture, and
         # generate an initramfs
@@ -270,6 +271,7 @@ class TaskBuild(TaskDef):
             shutil.copy2(initramfs_path, target_initramfs_path)
             (treename, ostree_rev) = self._commit_composed_tree(devel_target_name, compose_rootdir, related_tmppath)
             target_revisions[treename] = ostree_rev
+        build_data["initramfs-images"] = arch_initramfs_images
 
         # Now loop over the other targets per architecture, reusing
         # the initramfs cached from -devel generation
