@@ -294,7 +294,8 @@ class TaskBuild(TaskDef):
 
                 (compose_rootdir, related_tmppath) = self._checkout_one_tree(runtime_target, component_build_revs)
                 (kernel_release, initramfs_path) = arch_initramfs_images[architecture]
-                target_initramfs_path = os.path.join(compose_rootdir, "boot", os.path.basename(initramfs_path))
+                initramfs_target_name = "initramfs-" + kernel_release + ".img"
+                target_initramfs_path = os.path.join(compose_rootdir, "boot", initramfs_target_name)
                 shutil.copy2(initramfs_path, target_initramfs_path)
                 (treename, ostree_rev) = self._commit_composed_tree(runtime_target_name, compose_rootdir, related_tmppath)
                 target_revisions[treename] = ostree_rev
