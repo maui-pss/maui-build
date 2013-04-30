@@ -143,15 +143,21 @@ class TaskBuild(TaskDef):
         component_to_arches = {}
 
         runtime_components = []
+        live_components = []
         devel_components = []
 
         for component in components:
             name = component["name"]
 
             is_runtime = (component.get("component") or "runtime") == "runtime"
+            is_live = (component.get("component") or "runtime") == "live"
             if is_runtime:
                 runtime_components.append(component)
-            devel_components.append(component)
+                live_components.append(component)
+            elif is_live:
+                live_components.append(component)
+            else:
+                devel_components.append(component)
 
             is_noarch = component.get("noarch") or False
             if is_noarch:
@@ -200,7 +206,7 @@ class TaskBuild(TaskDef):
             component_build_revs[archname] = build_rev
 
         targets_list = []
-        target_component_types = ['runtime', 'runtime-debug', 'devel', 'devel-debug']
+        target_component_types = ['runtime', 'runtime-debug', 'devel', 'devel-debug', 'live']
         for target_component_type in target_component_types:
             for architecture in architectures:
                 target = {}
@@ -217,8 +223,10 @@ class TaskBuild(TaskDef):
                                   'runtime': base_runtime_ref,
                                   'devel': buildroot_ref}
 
-                if target_component_type[:8] == "runtime-":
+                if target_component_type.startswith("runtime"):
                     target_components = runtime_components
+                elif target_component_type == "live":
+                    target_components = live_components
                 else:
                     target_components = devel_components
 
@@ -239,6 +247,8 @@ class TaskBuild(TaskDef):
                         component_ref['trees'] = ['/runtime', '/devel', '/doc']
                     elif target_component_type == 'devel-debug':
                         component_ref['trees'] = ['/runtime', '/devel', '/doc', '/debug']
+                    elif target_component_type == 'live':
+                        component_ref['trees'] = ['/runtime']
                     contents.append(component_ref)
                 target['contents'] = contents
 
@@ -276,7 +286,7 @@ class TaskBuild(TaskDef):
 
         # Now loop over the other targets per architecture, reusing
         # the initramfs cached from -devel generation
-        non_devel_targets = ("runtime", "runtime-debug", "devel-debug")
+        non_devel_targets = ("runtime", "runtime-debug", "devel-debug", "live")
         for target in non_devel_targets:
             for architecture in architectures:
                 runtime_target_name = "buildmaster/" + architecture + "-" + target
@@ -954,8 +964,6 @@ class TaskBuild(TaskDef):
                 "--mount-bind", tmp_dir, "/tmp",
                 compose_rootdir,
                 "dracut", "--tmpdir=/tmp", "-f", "/tmp/initramfs-ostree.img",
-                "-a", "debug dmsquash-live",
-                "--add-drivers", "piix ide-gd_mod ata_piix ext3 sd_mod",
                 kernel_release])
 
         os.chmod(initramfs_tmp, 420)

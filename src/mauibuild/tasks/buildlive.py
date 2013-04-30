@@ -84,7 +84,7 @@ class TaskBuildLive(TaskDef):
                 self.logger.fatal("Live image definition doesn't have \"%s\" key" % k)
 
         for target_name in targets:
-            if not target_name.endswith("-runtime"):
+            if not target_name.endswith("-live"):
                 continue
             target_revision = self.build_data["targets"][target_name]
             squashed_name = target_name.replace("/", "_")
@@ -124,7 +124,7 @@ class TaskBuildLive(TaskDef):
             self._expand_support_files(iso_dir)
 
             # Make ISO image
-            disk_name = "%s-live.iso" % squashed_name
+            disk_name = "%s.iso" % squashed_name
             diskpath = os.path.join(work_image_dir, disk_name)
             if os.path.exists(diskpath):
                 os.unlink(diskpath)
