@@ -55,12 +55,12 @@ class TaskBuildDisks(TaskDef):
         build_version = builddb.parse_version_str(os.path.basename(latest_path))
         build_data = builddb.load_from_path(latest_path)
 
-        target_image_dir = os.path.join(base_image_dir, build_version)
+        target_image_dir = os.path.join(base_image_dir, "disk", build_version)
         if os.path.exists(target_image_dir):
             self.logger.info("Already created %s" % target_image_dir)
             return
 
-        work_image_dir = os.path.join(subworkdir, "images")
+        work_image_dir = os.path.join(subworkdir, "images", "disk")
         fileutil.ensure_dir(work_image_dir)
 
         targets = build_data["targets"]
