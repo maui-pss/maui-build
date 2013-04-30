@@ -45,6 +45,8 @@ class TaskBuildLive(TaskDef):
 
         base_image_dir = os.path.join(self.workdir, self._image_subdir)
         fileutil.ensure_dir(base_image_dir)
+        current_image_link = os.path.join(base_image_dir, "current")
+        previous_image_link = os.path.join(base_image_dir, "previous")
 
         builddb = self._get_result_db("build")
 
@@ -57,12 +59,12 @@ class TaskBuildLive(TaskDef):
         if support_subdir:
             self.supportdir = os.path.join(self.supportdir, support_subdir)
 
-        target_image_dir = os.path.join(base_image_dir, self.build_version)
+        target_image_dir = os.path.join(base_image_dir, "live", self.build_version)
         if os.path.exists(target_image_dir):
             self.logger.info("Already created %s" % target_image_dir)
             return
 
-        work_image_dir = os.path.join(subworkdir, "images")
+        work_image_dir = os.path.join(subworkdir, "images", "live")
         fileutil.ensure_dir(work_image_dir)
 
         targets = self.build_data["targets"]
@@ -129,6 +131,16 @@ class TaskBuildLive(TaskDef):
             self._make_iso(architecture, diskpath, iso_dir)
 
         os.rename(work_image_dir, target_image_dir)
+
+        if os.path.exists(current_image_link):
+            new_previous_tmppath = os.path.join(base_image_dir, "previous-new.tmp")
+            current_link_target = ll
+            shutil.rmtree(new_previous_tmppath)
+            os.rename(new_previous_tmppath, previous_image_link)
+
+        buildutil.atomic_symlink_swap(os.path.join(base_image_dir, "current"), target_image_dir)
+
+        self._clean_old_versions(base_image_dir, IMAGE_RETAIN_COUNT)
 
     def _pull_deploy(self, work_dir, target_name, target_revision):
         pull_deploy_program = os.path.join(self.libexecdir, "mauibuild-image-pull-deploy")
