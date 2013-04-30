@@ -668,9 +668,12 @@ class TaskBuild(TaskDef):
         self._current_build_success_msg = msg
         loop.quit()
 
+    def _component_build_ref_from_name(self, component_name, architecture):
+        arch_buildname = "%s/%s" % (component_name, architecture)
+        return "%s/components/%s" % (self.osname, arch_buildname)
+
     def _component_build_ref(self, component, architecture):
-        arch_buildname = "%s/%s" % (component["name"], architecture)
-        return self.osname + "/components/" + arch_buildname
+        return self._component_build_ref_from_name(component["name"], architecture)
 
     def _build_one_component(self, component, architecture):
         basename = component['name']
@@ -679,7 +682,7 @@ class TaskBuild(TaskDef):
 
         arch_buildname = "%s/%s" % (basename, architecture)
         unix_buildname = arch_buildname.replace("/", "_")
-        build_ref = self._component_build_ref(component, architecture)
+        build_ref = self._component_build_ref_from_name(basename, architecture)
 
         build_flags = COMMON_BUILD_FLAGS[architecture]
         override_build_flags = self._snapshot.data.get("build-flags", {})
