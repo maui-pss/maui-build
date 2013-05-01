@@ -1,0 +1,40 @@
+/////
+vim:set ts=4 sw=4 syntax=asciidoc noet spell spelllang=en_us:
+/////
+mauibuild-git-mirror(1)
+=======================
+
+Name
+----
+mauibuild-git-mirror - Update internal git mirror for one or more components
+
+Synopsis
+--------
+'mauibuild git-mirror' [<options>] <component>...
+
+Description
+-----------
+Updates internal git mirror for one or more components.
+
+Options
+-------
+*\--workdir* <path>::
+	Specify an alternative working directory.
+
+*\--manifest* <path>::
+	Specify an alternative manifest file.
+
+*\--snapshot* <path>::
+	Specify an alternative snapshot file.
+
+*\--timeout-sec* <seconds>::
+	Cache fetch results for <seconds> seconds.
+
+*\--fetch*::
+	Also do a git fetch for components.
+
+*-k, \--keep-going*::
+	Don't exit on fetch failures.
+
+<component>...::
+	One or more components whose git repositories will be fetched..

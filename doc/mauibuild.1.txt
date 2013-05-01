@@ -1,0 +1,89 @@
+/////
+vim:set ts=4 sw=4 syntax=asciidoc noet spell spelllang=en_us:
+/////
+mauibuild(1)
+============
+
+Name
+----
+mauibuild - utility to build the Maui operating system
+
+
+Synopsis
+--------
+'mauibuild' <operation> [options] [targets]
+
+Description
+-----------
+mauibuild is a tool to build the Maui operating system: it creates disk images,
+compressed disk images and live images for different architectures although
+only x86_64 is supported at the moment.
+
+mauibuild must be launched from a working directory that contains a JSON manifest
+file. See mauibuild(5) for more information on the format.
+
+The manifest file contains information about the parts that constitutes the
+operating system, patches and support files.
+
+Invoking mauibuild involves specifying an operation with any potential options and
+targets to operate on.
+
+Operations
+----------
+*checkout*::
+	Check out a git repository.
+
+*git-mirror*::
+	Update internal git mirror for one or more components.
+
+*make*::
+	Execute tasks.
+
+checkout options
+----------------
+The *checkout* operation, in addition to one or more component name(s), accepts these arguments:
+
+*\--overwrite*::
+	Overwrite.
+
+*\--patches-path* <path>::
+	Specify the path where patches are saved.
+
+*\--metadata-path* <path>::
+	Specify the path where metadata is located.
+
+*\--workdir* <path>::
+	Specify an alternative working directory.
+
+*\--snapshot* <path>::
+	Specify an alternative snapshot file.
+
+*\--checkoutdir* <path>::
+	Specify where the git repositories will be checked out.
+
+*\--clean*::
+	Clean.
+
+git-mirror options
+------------------
+The *git-mirror* operation, in addition
+usage: mauibuild git-mirror [-h] [--workdir WORKDIR] [--manifest MANIFEST]
+                            [--snapshot SNAPSHOT] [--timeout-sec SECONDS]
+                            [--fetch] [-k]
+                            [components [components ...]]
+
+Update internal git mirror for one or more components
+
+positional arguments:
+  components
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --workdir WORKDIR
+  --manifest MANIFEST
+  --snapshot SNAPSHOT
+  --timeout-sec SECONDS
+                        Cache fetch results for provided number of seconds
+  --fetch               Also do a git fetch for components
+  -k, --keep-going      Don't exit on fetch failures
+

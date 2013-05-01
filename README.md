@@ -36,6 +36,7 @@ You also need:
 
  * Linux 2.6.28 or newer
  * *linux-user-chroot* and *ostree*, follow the next sections for more information
+ * *asciidoc* if you want to create the man pages
  * The *termcolor* Python module if you want *mauibuild* to print colored output
 
 ### Setup guestfs on Ubuntu

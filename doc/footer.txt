@@ -1,0 +1,27 @@
+/////
+vim:set ts=4 sw=4 syntax=asciidoc noet spell spelllang=en_us:
+/////
+
+See the Maui wiki at http://wiki.maui-project.org[] for current
+information on mauibuild.
+
+
+Bugs
+----
+Submit bugs to https://github.com/mauios/mauibuild/issues[].
+
+
+Authors
+-------
+
+Author:
+
+* Pier Luigi Fiorini <pierluigi.fiorini@maui-project.org>
+
+This software was forked from GNOME's ostbuild before it was rewritten
+from Python to gjs.
+
+GNOME's ostbuild was made by Colin Walters <walters@verbum.org>.
+
+For additional contributors, use `git shortlog -s` on the mauibuild.git
+repository.

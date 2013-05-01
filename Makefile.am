@@ -41,3 +41,7 @@ install-data-hook: $(INSTALL_DATA_HOOKS)
 
 release-tag:
 	git tag -m "Release $(VERSION)" v$(VERSION)
+
+if WANT_DOC
+SUBDIRS = doc
+endif

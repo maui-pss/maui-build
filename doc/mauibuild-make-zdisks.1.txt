@@ -1,0 +1,17 @@
+/////
+vim:set ts=4 sw=4 syntax=asciidoc noet spell spelllang=en_us:
+/////
+mauibuild-make-zdisks(1)
+========================
+
+Name
+----
+mauibuild-make-zdisks - Build compressed disk images.
+
+Synopsis
+--------
+'mauibuild make -n zdisks'
+
+Description
+-----------
+Build a couple of compressed disk images, for the runtime and devel targets.

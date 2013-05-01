@@ -1,0 +1,40 @@
+/////
+vim:set ts=4 sw=4 syntax=asciidoc noet spell spelllang=en_us:
+/////
+mauibuild-make-resolve(1)
+=========================
+
+Name
+----
+mauibuild-make-resolve - Expand git revisions in source to exact targets.
+
+Synopsis
+--------
+'mauibuild make -n resolve' [-- [--fetch-base] [--fetch-patches] [--fetch-support] [--fetch-all] [--timeout-sec <seconds>] [<components>...]]
+
+Description
+-----------
+Reads the manifest file and expand git revisions to exact targets.
+It can be used to fetch new revisions as well.
+
+At the end of the process, a source snapshot is generated in *$workdir/snapshots*.
+
+Options
+-------
+*\--fetch-base*::
+	Fetch the base system git repository.
+
+*\--fetch-patches*::
+	Fetch the patches git repository.
+
+*\--fetch-support*::
+	Fetch the support files git repository.
+
+*\--fetch-all*::
+	Fetch base system, patches, support and components git repositories.
+
+*\--timeout-sec <seconds>*::
+	Unless *\--fetch-all* is specified or component names are provided, fetch repositories not older than that.
+
+*<components>...*::
+	Fetch git repositories for the specified components.

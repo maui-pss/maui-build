@@ -1,0 +1,17 @@
+/////
+vim:set ts=4 sw=4 syntax=asciidoc noet spell spelllang=en_us:
+/////
+mauibuild-make-buildlive(1)
+===========================
+
+Name
+----
+mauibuild-make-buildlive - Build a live ISO image.
+
+Synopsis
+--------
+'mauibuild make -n buildlive'
+
+Description
+-----------
+Builds a live ISO image using the live target.
