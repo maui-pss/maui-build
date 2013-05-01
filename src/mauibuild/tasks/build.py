@@ -286,7 +286,7 @@ class TaskBuild(TaskDef):
 
         # Now loop over the other targets per architecture, reusing
         # the initramfs cached from -devel generation
-        non_devel_targets = ("runtime", "runtime-debug", "devel-debug")
+        non_devel_targets = ("runtime", "runtime-debug", "devel-debug", "live")
         for target in non_devel_targets:
             for architecture in architectures:
                 runtime_target_name = "buildmaster/" + architecture + "-" + target
