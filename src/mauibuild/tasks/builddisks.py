@@ -37,6 +37,7 @@ class TaskBuildDisks(TaskDef):
     _VERSION_RE = re.compile(r'^(\d+)\.(\d+)$')
     _image_subdir = "images"
     _inherit_previous_disk = True
+    _only_tree_suffixes = ["-runtime"]
 
     def __init__(self, builtin, taskmaster, name, argv):
         TaskDef.__init__(self, builtin, taskmaster, name, argv)
@@ -69,8 +70,14 @@ class TaskBuildDisks(TaskDef):
         repo = build_data["snapshot"]["repo"]
 
         for target_name in targets:
-            if not target_name.endswith("-runtime"):
+            matched = False
+            for suffix in self._only_tree_suffixes:
+                if target_name.endswith(suffix):
+                    matched = True
+                    break
+            if not matched:
                 continue
+
             target_revision = build_data["targets"][target_name]
             squashed_name = target_name.replace("\/", "_")
             disk_name = "%s-disk.qcow2" % squashed_name
