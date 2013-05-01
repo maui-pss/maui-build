@@ -25,6 +25,7 @@ from ..tasks import builddisks
 from ..tasks import buildlive
 from ..tasks import build
 from ..tasks import resolve
+from ..tasks import zdisks
 
 class BuiltinRunTask(builtins.Builtin):
     name = "run-task"

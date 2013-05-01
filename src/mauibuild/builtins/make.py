@@ -27,6 +27,7 @@ from ..tasks import builddisks
 from ..tasks import buildlive
 from ..tasks import build
 from ..tasks import resolve
+from ..tasks import zdisks
 from ..logger import Logger
 from ..subprocess_helpers import run_sync
 
