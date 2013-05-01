@@ -21,7 +21,7 @@ import sys, os, argparse, shutil
 
 from .. import fileutil
 from .. import taskset
-from ..tasks import TaskZDisks
+from ..tasks.builddisks import TaskBuildDisks
 from ..subprocess_helpers import run_sync
 
 class TaskZDisks(TaskBuildDisks):
