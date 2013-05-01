@@ -305,11 +305,9 @@ class TaskDef(GObject.GObject):
         env_copy = os.environ.copy()
         env_copy["_OSTBUILD_WORKDIR"] = self.workdir
         out_path = os.path.join(self._workdir, "output.txt")
-        err_path = os.path.join(self._workdir, "errors.txt")
         stdout = open(out_path, "w")
-        stderr = open(err_path, "w")
         proc = run_async(base_args, cwd=self._workdir, stdout=stdout,
-                         stderr=stderr, env=env_copy)
+                         stderr=stdout, env=env_copy)
         self.logger.debug("waiting for pid %d" % proc.pid)
         GLib.child_watch_add(proc.pid, self._on_child_exited)
 
