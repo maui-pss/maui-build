@@ -57,13 +57,15 @@ class MauiBuild(callbacks.Plugin):
         tracked_build = "buildmaster"
         self._workdir = os.path.expanduser("/srv/mauibuild/%s/" % tracked_build)
         self._workurl = "http://build.maui-project.org/%s/" % tracked_build
+        #self.tasks = ["build", "smoketest", "integrationtest"]
+        self.tasks = ["build",]
 
     def _broadcast(self, msg):
         for channel in self._irc.state.channels:
             self._irc.queueMsg(ircmsgs.privmsg(channel, msg))
 
     def _query_new_tasks(self, status=False):
-        for taskname in ["build", "smoketest", "integrationtest"]:
+        for taskname in self.tasks:
             self._query_new_task(taskname, status=status)
 
     def _query_new_task(self, taskname, status=False):
