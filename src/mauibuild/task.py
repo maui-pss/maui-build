@@ -329,7 +329,7 @@ class TaskDef(GObject.GObject):
         if not success:
             errmsg = "Child process exited with code %d" % exitcode
 
-        elapsed_millis = int(timeutil.monotonic_time() * 1000) - self._start_time_millis
+        elapsed_millis = (timeutil.monotonic_time() * 1000.) - self._start_time_millis
         meta = {"task-meta-version": 0, "task-version": self._version,
             "success": success, "errmsg": errmsg, "elapsed-millis": elapsed_millis}
         jsonutil.write_json_file_atomic(os.path.join(self._workdir, "meta.json"), meta)
