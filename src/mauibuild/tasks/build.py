@@ -154,6 +154,7 @@ class TaskBuild(TaskDef):
             if is_runtime:
                 runtime_components.append(component)
                 live_components.append(component)
+                devel_components.append(component)
             elif is_live:
                 live_components.append(component)
             else:
