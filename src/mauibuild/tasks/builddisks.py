@@ -45,7 +45,7 @@ class TaskBuildDisks(TaskDef):
     def execute(self):
         subworkdir = os.getcwd()
 
-        base_image_dir = os.path.join(self.workdir, self._image_subdir)
+        base_image_dir = os.path.join(self.workdir, self._image_subdir, "disk")
         fileutil.ensure_dir(base_image_dir)
         current_image_link = os.path.join(base_image_dir, "current")
         previous_image_link = os.path.join(base_image_dir, "previous")
@@ -56,7 +56,7 @@ class TaskBuildDisks(TaskDef):
         build_version = builddb.parse_version_str(os.path.basename(latest_path))
         build_data = builddb.load_from_path(latest_path)
 
-        target_image_dir = os.path.join(base_image_dir, "disk", build_version)
+        target_image_dir = os.path.join(base_image_dir, build_version)
         if os.path.exists(target_image_dir):
             self.logger.info("Already created %s" % target_image_dir)
             return
