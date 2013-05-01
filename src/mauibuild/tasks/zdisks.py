@@ -32,6 +32,7 @@ class TaskZDisks(TaskBuildDisks):
 
     _image_subdir = os.path.join("images", "z")
     _inherit_previous_disk = False
+    _only_tree_suffixes = ["-runtime", "-devel"]
 
     def __init__(self, builtin, taskmaster, name, argv):
         TaskBuildDisks.__init__(self, builtin, taskmaster, name, argv)
