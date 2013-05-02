@@ -43,7 +43,7 @@ class TaskBuildLive(TaskDef):
     def execute(self):
         subworkdir = os.getcwd()
 
-        base_image_dir = os.path.join(self.workdir, self._image_subdir)
+        base_image_dir = os.path.join(self.workdir, self._image_subdir, "live")
         fileutil.ensure_dir(base_image_dir)
         current_image_link = os.path.join(base_image_dir, "current")
         previous_image_link = os.path.join(base_image_dir, "previous")
@@ -59,7 +59,7 @@ class TaskBuildLive(TaskDef):
         if support_subdir:
             self.supportdir = os.path.join(self.supportdir, support_subdir)
 
-        target_image_dir = os.path.join(base_image_dir, "live", self.build_version)
+        target_image_dir = os.path.join(base_image_dir, self.build_version)
         if os.path.exists(target_image_dir):
             self.logger.info("Already created %s" % target_image_dir)
             return
@@ -83,9 +83,11 @@ class TaskBuildLive(TaskDef):
             if not self.data["live"].has_key(k):
                 self.logger.fatal("Live image definition doesn't have \"%s\" key" % k)
 
+        images_built = 0
         for target_name in targets:
             if not target_name.endswith("-live"):
                 continue
+
             target_revision = self.build_data["targets"][target_name]
             squashed_name = target_name.replace("/", "_")
 
@@ -106,16 +108,14 @@ class TaskBuildLive(TaskDef):
             self._pull_deploy(work_dir, target_name, target_revision)
 
             # Copy kernel and initramfs to the ISO directory
-            deploy_dir = os.path.join(work_dir, "root-image")
-            deploy_kernel_path = libqa._find_current_kernel(deploy_dir, self.osname)
-            self.logger.debug("Found kernel: %s" % deploy_kernel_path)
-            if not self.build_data["initramfs-images"].has_key(architecture):
-                self.logger.fatal("No cached initramfs image found!")
-            (kernel_release, initramfs_path) = self.build_data["initramfs-images"][architecture]
-            self.logger.debug("Kernel release: %s" % kernel_release)
-            self.logger.debug("Found initramfs: %s" % initramfs_path)
+            deploy_root_dir = os.path.join(work_dir, "root-image")
+            deploy_kernel_path = libqa._find_current_kernel(deploy_root_dir, self.osname)
+            kernel_release = libqa._parse_kernel_release(deploy_kernel_path)
+            self.logger.debug("Found kernel release %s: %s" % (kernel_release, deploy_kernel_path))
+            initramfs_path = os.path.join(iso_isolinux_dir, "initramfs.img")
+            self._create_initramfs(work_dir, deploy_root_dir, kernel_release, initramfs_path)
+            self.logger.debug("Created initramfs: %s" % initramfs_path)
             shutil.copy2(deploy_kernel_path, os.path.join(iso_isolinux_dir, "vmlinuz"))
-            shutil.copy2(initramfs_path, os.path.join(iso_isolinux_dir, "initramfs.img"))
 
             # Remove deployment
             #run_sync(["pkexec", "rm", "-rf", deploy_dir])
@@ -129,6 +129,11 @@ class TaskBuildLive(TaskDef):
             if os.path.exists(diskpath):
                 os.unlink(diskpath)
             self._make_iso(architecture, diskpath, iso_dir)
+
+            images_built += 1
+
+        if images_built == 0:
+            self.logger.fatal("No images build, do you have a live target?")
 
         os.rename(work_image_dir, target_image_dir)
 
@@ -153,6 +158,31 @@ class TaskBuildLive(TaskDef):
         squash_md5_path = os.path.join(work_dir, "squashfs.img.md5")
         shutil.move(squash_image_path, iso_os_dir)
         shutil.move(squash_md5_path, iso_os_dir)
+
+    def _create_initramfs(self, work_dir, deploy_root_dir, kernel_release, dest_path):
+        deploy_dir = os.path.join(deploy_root_dir, "ostree", "deploy", self.osname, "current")
+
+        subwork_dir = os.path.join(work_dir, "tmp-initramfs")
+        var_tmp = os.path.join(subwork_dir, "var", "tmp")
+        fileutil.ensure_dir(var_tmp)
+        var_dir = os.path.join(subwork_dir, "var")
+        tmp_dir = os.path.join(subwork_dir, "tmp")
+        fileutil.ensure_dir(tmp_dir)
+        initramfs_tmp = os.path.join(tmp_dir, "initramfs-ostree.img")
+
+        run_sync(["linux-user-chroot", "--mount-readonly", "/",
+                  "--mount-proc", "/proc",
+                  "--mount-bind", "/dev", "/dev",
+                  "--mount-bind", var_dir, "/var",
+                  "--mount-bind", tmp_dir, "/tmp",
+                  deploy_dir,
+                  "dracut", "--tmpdir=/tmp", "-f", "/tmp/initramfs-ostree.img",
+                  "-a", "debug dmsquash-live",
+                  "--add-drivers", "piix ide-gd_mod ata_piix ext3 sd_mod",
+                  kernel_release])
+
+        shutil.move(initramfs_tmp, dest_path)
+        shutil.rmtree(subwork_dir)
 
     def _expand_support_files(self, iso_dir):
         data = self.data["live"].copy()
