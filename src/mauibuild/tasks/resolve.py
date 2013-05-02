@@ -64,7 +64,7 @@ class TaskResolve(TaskDef):
 
         # Can't fetch patches and support if not defined in manifest
         args.fetch_patches = args.fetch_patches and self._snapshot.data.has_key("patches")
-        args.fetch_support = args.fetch_patches and self._snapshot.data.has_key("support")
+        args.fetch_support = args.fetch_support and self._snapshot.data.has_key("support")
 
         # Fetch base system
         if args.fetch_base:
