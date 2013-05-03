@@ -83,57 +83,60 @@ class TaskBuildLive(TaskDef):
             if not self.data["live"].has_key(k):
                 self.logger.fatal("Live image definition doesn't have \"%s\" key" % k)
 
-        images_built = 0
-        for target_name in targets:
-            if not target_name.endswith("-live"):
-                continue
+        target_name = None
+        for target in targets:
+            if target.endswith("-live"):
+                target_name = target
+                break
 
-            target_revision = self.build_data["targets"][target_name]
-            squashed_name = target_name.replace("/", "_")
-
-            m = re.match(r'^.+/.+/(.+)-(.+)$', target_name)
-            if not m:
-                self.logger.fatal("Target name \"%s\" is invalid" % target_name)
-            (architecture, target) = m.groups()
-
-            # Create working directory for this target
-            work_dir = os.path.join(work_image_dir, squashed_name)
-
-            # Copy ISO contents
-            iso_dir = os.path.join(work_dir, "iso")
-            iso_isolinux_dir = os.path.join(iso_dir, "isolinux")
-            shutil.copytree(os.path.join(self.supportdir, "images", "live"), iso_dir)
-
-            # Pull deploy the system and create SquashFS image
-            self._pull_deploy(work_dir, target_name, target_revision)
-
-            # Copy kernel and initramfs to the ISO directory
-            deploy_root_dir = os.path.join(work_dir, "root-image")
-            deploy_kernel_path = libqa._find_current_kernel(deploy_root_dir, self.osname)
-            kernel_release = libqa._parse_kernel_release(deploy_kernel_path)
-            self.logger.debug("Found kernel release %s: %s" % (kernel_release, deploy_kernel_path))
-            initramfs_path = os.path.join(iso_isolinux_dir, "initramfs.img")
-            self._create_initramfs(work_dir, deploy_root_dir, kernel_release, initramfs_path)
-            self.logger.debug("Created initramfs: %s" % initramfs_path)
-            shutil.copy2(deploy_kernel_path, os.path.join(iso_isolinux_dir, "vmlinuz"))
-
-            # Remove deployment
-            #run_sync(["pkexec", "rm", "-rf", deploy_dir])
-
-            # Expand support files
-            self._expand_support_files(iso_dir)
-
-            # Make ISO image
-            disk_name = "%s.iso" % squashed_name
-            diskpath = os.path.join(work_image_dir, disk_name)
-            if os.path.exists(diskpath):
-                os.unlink(diskpath)
-            self._make_iso(architecture, diskpath, iso_dir)
-
-            images_built += 1
-
-        if images_built == 0:
+        if target_name is None:
             self.logger.fatal("No images build, do you have a live target?")
+
+        target_revision = self.build_data["targets"][target_name]
+        squashed_name = target_name.replace("/", "_")
+
+        m = re.match(r'^.+/.+/(.+)-(.+)$', target_name)
+        if not m:
+            self.logger.fatal("Target name \"%s\" is invalid" % target_name)
+        (architecture, target) = m.groups()
+
+        # Create working directory for this target
+        work_dir = os.path.join(work_image_dir, squashed_name)
+        fileutil.ensure_dir(work_dir)
+
+        # Copy ISO contents from support files
+        iso_dir = os.path.join(work_dir, "iso")
+        iso_isolinux_dir = os.path.join(iso_dir, "isolinux")
+        shutil.copytree(os.path.join(self.supportdir, "images", "live"), iso_dir)
+
+        # Pull deploy the system and create SquashFS image
+        self._pull_deploy(work_dir, target_name, target_revision)
+        deploy_root_dir = os.path.join(work_dir, "root-image")
+
+        # Copy files from deployment
+        self._copy_files(deploy_root_dir, iso_dir)
+
+        # Copy kernel and initramfs to the ISO directory
+        deploy_kernel_path = libqa._find_current_kernel(deploy_root_dir, self.osname)
+        kernel_release = libqa._parse_kernel_release(deploy_kernel_path)
+        self.logger.debug("Found kernel release %s: %s" % (kernel_release, deploy_kernel_path))
+        initramfs_path = os.path.join(iso_isolinux_dir, "initramfs.img")
+        self._create_initramfs(work_dir, deploy_root_dir, kernel_release, initramfs_path)
+        self.logger.debug("Created initramfs: %s" % initramfs_path)
+        shutil.copy2(deploy_kernel_path, os.path.join(iso_isolinux_dir, "vmlinuz"))
+
+        # Remove deployment
+        run_sync(["pkexec", "rm", "-rf", deploy_dir])
+
+        # Expand support files
+        self._expand_support_files(iso_dir)
+
+        # Make ISO image
+        disk_name = "%s.iso" % squashed_name
+        diskpath = os.path.join(work_image_dir, disk_name)
+        if os.path.exists(diskpath):
+            os.unlink(diskpath)
+        self._make_iso(architecture, diskpath, iso_dir)
 
         os.rename(work_image_dir, target_image_dir)
 
@@ -158,6 +161,16 @@ class TaskBuildLive(TaskDef):
         squash_md5_path = os.path.join(work_dir, "squashfs.img.md5")
         shutil.move(squash_image_path, iso_os_dir)
         shutil.move(squash_md5_path, iso_os_dir)
+
+    def _copy_files(self, deploy_root_dir, iso_dir):
+        files = self.data["live"].get("copy-files", {})
+        files.update({"usr/lib/syslinux/isolinux.bin": "isolinux/isolinux.bin",
+                      "usr/lib/syslinux/isohdpfx.bin": "isolinux/isohdpfx.bin"})
+        for src_filename in files.keys():
+            src_path = os.path.join(deploy_root_dir, "ostree", "deploy", self.osname, "current", src_filename)
+            dst_path = os.path.join(iso_dir, files[src_filename])
+            fileutil.ensure_dir(os.path.dirname(dst_path))
+            shutil.copy(src_path, dst_path)
 
     def _create_initramfs(self, work_dir, deploy_root_dir, kernel_release, dest_path):
         deploy_dir = os.path.join(deploy_root_dir, "ostree", "deploy", self.osname, "current")
@@ -201,12 +214,16 @@ class TaskBuildLive(TaskDef):
 
     def _make_iso(self, architecture, diskpath, iso_dir):
         iso_isolinux_dir = os.path.join(iso_dir, "isolinux")
-        args = ["xorriso", "-as", "mkisofs", "-iso-level", "3", "-full-iso9660-filenames",
-                "-volid", self.data["live"]["label"], "-appid", self.data["live"]["application"],
-                "-publisher", self.data["live"]["publisher"], "-preparer", "prepared by mauibuild",
+        args = ["xorriso", "-as", "mkisofs", "-iso-level", "3",
+                "-full-iso9660-filenames",
+                "-volid", self.data["live"]["label"],
+                "-appid", self.data["live"]["application"],
+                "-publisher", self.data["live"]["publisher"],
+                "-preparer", "prepared by mauibuild",
                 "-eltorito-boot", "isolinux/isolinux.bin",
                 "-eltorito-catalog", "isolinux/boot.cat",
-                "-no-emul-boot", "-boot-load-size", "4", "-boot-info-table"]
+                "-no-emul-boot", "-boot-load-size", "4",
+                "-boot-info-table"]
         args += ["-isohybrid-mbr", os.path.join(iso_isolinux_dir, "isohdpfx.bin"),
                  "-output", diskpath, iso_dir]
         run_sync(args)
