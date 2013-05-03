@@ -126,7 +126,7 @@ class TaskBuildLive(TaskDef):
         shutil.copy2(deploy_kernel_path, os.path.join(iso_isolinux_dir, "vmlinuz"))
 
         # Remove deployment
-        run_sync(["pkexec", "rm", "-rf", deploy_dir])
+        run_sync(["pkexec", "rm", "-rf", deploy_root_dir])
 
         # Expand support files
         self._expand_support_files(iso_dir)
