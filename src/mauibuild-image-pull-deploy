@@ -36,7 +36,8 @@ shift
 test -n "$revision" || (echo 1>&2 "usage: $0: WORK_DIR SRC_REPO OSNAME TARGET REVISION"; exit 1)
  
 deploy_path=$work_dir/root-image
-root_fs_dir=$work_dir/squashfs-root/LiveOS
+squashfs_root_dir=$work_dir/squashfs-root
+root_fs_dir=$squashfs_root_dir/LiveOS
 root_fs_img=$root_fs_dir/ext3fs.img
 mountpoint=$work_dir/mnt
 
@@ -87,12 +88,12 @@ rm -rf $mountpoint
 # Our squashfs.img contains
 squash_image_path=$work_dir/squashfs.img
 squash_md5_path=$work_dir/squashfs.img.md5
-mksquashfs $(dirname $root_fs_dir) $squash_image_path -noappend \
+mksquashfs $squashfs_root_dir $squash_image_path -noappend \
     -comp xz -no-progress || abort "Failed to create SquashFS image"
 md5sum $squash_image_path | awk '{print $1}' > $squash_md5_path
 
 # Now we can remove the ext4 image
-rm -fr $root_fs_dir
+rm -fr $squashfs_root_dir
 
 # Make squashfs image accessible by the unprivileged user
 uid=
