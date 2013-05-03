@@ -164,7 +164,7 @@ class TaskBuildLive(TaskDef):
 
     def _copy_files(self, deploy_root_dir, iso_dir):
         files = self.data["live"].get("copy-files", {})
-        files.update({"usr/lib/syslinux/isolinux.bin": "isolinux/isolinux.bin",
+        files.update({"usr/lib/syslinux/isolinux-debug.bin": "isolinux/isolinux.bin",
                       "usr/lib/syslinux/isohdpfx.bin": "isolinux/isohdpfx.bin"})
         for src_filename in files.keys():
             src_path = os.path.join(deploy_root_dir, "ostree", "deploy", self.osname, "current", src_filename)
