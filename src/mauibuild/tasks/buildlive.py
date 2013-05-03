@@ -183,6 +183,9 @@ class TaskBuildLive(TaskDef):
         fileutil.ensure_dir(tmp_dir)
         initramfs_tmp = os.path.join(tmp_dir, "initramfs-ostree.img")
 
+        dracut_modules = "dmsquash-live pollcdrom"
+        dracut_drivers = "sr_mod sd_mod ide-cd cdrom ehci_hcd uhci_hcd ohci_hcd usb_storage usbhid"
+
         run_sync(["linux-user-chroot", "--mount-readonly", "/",
                   "--mount-proc", "/proc",
                   "--mount-bind", "/dev", "/dev",
@@ -190,8 +193,7 @@ class TaskBuildLive(TaskDef):
                   "--mount-bind", tmp_dir, "/tmp",
                   deploy_dir,
                   "dracut", "--tmpdir=/tmp", "-f", "/tmp/initramfs-ostree.img",
-                  "-a", "debug dmsquash-live",
-                  "--add-drivers", "piix ide-gd_mod ata_piix ext3 sd_mod",
+                  "--add", dracut_modules, "--add-drivers", dracut_drivers,
                   kernel_release])
 
         shutil.move(initramfs_tmp, dest_path)
