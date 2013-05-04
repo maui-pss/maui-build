@@ -86,12 +86,30 @@ class TaskBdiff(TaskDef):
             previous_component = previous_build_snapshot.get_component(component_name)
             latest_revision = latest_component.get("revision")
             previous_revision = previous_component.get("revision")
+
+            was_local = False
+            if previous_component["src"].startswith("local:"):
+                # If previous component was an override and the directory was removed
+                # we point src to the latest_component otherwise we won't be able
+                # to run git log and diffstat
+                first_slash_index = previous_component["src"].find("/")
+                if first_slash_index > 0:
+                    previous_src_path = previous_component["src"][first_slash_index:]
+                    was_local = not os.path.exists(previous_src_path)
+
+            if was_local:
+                previous_src = previous_component["src"]
+                previous_component["src"] = latest_component["src"]
+
             mirrordir = vcs.ensure_vcs_mirror(self.mirrordir, previous_component)
 
             gitlog = self._git_log_to_json(mirrordir, previous_revision + "..." + latest_revision)
             diffstat = self._diffstat(mirrordir, previous_revision + "..." + latest_revision)
             modified.append({"previous": previous_component, "latest": latest_component,
                              "gitlog": gitlog, "diffstat": diffstat})
+
+            if was_local:
+                previous_component["src"] = previous_src
 
         bdiffdb = self._get_result_db("bdiff")
         (path, modified) = bdiffdb.store(result)
