@@ -54,6 +54,8 @@ class TaskBuild(TaskDef):
     short_description = "Build multiple components and generate trees"
     after = ["resolve",]
 
+    _installed_tests_buildroot_rev = None
+
     def __init__(self, builtin, taskmaster, name, argv):
         TaskDef.__init__(self, builtin, taskmaster, name, argv)
 
@@ -145,18 +147,22 @@ class TaskBuild(TaskDef):
         runtime_components = []
         live_components = []
         devel_components = []
+        testing_components = []
 
         for component in components:
             name = component["name"]
 
             is_runtime = (component.get("component") or "runtime") == "runtime"
             is_live = (component.get("component") or "runtime") == "live"
+            is_testing = (component.get("component") or "runtime") == "testing"
+
             if is_runtime:
                 runtime_components.append(component)
                 live_components.append(component)
-                devel_components.append(component)
             elif is_live:
                 live_components.append(component)
+            elif is_testing:
+                testing_components.append(component)
             else:
                 devel_components.append(component)
 
@@ -253,14 +259,16 @@ class TaskBuild(TaskDef):
                 target["contents"] = contents
 
         target_revisions = {}
+        arch_initramfs_images = {}
+        final_installed_test_revisions = {}
         build_data = {"snapshot-name": os.path.basename(self._snapshot.path),
                       "snapshot": self._snapshot.data,
                       "targets": target_revisions,
-                      "initramfs-images": {}}
+                      "initramfs-images": arch_initramfs_images,
+                      "installed-tests": final_installed_test_revisions}
 
         # First loop over -devel trees per architecture, and
         # generate an initramfs
-        arch_initramfs_images = {}
         for architecture in architectures:
             devel_target_name = "buildmaster/" + architecture + "-devel"
             devel_target = self._find_target_in_list(devel_target_name, targets_list)
@@ -279,10 +287,12 @@ class TaskBuild(TaskDef):
             arch_initramfs_images[architecture] = (kernel_release, initramfs_path)
             initramfs_target_name = "initramfs-" + kernel_release + ".img"
             target_initramfs_path = os.path.join(compose_rootdir, "boot", initramfs_target_name)
-            shutil.copy2(initramfs_path, target_initramfs_path)
+            fileutil.file_linkcopy(initramfs_path, target_initramfs_path)
             (treename, ostree_rev) = self._commit_composed_tree(devel_target_name, compose_rootdir, related_tmppath)
             target_revisions[treename] = ostree_rev
-        build_data["initramfs-images"] = arch_initramfs_images
+            # Also note the revision of this, since it will be used
+            # as the buildroot for installed tests
+            self._installed_tests_buildroot_rev = ostree_rev
 
         # Now loop over the other targets per architecture, reusing
         # the initramfs cached from -devel generation
@@ -296,9 +306,36 @@ class TaskBuild(TaskDef):
                 (kernel_release, initramfs_path) = arch_initramfs_images[architecture]
                 initramfs_target_name = "initramfs-" + kernel_release + ".img"
                 target_initramfs_path = os.path.join(compose_rootdir, "boot", initramfs_target_name)
-                shutil.copy2(initramfs_path, target_initramfs_path)
+                fileutil.file_linkcopy(initramfs_path, target_initramfs_path)
                 (treename, ostree_rev) = self._commit_composed_tree(runtime_target_name, compose_rootdir, related_tmppath)
                 target_revisions[treename] = ostree_rev
+
+        installed_test_component_names = self._snapshot.data.get("installed-tests-components") or []
+        self.logger.info("Using installed test components: %s" % ", ".join(installed_test_component_names))
+        installed_test_revs = {}
+        for architecture in architectures:
+            installed_test_revs[architecture] = []
+        for component in testing_components:
+            for architecture in architectures:
+                archname = "%s/%s" % (component["name"], architecture)
+                rev = component_build_revs.get(archname)
+                if not rev:
+                    self.logger.fatal("No build for %s" % build_ref)
+                installed_test_revs[architecture].append(rev)
+        for component_name in installed_test_component_names:
+            for architecture in architectures:
+                archname = "%s-installed-tests/%s" % (component_name, architecture)
+                component = self._snapshot.get_component(component_name)
+                build_rev = self._build_one_component(component, architecture, installed_tests=True)
+        for architecture in architectures:
+            root_name = "buildmaster/%s-installed-tests" % architecture
+            compose_contents = []
+            revs = installed_test_revs[architecture]
+            for rev in revs:
+                compose_contents.append((rev, "/runtime"))
+            compose_rootdir = self._checkout_one_tree_core(root_name, compose_contents)
+            (treename, rev) = self._commit_composed_tree(root_name, compose_rootdir, None)
+            final_installed_test_revisions[treename] = rev
 
         (path, modified) = builddb.store(build_data)
         self.logger.info("Build complete: " + path)
@@ -320,41 +357,19 @@ class TaskBuild(TaskDef):
             path = os.path.join(buildroot_cachedir, root)
             shutil.rmtree(path)
 
-    def _compose_buildroot(self, workdir, component_name, architecture):
+    def _compose_buildroot_core(self, workdir, component_name, architecture, root_contents):
         starttime = time.time()
 
         buildname = "%s/%s/%s" % (self.osname, component_name, architecture)
         buildroot_cachedir = os.path.join(self.cachedir, "roots", buildname)
         fileutil.ensure_dir(buildroot_cachedir)
 
-        components = self._snapshot.data["components"]
-        build_dependencies = []
-        for component in components:
-            if component["name"] == component_name:
-                break
-            build_dependencies.append(component)
-
-        ref_to_rev = {}
-
-        arch_buildroot_name = "%s/bases/%s/%s-devel" % (self.osname,
-                                                        self._snapshot.data["base"]["name"],
-                                                        architecture)
-
-        self.logger.info("Computing buildroot contents")
-
-        arch_buildroot_rev = run_sync_get_output(["ostree", "--repo=" + self.repo, "rev-parse",
-                                                  arch_buildroot_name]).strip()
-
-        ref_to_rev[arch_buildroot_name] = arch_buildroot_rev
-        checkout_trees = [(arch_buildroot_name, "/")]
         refs_to_resolve = []
-        for dependency in build_dependencies:
-            buildname = "%s/components/%s/%s" % (self.osname, dependency["name"], architecture)
-            refs_to_resolve.append(buildname)
-            checkout_trees.append((buildname, "/runtime"))
-            checkout_trees.append((buildname, "/devel"))
+        for root_content in root_contents:
+            refs_to_resolve.append(root_content[0])
 
         resolved_refs = self._resolve_refs(refs_to_resolve)
+        ref_to_rev = {}
         for ref, rev in zip(refs_to_resolve, resolved_refs):
             ref_to_rev[ref] = rev
 
@@ -362,27 +377,21 @@ class TaskBuild(TaskDef):
 
         uid = os.getuid()
         gid = os.getgid()
-        etc_passwd = "root:x:0:0:root:/root:/bin/bash\nbuilduser:x:%u:%u:builduser:/:/bin/bash\n" % (uid, gid)
-        etc_group = "root:x:0:root\nbuilduser:x:%u:builduser\n" % (gid, )
+        etc_passwd = "root::0:0:root:/root:/bin/bash\nbuilduser::%u:%u:builduser:/:/bin/bash\n" % (uid, gid)
+        etc_group = "root:x:0:root\nbuilduser:x:%u:builduser\n" % gid
+
+        sha.update(etc_passwd)
+        sha.update(etc_group)
 
         (fd, tmppath) = tempfile.mkstemp(suffix=".txt", prefix="mauibuild-buildroot-")
         f = os.fdopen(fd, "w")
-        for (branch, subpath) in checkout_trees:
+        for (branch, subpath) in root_contents:
+            sha.update(ref_to_rev[branch])
             f.write(ref_to_rev[branch])
             f.write("\0")
             f.write(subpath)
             f.write("\0")
         f.close()
-
-        f = open(tmppath)
-        buf = f.read(8192)
-        while buf != "":
-            sha.update(buf)
-            buf = f.read(8192)
-        f.close()
-
-        sha.update(etc_passwd)
-        sha.update(etc_group)
 
         new_root_cacheid = sha.hexdigest()
 
@@ -393,9 +402,9 @@ class TaskBuild(TaskDef):
             os.unlink(tmppath)
             return cached_root
 
-        if len(checkout_trees) > 0:
-            self.logger.info("Composing buildroot from %d parents (last: %r)" % (len(checkout_trees),
-                                                                                 checkout_trees[-1][0]))
+        if len(root_contents) > 0:
+            self.logger.info("Composing buildroot from %d parents (last: %r)" % (len(root_contents),
+                                                                                 root_contents[-1][0]))
 
         cached_root_tmp = cached_root + ".tmp"
         if os.path.isdir(cached_root_tmp):
@@ -420,9 +429,32 @@ class TaskBuild(TaskDef):
         self._clean_stale_buildroots(buildroot_cachedir, cached_root)
 
         endtime = time.time()
-        self.logger.info("Composed buildroot; %d seconds elapsed" % (int(endtime - starttime),))
+        self.logger.info("Composed buildroot; %d seconds elapsed" % (int(endtime - starttime)))
 
         return cached_root
+
+    def _compose_buildroot(self, workdir, component_name, architecture):
+        components = self._snapshot.data["components"]
+        build_dependencies = []
+        for component in components:
+            if component["name"] == component_name:
+                break
+            build_dependencies.append(component)
+
+        arch_buildroot_name = "%s/bases/%s/%s-devel" % (self.osname, self._snapshot.data["base"]["name"], architecture)
+
+        self.logger.info("Computing buildroot contents")
+
+        arch_buildroot_rev = run_sync_get_output(["ostree", "--repo=" + self.repo, "rev-parse",
+                                                  arch_buildroot_name]).strip()
+
+        root_contents = [(arch_buildroot_rev, "/")]
+        for dependency in build_dependencies:
+            buildname = "%s/components/%s/%s" % (self.osname, dependency["name"], architecture)
+            root_contents.append((buildname, "/runtime"))
+            root_contents.append((buildname, "/devel"))
+
+        return self._compose_buildroot_core(workdir, component_name, architecture, root_contents)
 
     def _analyze_build_failure(self, t, architecture, component, component_srcdir,
                                current_vcs_version, previous_vcs_version):
@@ -676,8 +708,10 @@ class TaskBuild(TaskDef):
     def _component_build_ref(self, component, architecture):
         return self._component_build_ref_from_name(component["name"], architecture)
 
-    def _build_one_component(self, component, architecture):
+    def _build_one_component(self, component, architecture, installed_tests=False):
         basename = component["name"]
+        if installed_tests:
+            basename += "-installed-tests"
 
         self.logger.info("== Building %s for %s ==" % (basename, architecture))
 
@@ -690,7 +724,7 @@ class TaskBuild(TaskDef):
         build_flags.update(override_build_flags.get(architecture, {}))
 
         current_vcs_version = component.get("revision")
-        expanded_component = self._snapshot.get_expanded(basename)
+        expanded_component = self._snapshot.get_expanded(component["name"])
         previous_metadata = self._component_build_cache.get(build_ref)
         previous_build_version = None
         previous_vcs_version = None
@@ -758,7 +792,11 @@ class TaskBuild(TaskDef):
         component_resultdir = os.path.join(build_workdir, "results")
         fileutil.ensure_dir(component_resultdir)
 
-        rootdir = self._compose_buildroot(build_workdir, basename, architecture)
+        if installed_tests:
+            rootdir = self._compose_buildroot_core(build_workdir, basename, architecture,
+                                                   [(self._installed_tests_buildroot_rev, "/")])
+        else:
+            rootdir = self._compose_buildroot(build_workdir, basename, architecture)
 
         tmpdir = os.path.join(build_workdir, "tmp")
         fileutil.ensure_dir(tmpdir)
@@ -775,6 +813,16 @@ class TaskBuild(TaskDef):
         os.chmod(dest_compile_one_path, 0755)
  
         chroot_sourcedir = os.path.join("/mauibuild", "source", basename)
+        chroot_chdir = chroot_sourcedir
+
+        installed_tests_srcdir = os.path.join(component_src, "installed-tests")
+        if installed_tests:
+            # We're just building the tests, set our source directory
+            meta_name = "_mauibuild-meta.json"
+            shutil.move(os.path.join(component_src, meta_name), os.path.join(installed_tests_srcdir, meta_name))
+            chroot_chdir = os.path.join(chroot_sourcedir, "installed-tests")
+            if not os.path.exists(component_src):
+                self.logger.fatal("Component %s specified with installed tests, but no subdirectory found" % basename)
 
         child_args = ["setarch", architecture]
         child_args.extend(buildutil.get_base_user_chroot_args())
@@ -785,7 +833,7 @@ class TaskBuild(TaskDef):
                 "--mount-bind", tmpdir, "/tmp",
                 "--mount-bind", component_src, chroot_sourcedir,
                 "--mount-bind", component_resultdir, "/mauibuild/results",
-                "--chdir", chroot_sourcedir,
+                "--chdir", chroot_chdir,
                 rootdir, "/mauibuild-compile-one",
                 "--mauibuild-resultdir=/mauibuild/results",
                 "--mauibuild-meta=_mauibuild-meta.json"])
@@ -833,16 +881,37 @@ class TaskBuild(TaskDef):
 
         return ostree_revision
 
+    def _checkout_one_tree_core(self, name, compose_contents):
+        compose_rootdir = os.path.join(self.subworkdir, name)
+        if os.path.isdir(compose_rootdir):
+            shutil.rmtree(compose_rootdir)
+        fileutil.ensure_dir(compose_rootdir)
+
+        (contents_fd, contents_tmppath) = tempfile.mkstemp(suffix=".txt", prefix="mauibuild-compose-")
+        contents_f = os.fdopen(contents_fd, "w")
+        for (branch, subpath) in compose_contents:
+            contents_f.write(branch)
+            contents_f.write("\0")
+            contents_f.write(subpath)
+            contents_f.write("\0")
+        contents_f.close()
+
+        run_sync(["ostree", "--repo=" + self.repo,
+                  "checkout", "--user-mode", "--union",
+                  "--from-file=" + contents_tmppath, compose_rootdir])
+        os.unlink(contents_tmppath)
+
+        contents_path = os.path.join(compose_rootdir, "usr", "share", "contents.json")
+        fileutil.ensure_parent_dir(contents_path)
+        jsonutil.write_json_file_atomic(contents_path, self._snapshot.data)
+
+        return compose_rootdir
+
     def _checkout_one_tree(self, target, component_build_revs):
         base = target["base"]
         base_name = "%s/bases/%s" % (self.osname, base["name"])
         runtime_name = "%s/bases/%s" % (self.osname, base["runtime"])
         devel_name = "%s/bases/%s" % (self.osname, base["devel"])
-
-        compose_rootdir = os.path.join(self.subworkdir, target["name"])
-        if os.path.isdir(compose_rootdir):
-            shutil.rmtree(compose_rootdir)
-        fileutil.ensure_dir(compose_rootdir)
 
         related_refs = {}
 
@@ -878,22 +947,7 @@ class TaskBuild(TaskDef):
             for subpath in subtrees:
                 compose_contents.append((rev, subpath))
 
-        (contents_fd, contents_tmppath) = tempfile.mkstemp(suffix=".txt", prefix="mauibuild-compose-")
-        contents_f = os.fdopen(contents_fd, "w")
-        for (branch, subpath) in compose_contents:
-            contents_f.write(branch)
-            contents_f.write("\0")
-            contents_f.write(subpath)
-            contents_f.write("\0")
-        contents_f.close()
-
-        run_sync(["ostree", "--repo=" + self.repo,
-                  "checkout", "--user-mode", "--union",
-                  "--from-file=" + contents_tmppath, compose_rootdir])
-        os.unlink(contents_tmppath)
-
-        contents_path = os.path.join(compose_rootdir, "usr", "share", "contents.json")
-        jsonutil.write_json_file_atomic(contents_path, self._snapshot.data)
+        compose_rootdir = self._checkout_one_tree_core(target["name"], compose_contents)
 
         share_ostree = os.path.join(compose_rootdir, "usr", "share", "ostree")
         fileutil.ensure_dir(share_ostree)
@@ -906,12 +960,15 @@ class TaskBuild(TaskDef):
 
     def _commit_composed_tree(self, target_name, compose_rootdir, related_tmppath):
         treename = self.osname + "/" + target_name
-        ostree_revision = run_sync_get_output(["ostree", "--repo=" + self.repo,
-                                               "commit", "-b", treename, "-s", "Compose",
-                                               "--owner-uid=0", "--owner-gid=0", "--no-xattrs",
-                                               "--related-objects-file=" + related_tmppath,
-                                               "--skip-if-unchanged"], cwd=compose_rootdir).strip()
-        os.unlink(related_tmppath)
+        args = ["ostree", "--repo=" + self.repo,
+                "commit", "-b", treename, "-s", "Compose",
+                "--owner-uid=0", "--owner-gid=0", "--no-xattrs",
+                "--skip-if-unchanged"]
+        if related_tmppath is not None:
+            args.append("--related-objects-file=" + related_tmppath)
+        ostree_revision = run_sync_get_output(args, cwd=compose_rootdir).strip()
+        if related_tmppath is not None:
+            os.unlink(related_tmppath)
         shutil.rmtree(compose_rootdir)
         return (treename, ostree_revision)
 
