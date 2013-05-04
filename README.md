@@ -19,14 +19,20 @@ Also install the following packages:
 
  * autoconf
  * automake
- * python (2.x version, it must be the default python interpreter)
+ * python
  * python-gi
- * fontconfig (for fc-cache, needed during the Yocto build)
+ * fontconfig
+ * elfutils
+
+If you build disk images you will also need:
+
  * guestfish
  * guestfsd
  * guestmount
  * libguestfs-tools
- * elfutils (for eu-readelf)
+
+To make live images install:
+
  * squashfs-tools
  * xorriso
 
@@ -37,23 +43,24 @@ You also need:
  * Linux 2.6.28 or newer
  * *linux-user-chroot* and *ostree*, follow the next sections for more information
  * *asciidoc* if you want to create the man pages
+ * *gummiboot* to make `x86_64` live images, follow the next sections for more information
  * The *termcolor* Python module if you want *mauibuild* to print colored output
 
 ### Setup guestfs on Ubuntu
 
-To build disk images on Ubuntu 12.10 you will need to make a symbolic link to the right libguestfs path:
+To build disk images on Ubuntu you will need to make a symbolic link to the right libguestfs path:
 
 ```sh
 sudo ln -s /usr/lib/guestfs /usr/lib/x86_64-linux-gnu/guestfs
 ```
 
-This might be needed on other Ubuntu versions as well, although only Ubuntu 12.10 was tested so far.
+This was tested on Ubuntu 12.10 only, it might be different in another release.
 
 ### Configure FUSE
 
-If you build disk images with an unprivileged user (i.e. not root), your user must be in the *fuse* group
-and FUSE must be configured to allow non-root users to specify the *allow_other* or *allow_root*
-mount options.
+If you run `mauibuld` with an unprivileged user (i.e. not root) and you want to build disk images,
+your user must be in the *fuse* group and FUSE must be configured to allow non-root users to
+specify the *allow_other* or *allow_root* mount options.
 
 To add the currently logged-in user to the *fuse* group on Debian and Ubuntu systems:
 
@@ -72,7 +79,7 @@ Install the following additional packages:
 Here's how you download and install *linux-user-chroot*:
 
 ```sh
-mkdir ~/git
+mkdir -p ~/git
 cd ~/git
 git clone git://git.gnome.org/linux-user-chroot
 cd linux-user-chroot
@@ -97,7 +104,7 @@ Install the following additional packages:
 Here's how you download and install *ostree*:
 
 ```sh
-mkdir ~/git
+mkdir -p ~/git
 cd ~/git
 git clone git://git.gnome.org/ostree
 cd ostree
@@ -109,6 +116,37 @@ sudo make install
 sudo mkdir /ostree
 gcc -static -o ostree-init src/switchroot/ostree-switch-root.c
 sudo cp ostree-init /ostree
+```
+
+### Download and install gummyboot
+
+gummyboot requires GNU Efi, if it's not packaged by your distro you have to build it yourself.
+Here's how to build it:
+
+```sh
+mkdir -p ~/git
+cd ~/git
+git clone git://git.code.sf.net/p/gnu-efi/code gnu-efi-code
+cd gnu-efi-code
+cd gnu-efi-3.0
+make
+sudo make install PREFIX=/usr
+```
+
+gummiboot also requires the following packages:
+
+ * libblkid-dev
+
+Build gummiboot:
+
+```sh
+mkdir -p ~/git
+cd ~/git
+git clone git://anongit.freedesktop.org/gummiboot
+cd gummiboot
+./autogen.sh c
+make
+sudo make install
 ```
 
 ## Download the manifest
