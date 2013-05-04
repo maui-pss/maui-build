@@ -33,7 +33,10 @@ Makefile
 doc/Makefile
 ])
 AC_OUTPUT
+AC_MSG_RESULT([
+        $PACKAGE_NAME $VERSION
 
-echo "
-    Maui Build System (mauibuild) $VERSION
-"
+        prefix:                  ${prefix}
+
+        build documentation:     ${wantdoc}
+])
