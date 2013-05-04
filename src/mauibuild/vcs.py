@@ -24,7 +24,7 @@ from . import buildutil
 from .logger import Logger
 
 def get_mirrordir(mirrordir, keytype, uri, prefix=''):
-    colon = uri.index("://")
+    colon = uri.find("://")
     if colon >= 0:
         scheme = uri[0:colon]
         rest = uri[colon+3:]
