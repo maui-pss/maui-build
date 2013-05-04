@@ -40,6 +40,7 @@ utils_SCRIPTS =						\
 	mauibuild-compile-one				\
 	src/mauibuild-build-yocto			\
 	src/mauibuild-image-pull-deploy			\
+	src/mauibuild-mkefiboot				\
 	$(NULL)
 
 mauibuilddir=$(libdir)/mauibuild

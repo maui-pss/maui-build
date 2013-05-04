@@ -1,4 +1,4 @@
-# Copyright (C) 2011 Colin Walters <walters@verbum.org>
+# Copyright (C) 2013 Pier Luigi Fiorini <pierluigi.fiorini@gmail.com>
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -15,35 +15,16 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-ACLOCAL_AMFLAGS = -I m4 ${ACLOCAL_FLAGS}
-AM_CPPFLAGS = -DDATADIR='"$(datadir)"' -DLIBEXECDIR='"$(libexecdir)"'
-AM_CFLAGS = $(WARN_CFLAGS)
+org.maui.mauibuild.policy: org.maui.mauibuild.policy.in Makefile
+	sed -e s,@libdir\@,$(libdir), \
+	    -e s,@libexecdir\@,$(libexecdir), \
+	    -e s,@datarootdir\@,$(datarootdir), \
+	    -e s,@pkgdatadir\@,$(pkgdatadir), \
+	    $< > $@.tmp && mv $@.tmp $@
 
-NULL = 
-BUILT_SOURCES =
-MANPAGES =
-CLEANFILES =
-EXTRA_DIST =
-bin_PROGRAMS =
-sbin_PROGRAMS =
-bin_SCRIPTS =
-libexec_PROGRAMS =
-noinst_LTLIBRARIES =
-noinst_PROGRAMS =
-privlibdir = $(pkglibdir)
-privlib_LTLIBRARIES =
-INSTALL_DATA_HOOKS =
+actionsdir = $(datarootdir)/polkit-1/actions
+actions_DATA =				\
+	org.maui.mauibuild.policy	\
+	$(NULL)
 
-include Makefile-mauibuild.am
-include Makefile-tests.am
-
-install-data-hook: $(INSTALL_DATA_HOOKS)
-
-release-tag:
-	git tag -m "Release $(VERSION)" v$(VERSION)
-
-SUBDIRS =
-if WANT_DOC
-SUBDIRS += doc
-endif
-SUBDIRS += data
+EXTRA_DIST = org.maui.mauibuild.policy.in

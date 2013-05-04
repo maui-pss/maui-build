@@ -1,6 +1,8 @@
 Makefile*
 !Makefile-mauibuild.am
 !Makefile-tests.am
+!data/Makefile.am
+!data/polkit/Makefile.am
 !doc/Makefile.am
 aclocal.m4
 autom4te.cache/
@@ -12,4 +14,5 @@ config.status
 configure
 /mauibuild
 /mauibuild-compile-one
+/data/polkit/org.maui.mauibuild.policy
 stamp-h1

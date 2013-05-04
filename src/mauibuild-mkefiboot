@@ -1,0 +1,74 @@
+#!/bin/bash
+# vim: et:ts=4:sw=4
+#
+# Copyright (C) 2013 Pier Luigi Fiorini <pierluigi.fiorini@gmail.com>
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the
+# Free Software Foundation, Inc., 59 Temple Place - Suite 330,
+# Boston, MA 02111-1307, USA.
+
+set -e
+
+action=$1
+shift
+work_dir=$2
+shift
+
+function usage() {
+    echo 1>&2 "usage: $0: ACTION WORK_DIR"
+    exit 1
+}
+
+test -n "$work_dir" || usage
+
+mountpoint=$work_dir/efiboot-mnt
+
+function create() {
+    iso_dir=$work_dir/iso
+    efiboot_dir=$iso_dir/EFI/mauibuild
+    efiboot_path=$efiboot_dir/efiboot.img
+
+    # Create VFAT image
+    mkdir -p $efiboot_dir $mountpoint
+    truncate -s 71M $efiboot_path
+    mkfs.vfat -n MAUIBUILD_EFI $efiboot_path
+
+    # Change owner to unprivileged user
+    uid=
+    gid=
+    if [ ! -z "$PKEXEC_UID" ]; then
+        uid=$PKEXEC_UID
+        gid=$PKEXEC_UID
+    elif [ ! -z "$SUDO_USER" ]; then
+        uid=$SUDO_UID
+        gid=$SUDO_GID
+    else
+        abort "This script must be run with pkexec or sudo"
+    fi
+    chown -R $uid:$gid $efiboot_dir $mountpoint
+
+    # Mount image
+    mount $efiboot_path $mountpoint
+}
+
+function cleanup() {
+    umount $mountpoint
+    rm -rf $mountpoint
+}
+
+case $action in
+    create) create ;;
+    cleanup) cleanup ;;
+    *) abort "Unknown \"$action\" action" ;;
+esac

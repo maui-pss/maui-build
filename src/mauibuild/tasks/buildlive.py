@@ -126,7 +126,7 @@ class TaskBuildLive(TaskDef):
         shutil.copy2(deploy_kernel_path, os.path.join(iso_isolinux_dir, "vmlinuz"))
 
         # Remove deployment
-        run_sync(["pkexec", "rm", "-rf", deploy_root_dir])
+        self._pull_deploy_cleanup(work_dir)
 
         # Expand support files
         self._expand_support_files(iso_dir)
@@ -160,7 +160,7 @@ class TaskBuildLive(TaskDef):
 
     def _pull_deploy(self, work_dir, target_name, target_revision):
         pull_deploy_program = os.path.join(self.libexecdir, "mauibuild-image-pull-deploy")
-        run_sync(["pkexec", pull_deploy_program, work_dir,
+        run_sync(["pkexec", pull_deploy_program, "makeimage", work_dir,
                   self.repo, self.osname, target_name, target_revision])
 
         iso_os_dir = os.path.join(work_dir, "iso", "LiveOS")
@@ -169,6 +169,10 @@ class TaskBuildLive(TaskDef):
         squash_md5_path = os.path.join(work_dir, "squashfs.img.md5")
         shutil.move(squash_image_path, iso_os_dir)
         shutil.move(squash_md5_path, iso_os_dir)
+
+    def _pull_deploy_cleanup(self, work_dir):
+        pull_deploy_program = os.path.join(self.libexecdir, "mauibuild-image-pull-deploy")
+        run_sync(["pkexec", pull_deploy_program, "cleanup", work_dir])
 
     def _copy_files(self, deploy_root_dir, iso_dir):
         files = self.data["live"].get("copy-files", {})
@@ -234,14 +238,10 @@ class TaskBuildLive(TaskDef):
         shutil.copy2(gummiboot_src_path, gummiboot_dst_path)
 
     def _create_efiboot(self, work_dir, iso_dir):
-        efiboot_path = os.path.join(iso_dir, "EFI", "mauibuild", "efiboot.img")
-        fileutil.ensure_parent_dir(efiboot_path)
-        run_sync(["truncate", "-s", "71M", efiboot_path])
-        run_sync(["mkfs.vfat", "-n", "MAUIBUILD_EFI", efiboot_path])
+        mkefiboot_program = os.path.join(self.libexecdir, "mauibuild-mkefiboot")
+        run_sync(["pkexec", mkefiboot_program, "create", work_dir])
 
-        mountpoint = os.path.join(work_dir, "efiboot-mnt")
-        fileutil.ensure_dir(mountpoint)
-        run_sync(["pkexec", "mount", efiboot_path, mountpoint])
+        efiboot_path = os.path.join(iso_dir, "EFI", "mauibuild", "efiboot.img")
 
         path = os.path.join(mountpoint, "EFI", "mauibuild")
         fileutil.ensure_dir(path)
@@ -289,8 +289,7 @@ class TaskBuildLive(TaskDef):
         dst_path = os.path.join(mountpoint, "EFI", "shellx64_v1.efi")
         run_sync(["curl", "-o", dst_path, uri])
 
-        run_sync(["pkexec", "umount", mountpoint])
-        shutil.rmtree(mountpoint)
+        run_sync(["pkexec", mkefiboot_program, "cleanup", work_dir])
 
     def _make_iso(self, diskpath, iso_dir):
         iso_isolinux_dir = os.path.join(iso_dir, "isolinux")

@@ -20,31 +20,21 @@
 # Boston, MA 02111-1307, USA.
 
 set -e
-set -x
 
+action=$1
+shift
 work_dir=$1
 shift
-src_repo=$1
-shift
-osname=$1
-shift
-target=$1
-shift
-revision=$1
-shift
 
-test -n "$revision" || (echo 1>&2 "usage: $0: WORK_DIR SRC_REPO OSNAME TARGET REVISION"; exit 1)
+function usage() {
+    echo 1>&2 "usage: $0: ACTION WORK_DIR [SRC_REPO] [OSNAME] [TARGET] [REVISION]"
+    exit 1
+}
+
+test -n "$work_dir" || usage
  
 deploy_path=$work_dir/root-image
-squashfs_root_dir=$work_dir/squashfs-root
-root_fs_dir=$squashfs_root_dir/LiveOS
-root_fs_img=$root_fs_dir/ext3fs.img
 mountpoint=$work_dir/mnt
-
-boot_dir=$deploy_path/boot
-ostree_dir=$deploy_path/ostree
-deploy_dir=$ostree_dir/deploy/$osname
-dst_repo=$ostree_dir/repo
 
 function abort() {
     echo "$@" 1>&2
@@ -55,57 +45,88 @@ function abort() {
     exit 1
 }
 
-# Pull and deploy OS
-mkdir -p $deploy_path
-ostree admin --ostree-dir=$ostree_dir --boot-dir=$boot_dir \
-    init-fs $deploy_path || abort "Failed to initialize file system"
-ostree admin --ostree-dir=$ostree_dir --boot-dir=$boot_dir \
-    os-init $osname || abort "Failed to initialize OS \"$osname\""
-ostree --repo=$dst_repo \
-    pull-local $src_repo $revision || abort "Failed to pull from \"$src_repo\""
-ostree admin --ostree-dir=$ostree_dir --boot-dir=$boot_dir \
-    deploy --no-kernel $osname $target $revision || abort "Failed to deploy OS \"$osname\""
-ostree admin --ostree-dir=$ostree_dir --boot-dir=$boot_dir \
-    update-kernel --no-bootloader $osname || abort "Failed to update kernel for OS \"$osname\""
-ostree admin --ostree-dir=$ostree_dir --boot-dir=$boot_dir \
-    prune $osname || abort "Failed to prune deployed OS \"$osname\""
+function makeimage() {
+    src_repo=$1
+    shift
+    osname=$1
+    shift
+    target=$1
+    shift
+    revision=$1
+    shift
 
-# Calculate how much space the deployment needs
-_spc_used=$(du -sxm "${deploy_path}" | awk '{print $1}')
-_fs_size=$((_spc_used * 110 / (100 - 50)))
+    test -n "$revision" || usage
 
-# Create ext4 image that will be used as root file system by the live media
-mkdir -p $root_fs_dir
-dd of=$root_fs_img count=0 bs=1M seek=$_fs_size || abort "Unable to create root file system image"
-mkfs.ext3 -m 0 -F $root_fs_img || abort "Unable to create ext3 root file system"
-tune2fs -c 0 -i 0 $root_fs_img || abort "Unable to tune ext3 root file system"
-mkdir -p $mountpoint
-mount $root_fs_img $mountpoint || abort "Couldn't mount \"$root_fs_img\""
-cp -aT $deploy_path $mountpoint || abort "Failed to copy OS deployment over \"$mountpoint\""
-umount $mountpoint || abort "Failed to unmount \"$mountpoint\""
-rm -rf $mountpoint
+    squashfs_root_dir=$work_dir/squashfs-root
+    root_fs_dir=$squashfs_root_dir/LiveOS
+    root_fs_img=$root_fs_dir/ext3fs.img
+    boot_dir=$deploy_path/boot
+    ostree_dir=$deploy_path/ostree
+    deploy_dir=$ostree_dir/deploy/$osname
+    dst_repo=$ostree_dir/repo
 
-# Our squashfs.img contains
-squash_image_path=$work_dir/squashfs.img
-squash_md5_path=$work_dir/squashfs.img.md5
-mksquashfs $squashfs_root_dir $squash_image_path -noappend \
-    -comp xz -no-progress || abort "Failed to create SquashFS image"
-md5sum $squash_image_path | awk '{print $1}' > $squash_md5_path
+    # Pull and deploy OS
+    mkdir -p $deploy_path
+    ostree admin --ostree-dir=$ostree_dir --boot-dir=$boot_dir \
+        init-fs $deploy_path || abort "Failed to initialize file system"
+    ostree admin --ostree-dir=$ostree_dir --boot-dir=$boot_dir \
+        os-init $osname || abort "Failed to initialize OS \"$osname\""
+    ostree --repo=$dst_repo \
+        pull-local $src_repo $revision || abort "Failed to pull from \"$src_repo\""
+    ostree admin --ostree-dir=$ostree_dir --boot-dir=$boot_dir \
+        deploy --no-kernel $osname $target $revision || abort "Failed to deploy OS \"$osname\""
+    ostree admin --ostree-dir=$ostree_dir --boot-dir=$boot_dir \
+        update-kernel --no-bootloader $osname || abort "Failed to update kernel for OS \"$osname\""
+    ostree admin --ostree-dir=$ostree_dir --boot-dir=$boot_dir \
+        prune $osname || abort "Failed to prune deployed OS \"$osname\""
 
-# Now we can remove the ext4 image
-rm -fr $squashfs_root_dir
+    # Calculate how much space the deployment needs
+    _spc_used=$(du -sxm "${deploy_path}" | awk '{print $1}')
+    _fs_size=$((_spc_used * 110 / (100 - 50)))
 
-# Make squashfs image accessible by the unprivileged user
-uid=
-gid=
-if [ ! -z "$PKEXEC_UID" ]; then
-    uid=$PKEXEC_UID
-    gid=$PKEXEC_UID
-elif [ ! -z "$SUDO_USER" ]; then
-    uid=$SUDO_UID
-    gid=$SUDO_GID
-else
-    abort "This script must be run with pkexec or sudo"
-fi
+    # Create ext4 image that will be used as root file system by the live media
+    mkdir -p $root_fs_dir
+    dd of=$root_fs_img count=0 bs=1M seek=$_fs_size || abort "Unable to create root file system image"
+    mkfs.ext3 -m 0 -F $root_fs_img || abort "Unable to create ext3 root file system"
+    tune2fs -c 0 -i 0 $root_fs_img || abort "Unable to tune ext3 root file system"
+    mkdir -p $mountpoint
+    mount $root_fs_img $mountpoint || abort "Couldn't mount \"$root_fs_img\""
+    cp -aT $deploy_path $mountpoint || abort "Failed to copy OS deployment over \"$mountpoint\""
+    umount $mountpoint || abort "Failed to unmount \"$mountpoint\""
+    rm -rf $mountpoint
 
-chown $uid:$gid $squash_image_path $squash_md5_path
+    # Our squashfs.img contains
+    squash_image_path=$work_dir/squashfs.img
+    squash_md5_path=$work_dir/squashfs.img.md5
+    mksquashfs $squashfs_root_dir $squash_image_path -noappend \
+        -comp xz -no-progress || abort "Failed to create SquashFS image"
+    md5sum $squash_image_path | awk '{print $1}' > $squash_md5_path
+
+    # Now we can remove the ext4 image
+    rm -fr $squashfs_root_dir
+
+    # Make squashfs image accessible by the unprivileged user
+    uid=
+    gid=
+    if [ ! -z "$PKEXEC_UID" ]; then
+        uid=$PKEXEC_UID
+        gid=$PKEXEC_UID
+    elif [ ! -z "$SUDO_USER" ]; then
+        uid=$SUDO_UID
+        gid=$SUDO_GID
+    else
+        abort "This script must be run with pkexec or sudo"
+    fi
+
+    chown $uid:$gid $squash_image_path $squash_md5_path
+}
+
+function cleanup() {
+    rm -rf $deploy_path $mountpoint
+}
+
+case $action in
+    makeimage) makeimage $@ ;;
+    cleanup) cleanup ;;
+    *) abort "Unknown action \"$action\"" ;;
+esac

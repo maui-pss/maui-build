@@ -30,6 +30,8 @@ AM_CONDITIONAL(WANT_DOC, test "x$wantdoc" = "xyes")
 
 AC_CONFIG_FILES([
 Makefile
+data/Makefile
+data/polkit/Makefile
 doc/Makefile
 ])
 AC_OUTPUT
