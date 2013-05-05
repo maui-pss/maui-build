@@ -146,6 +146,9 @@ class TaskBuildLive(TaskDef):
             os.unlink(diskpath)
         self._make_iso(diskpath, iso_dir)
 
+        # Remove working directory
+        shutil.rmtree(work_dir)
+
         os.rename(work_image_dir, target_image_dir)
 
         if os.path.exists(current_image_link):
