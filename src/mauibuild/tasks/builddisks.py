@@ -112,8 +112,10 @@ class TaskBuildDisks(TaskDef):
 
         if os.path.exists(current_image_link):
             new_previous_tmppath = os.path.join(base_image_dir, "previous-new.tmp")
-            current_link_target = ll
-            shutil.rmtree(new_previous_tmppath)
+            current_link_target = os.path.realpath(current_image_link)
+            if os.path.isdir(new_previous_tmppath):
+                shutil.rmtree(new_previous_tmppath)
+            os.symlink(current_link_target, new_previous_tmppath)
             os.rename(new_previous_tmppath, previous_image_link)
 
         buildutil.atomic_symlink_swap(os.path.join(base_image_dir, "current"), target_image_dir)
