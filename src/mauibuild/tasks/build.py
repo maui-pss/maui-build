@@ -327,15 +327,16 @@ class TaskBuild(TaskDef):
                 archname = "%s-installed-tests/%s" % (component_name, architecture)
                 component = self._snapshot.get_component(component_name)
                 build_rev = self._build_one_component(component, architecture, installed_tests=True)
-        for architecture in architectures:
-            root_name = "buildmaster/%s-installed-tests" % architecture
-            compose_contents = []
-            revs = installed_test_revs[architecture]
-            for rev in revs:
-                compose_contents.append((rev, "/runtime"))
-            compose_rootdir = self._checkout_one_tree_core(root_name, compose_contents)
-            (treename, rev) = self._commit_composed_tree(root_name, compose_rootdir, None)
-            final_installed_test_revisions[treename] = rev
+        if len(installed_test_revs.keys()) > 0:
+            for architecture in architectures:
+                root_name = "buildmaster/%s-installed-tests" % architecture
+                compose_contents = []
+                revs = installed_test_revs[architecture]
+                for rev in revs:
+                    compose_contents.append((rev, "/runtime"))
+                compose_rootdir = self._checkout_one_tree_core(root_name, compose_contents)
+                (treename, rev) = self._commit_composed_tree(root_name, compose_rootdir, None)
+                final_installed_test_revisions[treename] = rev
 
         (path, modified) = builddb.store(build_data)
         self.logger.info("Build complete: " + path)
