@@ -117,7 +117,7 @@ class TaskBuild(TaskDef):
         if latest_build_path is not None:
             last_built_source_data = builddb.load_from_path(latest_build_path)
             last_built_source_version = builddb.parse_version_str(last_built_source_data["snapshot-name"])
-            if (not have_local_component) and last_built_source_version == target_source_version:
+            if (not have_local_component) and len(self.force_build_components.keys()) == 0 and (last_built_source_version == target_source_version):
                 self.logger.info("Already built source snapshot %s" % last_built_source_version)
                 return
             else:
