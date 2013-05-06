@@ -1044,9 +1044,8 @@ class TaskBuild(TaskDef):
         builddir = os.path.join(self.workdir, builddir_name)
         buildname = "bases/%s-%s" % (basemeta["name"], architecture)
 
-        #force_rebuild = (basemeta["name"] in self.force_build_components or
-        #                 basemeta["src"].startswith("local:"))
-        force_rebuild = basemeta["src"].startswith("local:")
+        force_rebuild = (basemeta["name"] in self.force_build_components or
+                         basemeta["src"].startswith("local:"))
 
         previous_build = self._component_build_cache.get(buildname)
         if previous_build is not None:
