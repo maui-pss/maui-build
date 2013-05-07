@@ -158,7 +158,6 @@ class TaskBuild(TaskDef):
 
             if is_runtime:
                 runtime_components.append(component)
-                live_components.append(component)
             elif is_live:
                 live_components.append(component)
             elif is_testing:
@@ -232,9 +231,9 @@ class TaskBuild(TaskDef):
                 if target_component_type.startswith("runtime"):
                     target_components = runtime_components
                 elif target_component_type == "live":
-                    target_components = live_components
+                    target_components = runtime_components + live_components
                 else:
-                    target_components = devel_components
+                    target_components = runtime_components + devel_components
 
                 contents = []
                 for component in target_components:
