@@ -64,7 +64,8 @@ class QMakeBuildSystem(BuildSystem):
 
         if self.has_configure:
             configargs = ['--prefix=' + PREFIX]
-            configargs.extend(self.metadata.get('config-opts', []))
+            configargs.extend(self.default_config_opts.get("buildapi", []))
+            configargs.extend(self.config_opts)
             if use_builddir:
                 args = ['../configure']
             else:
@@ -72,8 +73,9 @@ class QMakeBuildSystem(BuildSystem):
             args.extend(configargs)
             run_sync(args, cwd=self.builddir)
         else:
-            #run_sync(['qmake', '-o', 'Makefile', qmakefile_path], cwd=self.builddir)
-            run_sync(['qmake',], cwd=self.builddir)
+            args = ['qmake']
+            args.extend(self.config_opts)
+            run_sync(args, cwd=self.builddir)
             makefile_path = os.path.join(self.builddir, 'Makefile')
             if not os.path.exists(makefile_path):
                 self.logger.fatal("No Makefile was generated")

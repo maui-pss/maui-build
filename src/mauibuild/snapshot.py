@@ -123,9 +123,8 @@ class Snapshot(object):
                 patches = dict(patch_meta)
                 patches['files'] = component_patch_files
                 meta['patches'] = patches
-        config_opts = list(self.data.get('config-opts', []))
-        config_opts.extend(component.get('config-opts', []))
-        meta['config-opts'] = config_opts
+        meta['default-config-opts'] = dict(self.data.get("default-config-opts", {}))
+        meta['config-opts'] = list(component.get("config-opts", []))
         return meta
 
     def get_all_component_names(self):

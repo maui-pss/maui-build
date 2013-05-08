@@ -42,18 +42,10 @@ class CMakeBuildSystem(BuildSystem):
         if not os.path.isdir(self.builddir):
             os.mkdir(self.builddir)
 
-        configargs = ['-DCMAKE_INSTALL_PREFIX=' + PREFIX]
-        configargs.extend(self.metadata.get('config-opts', []))
-        build_type_found = False
-        for arg in configargs:
-            if arg[:18] == '-DCMAKE_BUILD_TYPE':
-                build_type_found = True
-                break
-        if not build_type_found:
-            configargs.extend(['-DCMAKE_BUILD_TYPE=Debug'])
-        configargs.extend(['..'])
         args = ['cmake']
-        args.extend(configargs)
+        args.extend(['-DCMAKE_INSTALL_PREFIX=' + PREFIX])
+        args.extend(self.config_opts)
+        args.extend(['..'])
         run_sync(args, cwd=self.builddir)
 
         makefile_path = None

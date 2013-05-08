@@ -55,7 +55,7 @@ class BuildApiBuildSystem(BuildSystem):
                       '--libexecdir=' + os.path.join(PREFIX, 'libexec'),
                       '--mandir=' + os.path.join(PREFIX, 'share', 'man'),
                       '--infodir=' + os.path.join(PREFIX, 'share', 'info')]
-        configargs.extend(self.metadata.get('config-opts', []))
+        configargs.extend(self.config_opts)
 
         configure_path = 'configure'
         if self.metadata.get('rm-configure', False):

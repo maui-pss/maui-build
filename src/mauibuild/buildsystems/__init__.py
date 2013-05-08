@@ -38,6 +38,8 @@ class BuildSystem(object):
     builddir = '_build'
     args = []
     makeargs = ['make']
+    default_config_opts = {}
+    config_opts = []
 
     def __init__(self, args):
         self.logger = Logger()
@@ -61,6 +63,9 @@ class BuildSystem(object):
         f = open(self.mauibuild_meta_path)
         self.metadata = json.load(f)
         f.close()
+
+        self.default_config_opts = self.metadata["default-config-opts"]
+        self.config_opts = self.metadata["config-opts"]
 
     def detect(self):
         return False

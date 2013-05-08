@@ -488,7 +488,7 @@ class TaskBuild(TaskDef):
                 oldval = previous_metadata[k]
                 newval = new_metadata[k]
                 if oldval != newval:
-                    return "key %r differs (%r -> %r)" % (k, oldval, newval)
+                    return "key \"%s\" differs (%r -> %r)" % (k, oldval, newval)
  
         if "patches" in previous_metadata:
             if "patches" not in new_metadata:
