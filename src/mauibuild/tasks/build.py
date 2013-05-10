@@ -478,7 +478,7 @@ class TaskBuild(TaskDef):
             self.logger.info("No previous build; skipping source diff")
 
     def _needs_rebuild(self, previous_metadata, new_metadata):
-        build_keys = ["config-opts", "src", "revision", "setuid", "build-system"]
+        build_keys = ["config-opts", "src", "revision", "setuid", "build-system", "makedirs"]
         for k in build_keys:
             if (k in previous_metadata) and (k not in new_metadata):
                 return "key %r removed" % (k, )
@@ -852,6 +852,10 @@ class TaskBuild(TaskDef):
         fileutil.ensure_dir(final_build_result_dir)
 
         self._process_build_results(component, component_resultdir, final_build_result_dir)
+
+        dirs_to_make = expanded_component.get("makedirs", [])
+        for dirname in dirs_to_make:
+            os.makedirs(final_build_result_dir + dirname)
 
         recorded_meta_path = os.path.join(final_build_result_dir, "_mauibuild-meta.json")
         jsonutil.write_json_file_atomic(recorded_meta_path, expanded_component)
