@@ -1,0 +1,116 @@
+<?xml version='1.0'?> <!--*-nxml-*-->
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+          "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+<refentry id="mauibuild-git-mirror">
+  <refentryinfo>
+    <title>mauibuild Manual</title>
+    <productname>mauibuild</productname>
+    <date>May 2013</date>
+    <authorgroup>
+      <author>
+        <contrib>Developer</contrib>
+        <firstname>Pier Luigi</firstname>
+        <surname>Fiorini</surname>
+        <email>pierluigi.fiorini@maui-project.org</email>
+      </author>
+    </authorgroup>
+  </refentryinfo>
+
+  <refmeta>
+    <refentrytitle>mauibuild-git-mirror</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>mauibuild-git-mirror</refname>
+    <refpurpose>Update internal git mirror for one or more components</refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>mauibuild git-mirror</command>
+      <arg choice="opt"><option>options</option></arg>
+      <arg choice="req" rep="repeat"><option>components</option></arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title>Description</title>
+    <para>
+      Updates internal git mirror for one or more components.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>Options</title>
+    <variablelist>
+      <varlistentry>
+        <term>
+          <option>--workdir PATH</option>
+        </term>
+        <listitem>
+          <para>Specify an alternative working directory.</para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
+          <option>--manifest PATH</option>
+        </term>
+        <listitem>
+          <para>Specify an alternative manifest file.</para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
+          <option>--snapshot PATH</option>
+        </term>
+        <listitem>
+          <para>Specify an alternative snapshot file.</para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
+          <option>--timeout-sec SECS</option>
+        </term>
+        <listitem>
+          <para>Cache fetch results for <varname>SECS</varname> seconds.</para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
+          <option>--fetch</option>
+        </term>
+        <listitem>
+          <para>Also do a git fetch for components.</para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>
+          <option>-k, --keep-going</option>
+        </term>
+        <listitem>
+          <para>Don't exit on fetch failures.</para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term>
+          <option>components...</option>
+        </term>
+        <listitem>
+          <para>One or more components whose git repositories will be fetched.</para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+  </refsect1>
+
+  <refsect1>
+    <title>See Also</title>
+    <para>
+      <citerefentry><refentrytitle>mauibuild</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+    </para>
+  </refsect1>
+</refentry>
+<!--
+vim:set ts=2 sw=2 syntax=xml noet spell spelllang=en_us:
+-->

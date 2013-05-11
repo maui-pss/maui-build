@@ -1,0 +1,53 @@
+<?xml version='1.0'?> <!--*-nxml-*-->
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+          "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+<refentry id="mauibuild-make-buildlive">
+  <refentryinfo>
+    <title>mauibuild Manual</title>
+    <productname>mauibuild</productname>
+    <date>May 2013</date>
+    <authorgroup>
+      <author>
+        <contrib>Developer</contrib>
+        <firstname>Pier Luigi</firstname>
+        <surname>Fiorini</surname>
+        <email>pierluigi.fiorini@maui-project.org</email>
+      </author>
+    </authorgroup>
+  </refentryinfo>
+
+  <refmeta>
+    <refentrytitle>mauibuild-make-buildlive</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>mauibuild-make-buildlive</refname>
+    <refpurpose>Build a live ISO image</refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>mauibuild make -n buildlive</command>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title>Description</title>
+    <para>
+      Builds a live ISO image using the live target.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>See Also</title>
+    <para>
+      <citerefentry><refentrytitle>mauibuild</refentrytitle><manvolnum>1</manvolnum></citerefentry>, 
+      <citerefentry><refentrytitle>mauibuild-make</refentrytitle><manvolnum>1</manvolnum></citerefentry>, 
+      <citerefentry><refentrytitle>ostree</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+    </para>
+  </refsect1>
+</refentry>
+<!--
+vim:set ts=2 sw=2 syntax=xml noet spell spelllang=en_us:
+-->

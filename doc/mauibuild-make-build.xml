@@ -1,0 +1,70 @@
+<?xml version='1.0'?> <!--*-nxml-*-->
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+          "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+<refentry id="mauibuild-make-build">
+  <refentryinfo>
+    <title>mauibuild Manual</title>
+    <productname>mauibuild</productname>
+    <date>May 2013</date>
+    <authorgroup>
+      <author>
+        <contrib>Developer</contrib>
+        <firstname>Pier Luigi</firstname>
+        <surname>Fiorini</surname>
+        <email>pierluigi.fiorini@maui-project.org</email>
+      </author>
+    </authorgroup>
+  </refentryinfo>
+
+  <refmeta>
+    <refentrytitle>mauibuild-make-build</refentrytitle>
+    <manvolnum>1</manvolnum>
+  </refmeta>
+
+  <refnamediv>
+    <refname>mauibuild-make-build</refname>
+    <refpurpose>Build multiple components and generate trees</refpurpose>
+  </refnamediv>
+
+  <refsynopsisdiv>
+    <cmdsynopsis>
+      <command>mauibuild make -n build</command>
+      <arg choice="opt">--<arg choice="req" rep="repeat"><option>components</option></arg></arg>
+    </cmdsynopsis>
+  </refsynopsisdiv>
+
+  <refsect1>
+    <title>Description</title>
+    <para>
+      Builds all the components, starting from the base system and generates trees.
+    </para>
+    <para>
+      At the end of the process a binary snapshot is generated in <filename>$workdir/results/build</filename>.
+    </para>
+  </refsect1>
+
+  <refsect1>
+    <title>Options</title>
+    <variablelist>
+      <varlistentry>
+        <term>
+          <option>components...</option>
+        </term>
+        <listitem>
+          <para>Force rebuild of these components.</para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+  </refsect1>
+
+  <refsect1>
+    <title>See Also</title>
+    <para>
+      <citerefentry><refentrytitle>mauibuild</refentrytitle><manvolnum>1</manvolnum></citerefentry>, 
+      <citerefentry><refentrytitle>mauibuild-make</refentrytitle><manvolnum>1</manvolnum></citerefentry>
+    </para>
+  </refsect1>
+</refentry>
+<!--
+vim:set ts=2 sw=2 syntax=xml noet spell spelllang=en_us:
+-->

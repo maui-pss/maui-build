@@ -15,64 +15,49 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-ASCIIDOC_MANS =					\
-	mauibuild.1				\
-	mauibuild-checkout.1			\
-	mauibuild-git-mirror.1			\
-	mauibuild-make.1			\
-	mauibuild-make-resolve.1		\
-	mauibuild-make-build.1			\
-	mauibuild-make-bdiff.1			\
-	mauibuild-make-builddisks.1		\
-	mauibuild-make-zdisks.1			\
-	mauibuild-make-buildlive.1
+MANPAGES =				\
+	mauibuild.1			\
+	mauibuild-checkout.1		\
+	mauibuild-git-mirror.1		\
+	mauibuild-make.1		\
+	mauibuild-make-resolve.1	\
+	mauibuild-make-bdiff.1		\
+	mauibuild-make-build.1		\
+	mauibuild-make-builddisks.1	\
+	mauibuild-make-buildlive.1	\
+	mauibuild-make-zdisks.1
+MANPAGES_ALIASES =
 
-EXTRA_DIST =					\
-	mauibuild.1.txt				\
-	mauibuild-checkout.1.txt		\
-	mauibuild-git-mirror.1.txt		\
-	mauibuild-make.1.txt			\
-	mauibuild-make-resolve.1.txt		\
-	mauibuild-make-build.1.txt		\
-	mauibuild-make-builddisks.1.txt		\
-	mauibuild-make-zdisks.1.txt		\
-	mauibuild-make-buildlive.1.txt		\
-	$(ASCIIDOC_MANS)
+XML_FILES =			\
+	${patsubsts %.1,%.xml,${patsubst %.5,%.xml,%.xml,$(MANPAGES)}}
+CLEANFILES =
+EXTRA_DIST = $(XML_FILES)
 
-MOSTLYCLEANFILES = $(ASCIIDOC_MANS)
+if ENABLE_MAN
+if HAVE_XSLTPROC
+if HAVE_MANPAGES_STYLESHEET
 
-dist-hook:
-	$(MAKE) $(AM_MAKEFLAGS) clean
-	$(MAKE) $(AM_MAKEFLAGS) all
+CLEANFILES += $(MANPAGES) $(MANPAGES_ALIASES)
+EXTRA_DIST += $(MANPAGES) $(MANPAGES_ALIASES)
+dist_man_MANS = $(MANPAGES) $(MANPAGES_ALIASES)
 
-man_MANS =
-dist_man_MANS = $(ASCIIDOC_MANS)
+XSLTPROC_FLAGS = \
+	--stringparam man.authors.section.enabled 0	\
+	--stringparam man.copyright.section.enabled 0	\
+	--stringparam funcsynopsis.style ansi		\
+	--stringparam man.output.quietly 1		\
+	--nonet
 
-ASCIIDOC_OPTS =						\
-	-f $(srcdir)/asciidoc.conf			\
-	-a mauibuild_version="$(PACKAGE_VERSION)"	\
-	-a mauibuild_date="`date +%Y-%m-%d`"		\
-	-a pkgdatadir=$(pkgdatadir)			\
-	-a localstatedir=$(localstatedir)		\
-	-a sysconfdir=$(sysconfdir)
+XSLTPROC_PROCESS_MAN =					\
+	$(AM_V_GEN)$(MKDIR_P) $(dir $@) &&		\
+	$(XSLTPROC) -o $@ $(XSLTPROC_FLAGS) $(MANPAGES_STYLESHEET) $<
 
-A2X_OPTS =											\
-	--no-xmllint										\
-	-d manpage										\
-	-f manpage										\
-	--xsltproc-opts='-param man.endnotes.list.enabled 0 -param man.endnotes.are.numbered 0'	\
-	--destination-dir='./'
+%.1: %.xml
+	$(XSLTPROC_PROCESS_MAN)
 
-$(ASCIIDOC_MANS): asciidoc.conf footer.txt Makefile.am
-	$(AM_V_GEN)a2x $(A2X_OPTS) --asciidoc-opts="$(ASCIIDOC_OPTS) --out-file=./$@.xml" $(srcdir)/$@.txt
+%.5: %.xml
+	$(XSLTPROC_PROCESS_MAN)
 
-mauibuild.1: mauibuild.1.txt
-mauibuild-checkout.1: mauibuild-checkout.1.txt
-mauibuild-git-mirror.1: mauibuild-git-mirror.1.txt
-mauibuild-make.1: mauibuild-make.1.txt
-mauibuild-make-resolve.1: mauibuild-make-resolve.1.txt
-mauibuild-make-build.1: mauibuild-make-build.1.txt
-mauibuild-make-bdiff.1: mauibuild-make-bdiff.1.txt
-mauibuild-make-builddisks.1: mauibuild-make-builddisks.1.txt
-mauibuild-make-zdisks.1: mauibuild-make-zdisks.1.txt
-mauibuild-make-buildlive.1: mauibuild-make-buildlive.1.txt
+endif # HAVE_MANPAGES_STYLESHEET
+endif # HAVE_XSLTPROC
+endif # ENABLE_MAN

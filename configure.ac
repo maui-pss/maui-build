@@ -11,22 +11,37 @@ AM_SILENT_RULES([yes])
 # Check for Python 2.6+
 AM_PATH_PYTHON([2.6])
 
-# Check for documentation support and status
-AC_CHECK_PROGS([ASCIIDOC], [asciidoc])
-AC_MSG_CHECKING([for building documentation])
-if test "x$wantdoc" = "xyes" ; then
-	if test $ASCIIDOC ; then
-		AC_MSG_RESULT([yes, enabled by configure])
-	else
-		asciidoc="(warning : asciidoc not installed)"
-		AC_MSG_RESULT([yes $asciidoc])
-	fi
-	wantdoc=yes
+# Man pages are optional
+AC_ARG_ENABLE(man,
+              [AC_HELP_STRING([--disable-man],
+                              [Disable man pages generation from Docbook])],
+              enable_man=no,
+              enable_man=yes)
+AM_CONDITIONAL(ENABLE_MAN, test x$enable_man != xno)
+
+if test "x$enable_man" = "xyes"; then
+    # Look for xsltproc
+    AC_PATH_PROG([XSLTPROC], [xsltproc])
+    AM_CONDITIONAL([HAVE_XSLTPROC], [test "x$XSLTPROC" != "x"])
+
+    # Check for docbook manpages stylesheet
+    AC_MSG_CHECKING([for docbook manpages stylesheet])
+    MANPAGES_STYLESHEET=http://docbook.sourceforge.net/release/xsl/current/manpages/docbook.xsl
+    AC_PATH_PROGS_FEATURE_CHECK([XSLTPROC_TMP], [xsltproc],
+                                AS_IF([`"$ac_path_XSLTPROC_TMP" --nonet "$MANPAGES_STYLESHEET" > /dev/null 2>&1`],
+                                      [HAVE_MANPAGES_STYLESHEET=yes]))
+    if test "x$HAVE_MANPAGES_STYLESHEET" = "xyes"; then
+        AM_CONDITIONAL([HAVE_MANPAGES_STYLESHEET], true)
+        AC_SUBST(MANPAGES_STYLESHEET)
+        AC_MSG_RESULT([yes])
+    else
+        AM_CONDITIONAL([HAVE_MANPAGES_STYLESHEET], false)
+        AC_MSG_RESULT([no])
+    fi
 else
-	AC_MSG_RESULT([no, disabled by configure])
-	wantdoc=no
+    AM_CONDITIONAL([HAVE_XSLTPROC], false)
+    AM_CONDITIONAL([HAVE_MANPAGES_STYLESHEET], false)
 fi
-AM_CONDITIONAL(WANT_DOC, test "x$wantdoc" = "xyes")
 
 AC_CONFIG_FILES([
 Makefile
@@ -40,5 +55,5 @@ AC_MSG_RESULT([
 
         prefix:                  ${prefix}
 
-        build documentation:     ${wantdoc}
+        enable man:              ${enable_man}
 ])
