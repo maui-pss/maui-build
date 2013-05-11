@@ -31,7 +31,7 @@ mauibuild-compile-one: src/mauibuild-compile-one.in Makefile
 	    -e s,@pkgdatadir\@,$(pkgdatadir), \
 	    -e s,@PYTHON\@,$(PYTHON), \
 	    $< > $@.tmp && mv $@.tmp $@
-EXTRA_DIST += mauibuild.in mauibuild-compile-one.in
+EXTRA_DIST += src/mauibuild.in src/mauibuild-compile-one.in
 
 bin_SCRIPTS += mauibuild
 
