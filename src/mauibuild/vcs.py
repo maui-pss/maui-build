@@ -21,6 +21,7 @@ import os, re, urlparse, shutil, datetime, hashlib
 
 from .subprocess_helpers import run_sync_get_output, run_sync
 from . import buildutil
+from . import fileutil
 from .logger import Logger
 
 def get_mirrordir(mirrordir, keytype, uri, prefix=''):
@@ -287,33 +288,35 @@ def _ensure_vcs_mirror_git(mirrordir, uri, branch, fetch=False,
 def _ensure_vcs_mirror_tarball(mirrordir, name, uri, checksum, fetch=False):
     logger = Logger()
     mirror = get_mirrordir(mirrordir, "tarball", name)
-    tmp_mirror = os.path.abspath(os.path.join(mirror, os.pardir, os.path.basename(mirror) + ".tmp"))
+    tmp_mirror = mirror + ".tmp"
     if not os.path.exists(mirror):
-        shutil.rmtree(tmp_mirror)
-        if not os.path.isdir(tmp_mirror):
-            os.makedirs(tmp_mirror)
+        if os.path.isdir(tmp_mirror):
+            shutil.rmtree(tmp_mirror)
+        fileutil.ensure_dir(tmp_mirror)
         run_sync(["git", "init", "--bare"], cwd=tmp_mirror)
         run_sync(["git", "config", "gc.auto", "0"], cwd=tmp_mirror)
         os.rename(tmp_mirror, mirror)
 
     import_tag = "tarball-import-" + checksum
-    git_revision = run_sync_get_output(["git", "rev-parse", import_tag], cwd=mirror).strip()
-    if not git_revision:
+    git_revision = run_sync_get_output(["git", "rev-parse", import_tag],
+                                       log_initiation=True, none_on_error=True,
+                                       cwd=mirror)
+    if git_revision:
         return mirror
 
     # First, we get a clone of the tarball git repo
     tmp_checkout_path = os.path.join(mirrordir, "tarball-cwd-" + name)
-    shutil.rmtree(tmp_checkout_path)
+    if os.path.isdir(tmp_checkout_path):
+        shutil.rmtree(tmp_checkout_path)
     run_sync(["git", "clone", mirror, tmp_checkout_path])
     # Now, clean the contents out
     run_sync(["git", "rm", "-r", "--ignore-unmatch", "."], cwd=tmp_checkout_path)
 
     # Download the tarball
     tmp_path = os.path.join(mirrordir, "tarball-" + name)
-    shutil.rmtree(tmp_path)
-    tmp_path_parent = os.path.abspath(os.path.join(tmp_path, os.pardir))
-    if not os.path.isdir(tmp_path_parent):
-        os.makedirs(tmp_path_parent)
+    if os.path.isdir(tmp_path):
+        shutil.rmtree(tmp_path)
+    fileutil.ensure_parent_dir(tmp_path)
     run_sync(["curl", "-o", tmp_path, uri])
 
     # And verify the checksum
@@ -352,12 +355,13 @@ def _ensure_vcs_mirror_tarball(mirrordir, name, uri, checksum, fetch=False):
             child = os.path.join(last_file, name)
             if child != last_file:
                 os.rename(child, os.path.join(tmp_checkout_path, name))
-        os.unlink(last_file)
+        shutil.rmtree(last_file)
 
     msg = "Automatic import of " + uri
     author = "Automatic Tarball Importer <maui-development@googlegroups.com>"
     run_sync(["git", "add", "."], cwd=tmp_checkout_path)
     run_sync(["git", "commit", "-a", "--author=" + author, "-m", msg], cwd=tmp_checkout_path)
+    run_sync(["git", "tag", "-m", msg, "-a", import_tag], cwd=tmp_checkout_path)
     run_sync(["git", "push", "--tags", "origin", "master:master"], cwd=tmp_checkout_path)
     shutil.rmtree(tmp_checkout_path)
 
