@@ -228,8 +228,7 @@ def ensure_vcs_mirror(mirrordir, component, fetch=False,
         if not checksum:
             logger.fatal("Component %r missing checksum attribute" % name)
         return _ensure_vcs_mirror_tarball(mirrordir, name, uri, checksum,
-                                          fetch=fetch, fetch_keep_going=fetch_keep_going,
-                                          timeout_sec=timeout_sec)
+                                          fetch=fetch)
     else:
         logger.fatal("Unhandled %r keytype" % keytype)
 
