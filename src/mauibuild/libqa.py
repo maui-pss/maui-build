@@ -21,10 +21,10 @@ import os, re, shutil
 from gi.repository import GLib
 import __builtin__
 
+from . import fileutil
 from .guestfish import GuestFish, GuestMount
 from .logger import Logger
 from .subprocess_helpers import run_sync, run_async
-from .fileutil import find_program_in_path
 
 DEFAULT_GF_PARTITION_OPTS = ['-m', '/dev/sda3', '-m', '/dev/sda1:/boot']
 DEFAULT_QEMU_OPTS = ['-vga', 'std', '-m', '768M',
@@ -33,7 +33,7 @@ DEFAULT_QEMU_OPTS = ['-vga', 'std', '-m', '768M',
 
 def new_read_write_mount(diskpath):
     mntdir = "mnt"
-    if not os.path.exist(mntdir):
+    if not os.path.exists(mntdir):
         os.makedirs(mntdir, 0755)
     gfmnt = GuestMount(diskpath, partition_opts=DEFAULT_GF_PARTITION_OPTS,
                                  read_write=True)
@@ -95,12 +95,12 @@ def copy_disk(srcpath, destpath):
 def get_qemu_path():
     logger = Logger()
     fallback_paths = ["/usr/libexec/qemu-kvm"]
-    qemu_path_string = find_program_in_path("qemu-kvm")
+    qemu_path_string = fileutil.find_program_in_path("qemu-kvm")
     if not qemu_path_string:
-        qemu_path_string = find_program_in_path("kvm")
+        qemu_path_string = fileutil.find_program_in_path("kvm")
     if not qemu_path_string:
         for path in fallback_paths:
-            if not os.path.exist(path):
+            if not os.path.exists(path):
                 continue
             qemu_path_string = path
     if not qemu_path_string:
@@ -285,10 +285,10 @@ LABEL=%s-swap swap swap defaults 0 0
     kernel_release = _parse_kernel_release(deploy_kernel_path)
     initramfs_path = _get_initramfs_path(mntdir, kernel_release)
 
-    boot_relative_kernel_path = os.path.relpath(boot_kernel_path, bootdir)
-    boot_relative_initramfs_path = os.path.relpath(initramfs_path, bootdir)
+    boot_relative_kernel_path = os.path.relpath(boot_kernel_path, boot_dir)
+    boot_relative_initramfs_path = os.path.relpath(initramfs_path, boot_dir)
 
-    syslinux_dir = os.path.join(mntdir, "boot", "syslinux")
+    syslinux_dir = os.path.join(boot_dir, "syslinux")
     fileutil.ensure_dir(syslinux_dir)
     conf_path = os.path.join(syslinux_dir, "syslinux.cfg")
     conf = """PROMPT 1
@@ -304,7 +304,7 @@ LABEL %s
     conf_file.write(conf)
     conf_file.close()
 
-def bootload_install(diskpath, workdir, osname):
+def bootloader_install(diskpath, workdir, osname):
     logger = Logger()
 
     qemu_args = [get_qemu_path(),] + DEFAULT_QEMU_OPTS
