@@ -98,6 +98,7 @@ class TaskBuild(TaskDef):
         base_override_path = os.path.join(self.workdir, "overrides", "base", base_name)
         if os.path.exists(base_override_path):
             self.logger.info("Using override for base %s: %s" % (base_name, base_override_path))
+            self.force_build_components[base_name] = True
             self._snapshot.data["base"]["src"] = "local:%s" % base_override_path
 
         # Pick up components overrides from $workdir/overrides/components/$name
@@ -105,21 +106,17 @@ class TaskBuild(TaskDef):
             override_path = os.path.join(self.workdir, "overrides", "components", component["name"])
             if os.path.exists(override_path):
                 self.logger.info("Using override: %s" % override_path)
+                self.force_build_components[component["name"]] = True
                 component["src"] = "local:%s" % override_path
-
-        have_local_component = False
-        for component in components:
-            if component["src"].startswith("local:"):
-                have_local_component = True
-                break
 
         latest_build_path = builddb.get_latest_path()
         if latest_build_path is not None:
             last_built_source_data = builddb.load_from_path(latest_build_path)
             last_built_source_version = builddb.parse_version_str(last_built_source_data["snapshot-name"])
-            if (not have_local_component) and len(self.force_build_components.keys()) == 0 and (last_built_source_version == target_source_version):
-                self.logger.info("Already built source snapshot %s" % last_built_source_version)
-                return
+            if last_built_source_version == target_source_version:
+                if len(self.force_build_components.keys()) == 0:
+                    self.logger.info("Already built source snapshot %s" % last_built_source_version)
+                    return
             else:
                 self.logger.info("Last successful build was " + last_built_source_version)
         self.logger.info("Building " + target_source_version)
