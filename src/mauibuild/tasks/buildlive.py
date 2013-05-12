@@ -40,7 +40,12 @@ class TaskBuildLive(TaskDef):
     def __init__(self, builtin, taskmaster, name, argv):
         TaskDef.__init__(self, builtin, taskmaster, name, argv)
 
+        self.subparser.add_argument("-d", "--development", action="store_true",
+                                    help="detailed version information")
+
     def execute(self):
+        args = self.subparser.parse_args(self.argv)
+
         subworkdir = os.getcwd()
 
         base_image_dir = os.path.join(self.workdir, self._image_subdir, "live")
@@ -71,6 +76,8 @@ class TaskBuildLive(TaskDef):
 
         self.osname = self.build_data["snapshot"]["osname"]
         self.version = self.build_data["snapshot"]["version"]
+        if args.development:
+            self.version += "-" + self.build_version
         repo = self.build_data["snapshot"]["repo"]
 
         data_filename = os.path.join(self.supportdir, "images", "index.json")
@@ -82,6 +89,9 @@ class TaskBuildLive(TaskDef):
         for k in ("label", "application", "publisher"):
             if not self.data["live"].has_key(k):
                 self.logger.fatal("Live image definition doesn't have \"%s\" key" % k)
+        if args.development:
+            import datetime
+            self.data["live"]["label"] += "_%s" % datetime.datetime.now().strftime("%Y%m%d")
 
         target_name = None
         for target in targets:
