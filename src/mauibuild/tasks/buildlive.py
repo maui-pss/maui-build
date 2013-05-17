@@ -32,7 +32,6 @@ IMAGE_RETAIN_COUNT = 2
 class TaskBuildLive(TaskDef):
     name = "buildlive"
     short_description = "Generate live images"
-    after = ["build",]
 
     _VERSION_RE = re.compile(r'^(\d+)\.(\d+)$')
     _image_subdir = "images"
