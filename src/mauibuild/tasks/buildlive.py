@@ -82,15 +82,15 @@ class TaskBuildLive(TaskDef):
         data_filename = os.path.join(self.supportdir, "images", "index.json")
         if not os.path.exists(data_filename):
             self.logger.fatal("Couldn't find support index file \"%s\"" % data_filename)
-        self.data = jsonutil.load_json(data_filename)
-        if not self.data.has_key("live"):
+        data = jsonutil.load_json(data_filename)
+        if not data.has_key("live"):
             self.logget.fatal("No live image definition found")
-        for k in ("label", "application", "publisher"):
-            if not self.data["live"].has_key(k):
-                self.logger.fatal("Live image definition doesn't have \"%s\" key" % k)
+        self.data = data["live"]
+        if not self.data.has_key("label"):
+            self.logger.fatal("Missing label in live image definition")
         if args.development:
             import datetime
-            self.data["live"]["label"] += "_%s" % datetime.datetime.now().strftime("%Y%m%d")
+            self.data["label"] += "_%s" % datetime.datetime.now().strftime("%Y%m%d")
 
         target_name = None
         for target in targets:
@@ -110,41 +110,42 @@ class TaskBuildLive(TaskDef):
         (architecture, target) = m.groups()
 
         # Create working directory for this target
-        work_dir = os.path.join(work_image_dir, squashed_name)
-        fileutil.ensure_dir(work_dir)
+        self.work_dir = os.path.join(work_image_dir, squashed_name)
+        fileutil.ensure_dir(self.work_dir)
 
         # Copy ISO contents from support files
-        iso_dir = os.path.join(work_dir, "iso")
-        iso_isolinux_dir = os.path.join(iso_dir, "isolinux")
-        shutil.copytree(os.path.join(self.supportdir, "images", "live"), iso_dir)
+        self.iso_dir = os.path.join(self.work_dir, "iso")
+        self.iso_isolinux_dir = os.path.join(self.iso_dir, "isolinux")
+        shutil.copytree(os.path.join(self.supportdir, "images", "live"), self.iso_dir)
 
         # Pull deploy the system and create SquashFS image
-        self._pull_deploy(work_dir, target_name, target_revision)
-        deploy_root_dir = os.path.join(work_dir, "root-image")
+        self._pull_deploy(target_name, target_revision)
+        self.deploy_root_dir = os.path.join(self.work_dir, "root-image")
+        self.deploy_dir = os.path.join(self.deploy_root_dir, "ostree", "deploy", self.osname, "current")
 
         # Copy files from deployment
-        self._copy_files(deploy_root_dir, iso_dir)
+        self._copy_files()
 
         # Copy kernel and initramfs to the ISO directory
-        deploy_kernel_path = libqa._find_current_kernel(deploy_root_dir, self.osname)
+        deploy_kernel_path = libqa._find_current_kernel(self.deploy_root_dir, self.osname)
         kernel_release = libqa._parse_kernel_release(deploy_kernel_path)
         self.logger.debug("Found kernel release %s: %s" % (kernel_release, deploy_kernel_path))
-        initramfs_path = os.path.join(iso_isolinux_dir, "initramfs.img")
-        self._create_initramfs(work_dir, deploy_root_dir, kernel_release, initramfs_path)
+        initramfs_path = os.path.join(self.iso_isolinux_dir, "initramfs.img")
+        self._create_initramfs(kernel_release, initramfs_path)
         self.logger.debug("Created initramfs: %s" % initramfs_path)
-        shutil.copy2(deploy_kernel_path, os.path.join(iso_isolinux_dir, "vmlinuz"))
+        shutil.copy2(deploy_kernel_path, os.path.join(self.iso_isolinux_dir, "vmlinuz"))
 
         # Remove deployment
-        self._pull_deploy_cleanup(work_dir)
+        self._pull_deploy_cleanup()
 
         # Expand support files
-        self._expand_support_files(iso_dir)
+        self._expand_support_files()
 
         # UEFI support
         if architecture == "x86_64":
             if self._is_gummiboot_available():
-                self._create_efi(iso_dir)
-                self._create_efiboot(work_dir, iso_dir)
+                self._create_efi()
+                self._create_efiboot()
             else:
                 self.logger.warning("gummiboot not found on the host system, no UEFI support")
 
@@ -153,10 +154,10 @@ class TaskBuildLive(TaskDef):
         diskpath = os.path.join(work_image_dir, disk_name)
         if os.path.exists(diskpath):
             os.unlink(diskpath)
-        self._make_iso(diskpath, iso_dir)
+        self._make_iso(diskpath)
 
         # Remove working directory
-        shutil.rmtree(work_dir)
+        shutil.rmtree(self.work_dir)
 
         os.rename(work_image_dir, target_image_dir)
 
@@ -172,36 +173,34 @@ class TaskBuildLive(TaskDef):
 
         self._clean_old_versions(base_image_dir, IMAGE_RETAIN_COUNT)
 
-    def _pull_deploy(self, work_dir, target_name, target_revision):
+    def _pull_deploy(self, target_name, target_revision):
         pull_deploy_program = os.path.join(self.libexecdir, "mauibuild-image-pull-deploy")
-        run_sync(["pkexec", pull_deploy_program, "makeimage", work_dir,
+        run_sync(["pkexec", pull_deploy_program, "makeimage", self.work_dir,
                   self.repo, self.osname, target_name, target_revision])
 
-        iso_os_dir = os.path.join(work_dir, "iso", "LiveOS")
+        iso_os_dir = os.path.join(self.iso_dir, "LiveOS")
         fileutil.ensure_dir(iso_os_dir)
-        squash_image_path = os.path.join(work_dir, "squashfs.img")
-        squash_md5_path = os.path.join(work_dir, "squashfs.img.md5")
+        squash_image_path = os.path.join(self.work_dir, "squashfs.img")
+        squash_md5_path = os.path.join(self.work_dir, "squashfs.img.md5")
         shutil.move(squash_image_path, iso_os_dir)
         shutil.move(squash_md5_path, iso_os_dir)
 
-    def _pull_deploy_cleanup(self, work_dir):
+    def _pull_deploy_cleanup(self):
         pull_deploy_program = os.path.join(self.libexecdir, "mauibuild-image-pull-deploy")
-        run_sync(["pkexec", pull_deploy_program, "cleanup", work_dir])
+        run_sync(["pkexec", pull_deploy_program, "cleanup", self.work_dir])
 
-    def _copy_files(self, deploy_root_dir, iso_dir):
-        files = self.data["live"].get("copy-files", {})
-        files.update({"usr/lib/syslinux/isolinux-debug.bin": "isolinux/isolinux.bin",
+    def _copy_files(self):
+        files = self.data.get("copy-files", {})
+        files.update({"usr/lib/syslinux/isolinux.bin": "isolinux/isolinux.bin",
                       "usr/lib/syslinux/isohdpfx.bin": "isolinux/isohdpfx.bin"})
         for src_filename in files.keys():
-            src_path = os.path.join(deploy_root_dir, "ostree", "deploy", self.osname, "current", src_filename)
-            dst_path = os.path.join(iso_dir, files[src_filename])
+            src_path = os.path.join(self.deploy_dir, src_filename)
+            dst_path = os.path.join(self.iso_dir, files[src_filename])
             fileutil.ensure_dir(os.path.dirname(dst_path))
             shutil.copy(src_path, dst_path)
 
-    def _create_initramfs(self, work_dir, deploy_root_dir, kernel_release, dest_path):
-        deploy_dir = os.path.join(deploy_root_dir, "ostree", "deploy", self.osname, "current")
-
-        subwork_dir = os.path.join(work_dir, "tmp-initramfs")
+    def _create_initramfs(self, kernel_release, dest_path):
+        subwork_dir = os.path.join(self.work_dir, "tmp-initramfs")
         var_tmp = os.path.join(subwork_dir, "var", "tmp")
         fileutil.ensure_dir(var_tmp)
         var_dir = os.path.join(subwork_dir, "var")
@@ -217,7 +216,7 @@ class TaskBuildLive(TaskDef):
                   "--mount-bind", "/dev", "/dev",
                   "--mount-bind", var_dir, "/var",
                   "--mount-bind", tmp_dir, "/tmp",
-                  deploy_dir,
+                  self.deploy_dir,
                   "dracut", "--tmpdir=/tmp", "-f", "/tmp/initramfs-ostree.img",
                   "--add", dracut_modules, "--add-drivers", dracut_drivers,
                   kernel_release])
@@ -225,13 +224,13 @@ class TaskBuildLive(TaskDef):
         shutil.move(initramfs_tmp, dest_path)
         shutil.rmtree(subwork_dir)
 
-    def _expand_support_files(self, iso_dir):
-        data = self.data["live"].copy()
+    def _expand_support_files(self):
+        data = self.data.copy()
         data.update({"osname": self.osname, "version": self.version})
 
-        files = self.data["live"].get("replace-files", [])
+        files = self.data.get("replace-files", [])
         for filename in files:
-            path = os.path.join(iso_dir, filename)
+            path = os.path.join(self.iso_dir, filename)
             if os.path.exists(path):
                 f = open(path, "r")
                 contents = f.read()
@@ -244,23 +243,23 @@ class TaskBuildLive(TaskDef):
         gummiboot_path = os.path.join("usr", "lib", "gummiboot", "gummibootx64.efi")
         return os.path.exists(gummiboot_path)
 
-    def _create_efi(self, iso_dir):
-        path = os.path.join(iso_dir, "EFI", "boot")
+    def _create_efi(self):
+        path = os.path.join(self.iso_dir, "EFI", "boot")
         fileutil.ensure_dir(path)
         gummiboot_src_path = os.path.join("usr", "lib", "gummiboot", "gummibootx64.efi")
         gummiboot_dst_path = os.path.join(path, "bootx64.efi")
         shutil.copy2(gummiboot_src_path, gummiboot_dst_path)
 
-    def _create_efiboot(self, work_dir, iso_dir):
+    def _create_efiboot(self):
         mkefiboot_program = os.path.join(self.libexecdir, "mauibuild-mkefiboot")
-        run_sync(["pkexec", mkefiboot_program, "create", work_dir])
+        run_sync(["pkexec", mkefiboot_program, "create", self.work_dir])
 
-        efiboot_path = os.path.join(iso_dir, "EFI", "mauibuild", "efiboot.img")
+        efiboot_path = os.path.join(self.iso_dir, "EFI", "mauibuild", "efiboot.img")
 
         path = os.path.join(mountpoint, "EFI", "mauibuild")
         fileutil.ensure_dir(path)
-        kernel_path = os.path.join(iso_dir, "isolinux", "vmlinuz")
-        initramfs_path = os.path.join(iso_dir, "isolinux", "initramfs.img")
+        kernel_path = os.path.join(self.iso_dir, "isolinux", "vmlinuz")
+        initramfs_path = os.path.join(self.iso_dir, "isolinux", "initramfs.img")
         shutil.copy2(kernel_path, path)
         shutil.copy2(initramfs_path, path)
 
@@ -290,7 +289,7 @@ class TaskBuildLive(TaskDef):
         f.write("title %s x86_64\n" % self.osname)
         f.write("linux /isolinux/vmlinuz\n")
         f.write("initrd /isolinux/initramfs.img\n")
-        f.write("options root=live:CDLABEL=%s rootfstype=auto ro rd.live.image quiet rd.luks=0 rd.md=0 rd.dm=0 ostree=%s/current" % (self.data["live"]["label"], self.osname))
+        f.write("options root=live:CDLABEL=%s rootfstype=auto ro rd.live.image quiet rd.luks=0 rd.md=0 rd.dm=0 ostree=%s/current" % (self.data["label"], self.osname))
         f.close()
 
         # EFI Shell 2.0 for UEFI 2.3+ ( http://sourceforge.net/apps/mediawiki/tianocore/index.php?title=UEFI_Shell )
@@ -303,28 +302,28 @@ class TaskBuildLive(TaskDef):
         dst_path = os.path.join(mountpoint, "EFI", "shellx64_v1.efi")
         run_sync(["curl", "-o", dst_path, uri])
 
-        run_sync(["pkexec", mkefiboot_program, "cleanup", work_dir])
+        run_sync(["pkexec", mkefiboot_program, "cleanup", self.work_dir])
 
-    def _make_iso(self, diskpath, iso_dir):
-        iso_isolinux_dir = os.path.join(iso_dir, "isolinux")
-        efiboot_path = os.path.join(iso_dir, "EFI", "mauibuild", "efiboot.img")
+    def _make_iso(self, diskpath):
+        efiboot_path = os.path.join(self.iso_isolinux_dir, "efiboot.img")
 
         args = ["xorriso", "-as", "mkisofs", "-iso-level", "3",
                 "-full-iso9660-filenames",
-                "-volid", self.data["live"]["label"],
-                "-appid", self.data["live"]["application"],
-                "-publisher", self.data["live"]["publisher"],
-                "-preparer", "prepared by mauibuild",
-                "-eltorito-boot", "isolinux/isolinux.bin",
-                "-eltorito-catalog", "isolinux/boot.cat",
-                "-no-emul-boot", "-boot-load-size", "4",
-                "-boot-info-table",
-                "-isohybrid-mbr", os.path.join(iso_isolinux_dir, "isohdpfx.bin"),
-                 "-output", diskpath]
+                "-volid", self.data["label"],
+                "-preparer", "Prepared by mauibuild"]
+        if self.data.get("application"):
+            args.extend(["-appid", self.data["application"]])
+        if self.data.get("publisher"):
+            args.extend(["-publisher", self.data["publisher"]])
+        args.extend(["-eltorito-boot", "isolinux/isolinux.bin",
+                     "-eltorito-catalog", "isolinux/boot.cat",
+                     "-no-emul-boot", "-boot-load-size", "4",
+                     "-boot-info-table"])
+        args.extend(["-isohybrid-mbr", "isolinux/isohdpfx.bin"])
         if os.path.exists(efiboot_path):
             args.extend(["--efi-boot", "EFI/mauibuild/efiboot.img"])
-        args.append(iso_dir)
-        run_sync(args)
+        args.extend(["-output", diskpath, "."])
+        run_sync(args, cwd=self.iso_dir)
 
     def _load_versions_from(self, path):
         results = []
