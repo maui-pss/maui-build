@@ -80,6 +80,7 @@ mauibuildbuildsystems_PYTHON =				\
 	src/mauibuild/buildsystems/__init__.py		\
 	src/mauibuild/buildsystems/buildapi.py		\
 	src/mauibuild/buildsystems/cmake.py		\
+	src/mauibuild/buildsystems/make.py		\
 	src/mauibuild/buildsystems/qmake.py		\
 	$(NULL)
 

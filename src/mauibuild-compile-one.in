@@ -29,11 +29,12 @@ sys.path.insert(0, "/mauibuild")
 from mauibuild.buildsystems.buildapi import BuildApiBuildSystem
 from mauibuild.buildsystems.cmake import CMakeBuildSystem
 from mauibuild.buildsystems.qmake import QMakeBuildSystem
+from mauibuild.buildsystems.make import MakeBuildSystem
 from mauibuild.logger import Logger
 
 def main(args):
     buildsys = None
-    for b in (QMakeBuildSystem, CMakeBuildSystem, BuildApiBuildSystem):
+    for b in (QMakeBuildSystem, CMakeBuildSystem, BuildApiBuildSystem, MakeBuildSystem):
         obj = b(args)
 
         buildsystem_name = obj.metadata.get("build-system")
