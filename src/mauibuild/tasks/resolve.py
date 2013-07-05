@@ -59,12 +59,8 @@ class TaskResolve(TaskDef):
         # Fetch everything if asked
         if args.fetch_all:
             args.fetch_base = True
-            args.fetch_patches = True
-            args.fetch_support = True
-
-        # Can't fetch patches and support if not defined in manifest
-        args.fetch_patches = args.fetch_patches and self._snapshot.data.has_key("patches")
-        args.fetch_support = args.fetch_support and self._snapshot.data.has_key("support")
+            args.fetch_patches = self._snapshot.data.has_key("patches")
+            args.fetch_support = self._snapshot.data.has_key("support")
 
         # Fetch base system
         if args.fetch_base:
