@@ -136,9 +136,11 @@ class TaskBuild(TaskDef):
 
         # Build base system
         architectures = self._snapshot.data["architectures"]
-        if architectures not in COMMON_BUILD_FLAGS.keys():
-            self.logger.fatal("One or more specified architectures are not supported, " +
-                "please check the manifest. Supported architectures: %s" % " ".join(COMMON_BUILD_FLAGS.keys()))
+        architectures_set = set(architectures)
+        if not architectures_set.issubset(set(COMMON_BUILD_FLAGS.keys())):
+            self.logger.fatal("One or more specified architectures are not supported. "
+                "Manifest defines the following architectures: %s, but only the "
+                "following are supported: %s" % (" ".join(architectures), " ".join(COMMON_BUILD_FLAGS.keys())))
         for architecture in architectures:
             self._build_base(architecture)
 
