@@ -61,6 +61,7 @@ class TaskResolve(TaskDef):
             args.fetch_base = True
             args.fetch_patches = self._snapshot.data.has_key("patches")
             args.fetch_support = self._snapshot.data.has_key("support")
+            args.components = self._snapshot.get_all_component_names()
 
         # Fetch base system
         if args.fetch_base:
@@ -80,7 +81,7 @@ class TaskResolve(TaskDef):
         # Fetch components
         git_mirror_args = [sys.argv[0], "git-mirror", "--timeout-sec=" + str(args.timeout_sec),
                            "--workdir=" + self.workdir, "--manifest=" + manifest_path]
-        if args.fetch_all or len(args.components) > 0:
+        if len(args.components) > 0:
             git_mirror_args.extend(["--fetch", "-k"])
             git_mirror_args.extend(args.components)
         run_sync(git_mirror_args)
