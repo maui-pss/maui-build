@@ -1,5 +1,5 @@
 AC_PREREQ([2.63])
-AC_INIT([mauibuild], [0.2.0], [https://github.com/mauios/mauibuild/issues], [mauibuild], [http://www.maui-project.org])
+AC_INIT([mauibuild], [0.2.90], [https://github.com/mauios/mauibuild/issues], [mauibuild], [http://www.maui-project.org])
 AC_CONFIG_HEADER([config.h])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_AUX_DIR([build-aux])
