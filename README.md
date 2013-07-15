@@ -157,7 +157,7 @@ Here's an example, assuming Maui 0.1 is the version you are interested in:
 ```sh
 mkdir ~/git
 cd ~/git
-git clone -b maui-0.1 git://github.com/mauios/maui.git
+git clone git://github.com/mauios/maui.git
 ```
 
 ## Install mauibuild
@@ -187,7 +187,3 @@ mauibuild make -n resolve
 Tasks are chained, so after a resolve a build will automatically be executed.
 
 Every time the manifest file changes you have to type the above command.
-
-## Remarks
-
-Change every *maui-0.1* occurrency with the version you want to use.
