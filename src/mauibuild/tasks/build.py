@@ -1082,14 +1082,21 @@ class TaskBuild(TaskDef):
         sstate_dir = os.path.join(old_builddir, "sstate-cache")
         downloads = os.path.join(old_builddir, "downloads")
 
-        cmd = ["linux-user-chroot", "--unshare-pid", "/",
-               os.path.join(self.libexecdir, "mauibuild-build-yocto"),
-               checkoutdir, builddir, architecture, self.repo]
-        # We specifically want to kill off any environment variables jhbuild
-        # may have set.
+        # We specifically want to kill off any environment variables
         env = dict(buildutil.BUILD_ENV)
         env["DL_DIR"] = downloads
         env["SSTATE_DIR"] = sstate_dir
+
+        # Fetch all the sources
+        cmd = [os.path.join(self.libexecdir, "mauibuild-build-yocto"),
+               checkoutdir, builddir, architecture, self.repo,
+               "--fetch-only"]
+        run_sync(cmd, env=env)
+
+        # Run build
+        cmd = ["linux-user-chroot", "--unshare-pid", "/",
+               os.path.join(self.libexecdir, "mauibuild-build-yocto"),
+               checkoutdir, builddir, architecture, self.repo]
         run_sync(cmd, env=env)
 
         for component_type in ("runtime", "devel"):
