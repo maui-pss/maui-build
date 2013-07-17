@@ -92,12 +92,14 @@ class BuildApiBuildSystem(BuildSystem):
             if not os.path.isdir(self.builddir):
                 os.mkdir(self.builddir)
 
-        if use_builddir:
-            args = ['../configure']
-        else:
-            args = ['./configure']
-        args.extend(configargs)
-        run_sync(args, cwd=self.builddir)
+        config_status = os.path.join(self.builddir, "config.status")
+        if not os.path.exists(config_status):
+            if use_builddir:
+                args = ['../configure']
+            else:
+                args = ['./configure']
+            args.extend(configargs)
+            run_sync(args, cwd=self.builddir)
 
         makefile_path = None
         for name in ['Makefile', 'makefile', 'GNUmakefile']:
