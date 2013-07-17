@@ -36,13 +36,25 @@ To make live images install:
  * squashfs-tools
  * xorriso
 
+To build the man pages on Debian and Ubuntu:
+
+ * xlstproc
+ * docbook
+ * docbook-xml
+ * docbook-xsl
+
+To build the man pages on Fedora:
+
+ * xsltproc
+ * docbook-utils
+ * docbook-style-xsl
+
 A 64-bit host operating system is required.
 
 You also need:
 
  * Linux 2.6.28 or newer
  * *linux-user-chroot* and *ostree*, follow the next sections for more information
- * *asciidoc* if you want to create the man pages
  * *gummiboot* to make `x86_64` live images, follow the next sections for more information
  * The *termcolor* Python module if you want *mauibuild* to print colored output
 
