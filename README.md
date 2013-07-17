@@ -179,7 +179,7 @@ sudo make install
 ## Download the manifest
 
 Create a directory and checkout the *maui* repository.
-Here's an example, assuming Maui 0.1 is the version you are interested in:
+Here's an example:
 
 ```sh
 mkdir ~/git
