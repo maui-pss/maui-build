@@ -91,13 +91,23 @@ sudo chmod +s /usr/bin/linux-user-chroot{,-newnet}
 
 ### Download and install ostree
 
-Install the following additional packages:
+Install the following additional packages, on Debian and Ubuntu:
 
  * zlib1g-dev
  * libarchive-dev
  * libattr1-dev
  * libglib2.0-dev
  * libsoup2.4-dev
+ * xsltproc
+ * gtk-doc-tools
+
+Or if you are on Fedora:
+
+ * zlib-devel
+ * libarchive-devel
+ * libattr-devel
+ * glib2-devel
+ * libsoup-devel
  * xsltproc
  * gtk-doc-tools
 
@@ -133,9 +143,13 @@ make
 sudo make install PREFIX=/usr
 ```
 
-gummiboot also requires the following packages:
+gummiboot also requires the following packages on Debian and Ubuntu:
 
  * libblkid-dev
+
+Or if you are on Fedora:
+
+ * libblkid-devel
 
 Build gummiboot:
 
