@@ -846,7 +846,8 @@ class TaskBuild(TaskDef):
         env_copy["CXXFLAGS"] = build_flags["cflags"]
         env_copy["LDFLAGS"] = build_flags["ldflags"]
 
-        run_sync(child_args, env=env_copy)
+        if not run_sync(child_args, fatal_on_error=False, env=env_copy):
+            self.logger.fatal("Build of %s failed" % basename)
 
         final_build_result_dir = os.path.join(build_workdir, "post-results")
         if os.path.isdir(final_build_result_dir):
