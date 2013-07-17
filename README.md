@@ -136,8 +136,6 @@ git submodule update
 make
 sudo make install
 sudo mkdir /ostree
-gcc -static -o ostree-init src/switchroot/ostree-switch-root.c
-sudo cp ostree-init /ostree
 ```
 
 ### Download and install gummiboot
