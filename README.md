@@ -140,10 +140,13 @@ gcc -static -o ostree-init src/switchroot/ostree-switch-root.c
 sudo cp ostree-init /ostree
 ```
 
-### Download and install gummyboot
+### Download and install gummiboot
 
-gummyboot requires GNU Efi, if it's not packaged by your distro you have to build it yourself.
-Here's how to build it:
+If you distro has gummiboot packaged, install the package.
+
+Otherwise, if you distro doesn't package gummiboot, here's how to build it.
+
+gummiboot requires GNU Efi, unless you can install a package here's how to build it from sources:
 
 ```sh
 mkdir -p ~/git
