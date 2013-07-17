@@ -1087,15 +1087,8 @@ class TaskBuild(TaskDef):
         env["DL_DIR"] = downloads
         env["SSTATE_DIR"] = sstate_dir
 
-        # Fetch all the sources
-        cmd = [os.path.join(self.libexecdir, "mauibuild-build-yocto"),
-               checkoutdir, builddir, architecture, self.repo,
-               "--fetch-only"]
-        run_sync(cmd, env=env)
-
         # Run build
-        cmd = ["linux-user-chroot", "--unshare-pid", "/",
-               os.path.join(self.libexecdir, "mauibuild-build-yocto"),
+        cmd = [os.path.join(self.libexecdir, "mauibuild-build-yocto"),
                checkoutdir, builddir, architecture, self.repo]
         run_sync(cmd, env=env)
 
