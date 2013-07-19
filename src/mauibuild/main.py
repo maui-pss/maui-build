@@ -51,16 +51,21 @@ def main(args):
         loop = GObject.MainLoop()
         builtin._loop = loop
 
-        def run_builtin():
-            try:
-                builtin.execute(args[1:])
-            except KeyboardInterrupt:
-                loop.quit()
-            except Exception:
-                import traceback
-                traceback.print_exc()
-                quit(loop)
-        GLib.idle_add(run_builtin)
+        status = 0
 
-        loop.run()
-        return 0
+        try:
+            def run_builtin():
+                builtin.execute(args[1:])
+            GLib.idle_add(run_builtin)
+
+            loop.run()
+        except KeyboardInterrupt:
+            status = 1
+            loop.quit()
+        except Exception:
+            import traceback
+            status = 127
+            traceback.print_exc()
+            loop.quit()
+
+        return status
