@@ -1091,6 +1091,8 @@ class TaskBuild(TaskDef):
         # Run build
         cmd = [os.path.join(self.libexecdir, "mauibuild-build-yocto"),
                checkoutdir, builddir, architecture, self.repo]
+        if self.verbose:
+            cmd.append("-v")
         run_sync(cmd, env=env)
 
         for component_type in ("runtime", "devel"):

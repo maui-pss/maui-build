@@ -43,6 +43,8 @@ class BuiltinMake(builtins.Builtin):
                                  help="list all available tasks and exit")
         self.parser.add_argument("-n", "--task-name", metavar="NAME",
                                  help="task name")
+        self.parser.add_argument("-v", "--verbose", action="store_true",
+                                 help="increase output verbosity")
         self.parser.add_argument("--task-help", action="store_true",
                                  help="show help message for the specified task and exit")
         self.parser.add_argument("-u", "--only", action="store_true",
@@ -87,7 +89,7 @@ class BuiltinMake(builtins.Builtin):
         self._task_master.connect("task_executing", self._on_task_executing)
         self._task_master.connect("task_complete", self._on_task_completed)
 
-        self._task_master.push_task(args.task_name, args.parameters)
+        self._task_master.push_task(args.task_name, args.parameters, verbose=args.verbose)
 
     def _on_task_executing(self, taskmaster, task):
         self.logger.info("Task %s executing in %s" % (task.name, task._workdir))

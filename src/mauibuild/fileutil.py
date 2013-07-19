@@ -17,7 +17,7 @@
 # Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 # Boston, MA 02111-1307, USA.
 
-import os, json, shutil
+import sys, os, json, shutil
 
 from .logger import Logger
 
@@ -64,3 +64,20 @@ def file_linkcopy(src, dest, overwrite=False):
     else:
         os.link(src, dest)
     return True
+
+class TeeStream(object):
+    def __init__(self, name, mode):
+        self.stream = open(name, mode)
+        self.stdout = sys.stdout
+        sys.stdout = self
+
+    def __del__(self):
+        sys.stdout = self.stdout
+        self.stream.close()
+
+    def write(self, data):
+        self.stream.write(data)
+        self.stdout.write(data)
+
+    def fileno(self):
+        return self.stdout.fileno()

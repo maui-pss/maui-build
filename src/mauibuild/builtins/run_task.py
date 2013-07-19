@@ -39,6 +39,8 @@ class BuiltinRunTask(builtins.Builtin):
                                  help="list all available tasks and exit")
         self.parser.add_argument("-n", "--task-name", metavar="NAME",
                                  help="task name")
+        self.parser.add_argument("-v", "--verbose", action="store_true",
+                                 help="increase output verbosity")
         self.parser.add_argument("--task-help", action="store_true",
                                  help="show help message for the specified task and exit")
         self.parser.add_argument("-", dest="__dummy", action="store_true",
@@ -62,6 +64,7 @@ class BuiltinRunTask(builtins.Builtin):
 
         task_def = taskset.get_task(args.task_name)
         instance = task_def(self, None, args.task_name, args.parameters)
+        instance.verbose = args.verbose
         if args.task_help:
             instance.subparser.print_help()
             self._loop.quit()

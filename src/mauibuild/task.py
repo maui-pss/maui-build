@@ -26,6 +26,7 @@ from . import buildutil
 from . import jsondb
 from . import jsonutil
 from . import timeutil
+from . import fileutil
 from . import taskset
 from .subprocess_helpers import run_async
 from .logger import Logger
@@ -58,8 +59,9 @@ class TaskMaster(GObject.GObject):
         self._caught_error = False
         self._task_versions = {}
 
-    def push_task(self, name, args):
+    def push_task(self, name, args, verbose=False):
         taskdef = taskset.get_task(name)
+        taskdef.verbose = verbose
         self._push_task_def(taskdef, args)
 
     def is_task_queued(self, name):
@@ -173,6 +175,8 @@ class TaskDef(GObject.GObject):
 
     retain_failed = 1
     retain_success = 5
+
+    verbose = False
 
     _VERSION_RE = re.compile(r'^(\d+\d\d\d\d)\.(\d+)$')
 
@@ -300,12 +304,17 @@ class TaskDef(GObject.GObject):
             os.makedirs(self._workdir)
 
         base_args = [sys.argv[0], "run-task", "--task-name", self.name]
+        if self.verbose:
+            base_args.append("-v")
         if len(self.argv) > 0:
             base_args.extend(["--",] + self.argv)
         env_copy = os.environ.copy()
         env_copy["_OSTBUILD_WORKDIR"] = self.workdir
         out_path = os.path.join(self._workdir, "output.txt")
-        stdout = open(out_path, "w")
+        if self.verbose:
+            stdout = fileutil.TeeStream(out_path, "w")
+        else:
+            stdout = open(out_path, "w")
         proc = run_async(base_args, cwd=self._workdir, stdout=stdout,
                          stderr=stdout, env=env_copy)
         self.logger.debug("waiting for pid %d" % proc.pid)

@@ -29,8 +29,35 @@ die () {
 }
 
 usage () {
-    echo "$0: SRCDIR BUILDDIR ARCHITECTURE REPO"
+    echo "$0: SRCDIR BUILDDIR ARCHITECTURE REPO [-v]"
 }
+
+verbose=0
+
+ARGS=$(getopt -n "$0" -o hv --long "help,verbose" -- "$@")
+if [ $? -ne 0 ]; then
+    usage
+    exit 1
+fi
+
+eval set -- "$ARGS"
+
+while true; do
+    case "$1" in
+    -h|--help)
+        usage
+        shift
+    ;;
+    -v|--verbose)
+        verbose=1
+        shift
+    ;;
+    --)
+        shift
+        break
+    ;;
+    esac
+done
 
 srcdir=$1
 test -n "${srcdir}" || (usage; exit 1)
@@ -40,6 +67,16 @@ architecture=$3
 test -n "${architecture}" || (usage; exit 1)
 repo_path=$4
 test -n "${repo_path}" || (usage; exit 1)
+
+echo "Building Yocto base system with the following options:"
+echo " - srcdir = $srcdir"
+echo " - builddir = $builddir"
+echo " - architecture = $architecture"
+echo " - repo_path = $repo_path"
+echo " - verbose = $verbose"
+
+bitbake_args=""
+[ $verbose -eq 1 ] && bitbake_args="-v"
 
 . "${srcdir}/oe-init-build-env" "${builddir}"
 
@@ -92,7 +129,7 @@ IMAGEDIR=${builddir}/tmp-eglibc/deploy/images
 mkdir -p "${IMAGEDIR}"
 ln -sf ${repo_path} ${IMAGEDIR}/repo
 
-bitbake maui-contents-{runtime,devel}
+bitbake $bitbake_args maui-contents-{runtime,devel}
 
 for basetype in runtime devel; do
     ln -sf ${builddir}/tmp-eglibc/deploy/images/maui-contents-${basetype}-${MACHINE}.tar.gz maui-contents-${basetype}-${architecture}.tar.gz
