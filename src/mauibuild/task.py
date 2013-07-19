@@ -59,7 +59,7 @@ class TaskMaster(GObject.GObject):
         self._caught_error = False
         self._task_versions = {}
 
-    def push_task(self, name, args, verbose=False):
+    def push_task(self, name, args, verbose=0):
         taskdef = taskset.get_task(name)
         taskdef.verbose = verbose
         self._push_task_def(taskdef, args)
@@ -176,7 +176,7 @@ class TaskDef(GObject.GObject):
     retain_failed = 1
     retain_success = 5
 
-    verbose = False
+    verbose = 0
 
     _VERSION_RE = re.compile(r'^(\d+\d\d\d\d)\.(\d+)$')
 
