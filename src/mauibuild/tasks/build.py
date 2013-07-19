@@ -1026,7 +1026,8 @@ class TaskBuild(TaskDef):
         fileutil.ensure_dir(tmp_dir)
         initramfs_tmp = os.path.join(tmp_dir, "initramfs-ostree.img")
 
-        run_sync(["linux-user-chroot", "--mount-readonly", "/",
+        run_sync([self._linux_user_chroot_path,
+                "--mount-readonly", "/",
                 "--mount-proc", "/proc",
                 "--mount-bind", "/dev", "/dev",
                 "--mount-bind", var_dir, "/var",

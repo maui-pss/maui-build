@@ -211,7 +211,8 @@ class TaskBuildLive(TaskDef):
         dracut_modules = "dmsquash-live pollcdrom"
         dracut_drivers = "sr_mod sd_mod ide-cd cdrom ehci_hcd uhci_hcd ohci_hcd usb_storage usbhid"
 
-        run_sync(["linux-user-chroot", "--mount-readonly", "/",
+        run_sync([self._linux_user_chroot_path,
+                  "--mount-readonly", "/",
                   "--mount-proc", "/proc",
                   "--mount-bind", "/dev", "/dev",
                   "--mount-bind", var_dir, "/var",

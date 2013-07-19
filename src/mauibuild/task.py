@@ -193,6 +193,10 @@ class TaskDef(GObject.GObject):
         self.subparser = builtin.subparsers.add_parser(self.name, add_help=False)
         self.argv = argv
 
+        self._linux_user_chroot_path = buildutil.find_user_chroot_path()
+        if not self._linux_user_chroot_path:
+            self.logger.fatal("You must have linux-user-chroot installed!")
+
     def get_depends(self):
         return []
 
