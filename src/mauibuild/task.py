@@ -309,7 +309,7 @@ class TaskDef(GObject.GObject):
 
         base_args = [sys.argv[0], "run-task", "--task-name", self.name]
         if self.verbose:
-            base_args.append("-v")
+            base_args.append("-" + ("v" * self.verbose))
         if len(self.argv) > 0:
             base_args.extend(["--",] + self.argv)
         env_copy = os.environ.copy()
