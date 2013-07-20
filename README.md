@@ -211,6 +211,7 @@ Now resolve the components and build:
 mauibuild make -n resolve
 ```
 
-Tasks are chained, so after a resolve a build will automatically be executed.
+Tasks are chained, so after a resolve a build will automatically be executed
+if at least one component changed since the previous resolve.
 
 Every time the manifest file changes you have to type the above command.
