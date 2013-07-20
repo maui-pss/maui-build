@@ -308,7 +308,7 @@ class TaskDef(GObject.GObject):
             os.makedirs(self._workdir)
 
         base_args = [sys.argv[0], "run-task", "--task-name", self.name]
-        if self.verbose:
+        if self.verbose > 0:
             base_args.append("-" + ("v" * self.verbose))
         if len(self.argv) > 0:
             base_args.extend(["--",] + self.argv)
