@@ -61,6 +61,7 @@ mauibuild_PYTHON =					\
 	src/mauibuild/warningfilter.py			\
 	src/mauibuild/snapshot.py			\
 	src/mauibuild/subprocess_helpers.py		\
+	src/mauibuild/termcolor.py			\
 	src/mauibuild/timeutil.py			\
 	src/mauibuild/vcs.py				\
 	$(NULL)

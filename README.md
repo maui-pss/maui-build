@@ -56,7 +56,16 @@ You also need:
  * Linux 2.6.28 or newer
  * *linux-user-chroot* and *ostree*, follow the next sections for more information
  * *gummiboot* to make `x86_64` live images, follow the next sections for more information
- * The *termcolor* Python module if you want *mauibuild* to print colored output
+
+### Disable colored output
+
+Output is colored by default.
+
+To turn colors type this command before running *mauibuild*:
+
+```sh
+export ANSI_COLORS_DISABLED=1
+```
 
 ### Setup guestfs on Ubuntu
 
