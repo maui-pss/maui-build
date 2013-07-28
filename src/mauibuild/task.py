@@ -39,6 +39,8 @@ class TaskMaster(GObject.GObject):
                           (GObject.GObject, bool, str,))
     }
 
+    verbose = 0
+
     def __init__(self, builtin, path, on_empty=None, process_after=True, skip=[]):
         GObject.GObject.__init__(self)
 
@@ -59,9 +61,8 @@ class TaskMaster(GObject.GObject):
         self._caught_error = False
         self._task_versions = {}
 
-    def push_task(self, name, args, verbose=0):
+    def push_task(self, name, args):
         taskdef = taskset.get_task(name)
-        taskdef.verbose = verbose
         self._push_task_def(taskdef, args)
 
     def is_task_queued(self, name):
@@ -187,6 +188,8 @@ class TaskDef(GObject.GObject):
 
         self.builtin = builtin
         self.taskmaster = taskmaster
+        if taskmaster:
+            self.verbose = taskmaster.verbose
         self.name = name
         if builtin.subparsers is None:
             builtin.subparsers = builtin.parser.add_subparsers()

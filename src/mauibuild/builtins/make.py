@@ -86,10 +86,11 @@ class BuiltinMake(builtins.Builtin):
                                        process_after=(not args.only),
                                        on_empty=self._on_tasks_complete,
                                        skip=args.skip)
+        self._task_master.verbose = args.verbose
         self._task_master.connect("task_executing", self._on_task_executing)
         self._task_master.connect("task_complete", self._on_task_completed)
 
-        self._task_master.push_task(args.task_name, args.parameters, verbose=args.verbose)
+        self._task_master.push_task(args.task_name, args.parameters)
 
     def _on_task_executing(self, taskmaster, task):
         self.logger.info("Task %s executing in %s" % (task.name, task._workdir))
