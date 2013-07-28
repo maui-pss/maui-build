@@ -984,10 +984,22 @@ class TaskBuild(TaskDef):
         boot_dir = os.path.join(compose_rootdir, "boot")
         kernel_path = None
         for filename in os.listdir(boot_dir):
-            if not filename.startswith("vmlinuz-"):
+            full_path = os.path.join(boot_dir, filename)
+            # Remove symbolic links named bzImage
+            mode = os.lstat(full_path).st_mode
+            if filename == "bzImage" and stat.S_ISLNK(mode):
+                os.unlink(full_path)
                 continue
-            kernel_path = os.path.join(boot_dir, filename)
-            break
+            # Canonicalize kernel name
+            if filename.startswith("bzImage-"):
+                newname = filename.replace("bzImage-", "vmlinuz-")
+                target_child = os.path.join(boot_dir, newname)
+                os.rename(full_path, target_child)
+                kernel_path = target_child
+                break
+            elif filename.startswith("vmlinuz-"):
+                kernel_path = full_path
+                break
         if kernel_path is None:
             self.logger.fatal("Couldn't find a kernel in compose root")
 
