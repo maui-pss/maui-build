@@ -139,6 +139,7 @@ mkdir -p ~/git
 cd ~/git
 git clone git://git.gnome.org/ostree
 cd ostree
+git checkout ecb3f0de035c09d8b280ac116eeede483638fd5d # Until we support Deployment Model 2 (https://wiki.gnome.org/OSTree/DeploymentModel2)
 git submodule init
 git submodule update
 ./autogen.sh --prefix=/usr --with-libarchive --enable-documentation --enable-kernel-updates --enable-grub2-hook
