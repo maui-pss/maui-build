@@ -221,7 +221,44 @@ Now resolve the components and build:
 mauibuild make -n resolve
 ```
 
-Tasks are chained, so after a resolve a build will automatically be executed
-if at least one component changed since the previous resolve.
+The *resolve* task creates a source snapshot which is basically a copy of the input
+manifest file plus git hashes used for the build.
 
-Every time the manifest file changes you have to type the above command.
+If there are changes since the last *resolve*, the *build* task will automatically
+be executed.
+
+This means that the first time you run *resolve* it will fetch all the components and
+run *build*. If you interrupt the build and run *resolve* again it won't see any changes so
+it will think there's nothing new to build and exit.
+
+In this case you either run the *build* task or run *resolve* with any of the fetch arguments.
+
+To run the *build* task:
+
+```sh
+mauibuild make -n build
+```
+
+To run *resolve* and fetch everything:
+
+```sh
+mauibuild make -n resolve -- --fetch-all
+```
+
+See the man page for more information.
+
+The above command will also build disk images, however this might not be needed by most users.
+If you are only interested in building live images you have to exclude the *builddisks* and *zdisks*
+tasks.
+
+Here's an example of how you run the *resolve* task without building disk images:
+
+```sh
+mauibuild make -n resolve -x builddisks -x zdisks
+```
+
+And here's an example for *build*:
+
+```sh
+mauibuild make -n build -x builddisks -x zdisks
+```
