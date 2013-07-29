@@ -11,9 +11,9 @@ The Maui Wiki has a much more detailed documentation about the [build procedure]
 ## Prerequisites
 
 Maui base system is based on [Poky 9.x (dylan)](https://www.yoctoproject.org/download/yocto-project-14-poky-90),
-install the **Essential** packages as explained in the [Required Packages for the Host Development System](http://www.yoctoproject.org/docs/1.3/poky-ref-manual/poky-ref-manual.html#required-packages-for-the-host-development-system) section of the reference manual before preceding.
+install the **Essential** packages as explained in the [Required Packages for the Host Development System](http://www.yoctoproject.org/docs/1.4/poky-ref-manual/poky-ref-manual.html#required-packages-for-the-host-development-system) section of the reference manual before preceding.
 
-You can also read the [quick start](https://www.yoctoproject.org/docs/current/yocto-project-qs/yocto-project-qs.html) guide to learn more about Yocto.
+You can also read the [quick start](https://www.yoctoproject.org/docs/1.4/yocto-project-qs/yocto-project-qs.html) guide to learn more about Yocto.
 
 Also install the following packages:
 
