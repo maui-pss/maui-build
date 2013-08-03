@@ -38,7 +38,7 @@ class MakeBuildSystem(BuildSystem):
         if os.path.isdir(self.builddir):
             shutil.rmtree(self.builddir)
         shutil.copytree(".", self.builddir, symlinks=True,
-                        ignore=shutil.ignore_patterns("_build"))
+                        ignore=shutil.ignore_patterns(self.builddir))
 
         args = list(self.makeargs)
         args.extend(self.config_opts)
