@@ -185,7 +185,7 @@ class TaskBuild(TaskDef):
 
         previous_build_epoch = self._component_build_cache.get("build-epoch")
         current_build_epoch = self._snapshot.data.get("build-epoch")
-        if ((previous_build_epoch is None) or
+        if ((previous_build_epoch is None and current_build_epoch is not None) or
             ((current_build_epoch is not None) and
              previous_build_epoch["version"] < current_build_epoch["version"])):
             current_epoch_ver = current_build_epoch["version"]
