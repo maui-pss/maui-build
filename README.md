@@ -61,7 +61,7 @@ You also need:
 
 Output is colored by default.
 
-To turn colors type this command before running *mauibuild*:
+To turn colors off type this command before running *mauibuild*:
 
 ```sh
 export ANSI_COLORS_DISABLED=1
