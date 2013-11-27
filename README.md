@@ -50,13 +50,25 @@ To build the man pages on Fedora:
  * docbook-utils
  * docbook-style-xsl
 
+To add UEFI and secure boot support to the x86_64 live media:
+
+ * gummiboot
+ * Linux Foundation UEFI secure boot system
+
+For more information on UEFI and secure boot read the following pages:
+
+ * http://www.rodsbooks.com/efi-bootloaders/secureboot.html#prebootloader
+ * http://git.kernel.org/cgit/linux/kernel/git/jejb/efitools.git
+ * http://blog.hansenpartnership.com/uefi-secure-boot/
+ * http://blog.hansenpartnership.com/linux-foundation-secure-boot-system-released
+ * http://www.linuxfoundation.org/news-media/blogs/browse/2012/10/linux-foundation-uefi-secure-boot-system-open-source
+
 A 64-bit host operating system is required.
 
 You also need:
 
  * Linux 2.6.28 or newer
  * *linux-user-chroot* and *ostree*, follow the next sections for more information
- * *gummiboot* to make `x86_64` live images, follow the next sections for more information
 
 ### Disable colored output
 

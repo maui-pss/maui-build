@@ -245,65 +245,12 @@ class TaskBuildLive(TaskDef):
         return os.path.exists(gummiboot_path)
 
     def _create_efi(self):
-        path = os.path.join(self.iso_dir, "EFI", "boot")
-        fileutil.ensure_dir(path)
-        gummiboot_src_path = os.path.join("/usr", "lib", "gummiboot", "gummibootx64.efi")
-        gummiboot_dst_path = os.path.join(path, "bootx64.efi")
-        shutil.copy2(gummiboot_src_path, gummiboot_dst_path)
+        mkefiboot_program = os.path.join(self.libexecdir, "mauibuild-mkefiboot")
+        run_sync(["pkexec", mkefiboot_program, "efi", self.work_dir, self.osname, self.data["label"]])
 
     def _create_efiboot(self):
         mkefiboot_program = os.path.join(self.libexecdir, "mauibuild-mkefiboot")
-        run_sync(["pkexec", mkefiboot_program, "create", self.work_dir])
-
-        efiboot_path = os.path.join(self.iso_dir, "EFI", "mauibuild", "efiboot.img")
-
-        path = os.path.join(mountpoint, "EFI", "mauibuild")
-        fileutil.ensure_dir(path)
-        kernel_path = os.path.join(self.iso_dir, "isolinux", "vmlinuz")
-        initramfs_path = os.path.join(self.iso_dir, "isolinux", "initramfs.img")
-        shutil.copy2(kernel_path, path)
-        shutil.copy2(initramfs_path, path)
-
-        path = os.path.join(mountpoint, "EFI", "boot")
-        fileutil.ensure_dir(path)
-        gummiboot_src_path = os.path.join("/usr", "lib", "gummiboot", "gummibootx64.efi")
-        gummiboot_dst_path = os.path.join(path, "bootx64.efi")
-        shutil.copy2(gummiboot_src_path, gummiboot_dst_path)
-
-        loader_conf = os.path.join(mountpoint, "loader", "loader.conf")
-        fileutil.ensure_parent_dir(loader_conf)
-        f = open(path, "w")
-        f.write("timeout 10\n")
-        f.write("default %s-x86_64\n" % self.osname)
-        f.close()
-
-        for i in range(1, 3):
-            shell_conf = os.path.join(mountpoint, "loader", "entries", "uefi-shell-v%d-x86_64.conf" % i)
-            fileutil.ensure_parent_dir(shell_conf)
-            f = open(shell_conf, "w")
-            f.write("title UEFI Shell x86_64 v%d\n" % i)
-            f.write("efi /EFI/shellx64_v%d.efi\n" % i)
-            f.close()
-
-        conf_file = os.path.join(mountpoint, "loader", "entries", "%s-x86_64.conf" % self.osname)
-        f = open(conf_file, "w")
-        f.write("title %s x86_64\n" % self.osname)
-        f.write("linux /isolinux/vmlinuz\n")
-        f.write("initrd /isolinux/initramfs.img\n")
-        f.write("options root=live:CDLABEL=%s rootfstype=auto ro rd.live.image quiet rd.luks=0 rd.md=0 rd.dm=0 ostree=%s/current" % (self.data["label"], self.osname))
-        f.close()
-
-        # EFI Shell 2.0 for UEFI 2.3+ ( http://sourceforge.net/apps/mediawiki/tianocore/index.php?title=UEFI_Shell )
-        uri = "https://edk2.svn.sourceforge.net/svnroot/edk2/trunk/edk2/ShellBinPkg/UefiShell/X64/Shell.efi"
-        dst_path = os.path.join(mountpoint, "EFI", "shellx64_v2.efi")
-        run_sync(["curl", "-o", dst_path, uri])
-
-        # EFI Shell 1.0 for non UEFI 2.3+ ( http://sourceforge.net/apps/mediawiki/tianocore/index.php?title=Efi-shell )
-        uri = "https://edk2.svn.sourceforge.net/svnroot/edk2/trunk/edk2/EdkShellBinPkg/FullShell/X64/Shell_Full.efi"
-        dst_path = os.path.join(mountpoint, "EFI", "shellx64_v1.efi")
-        run_sync(["curl", "-o", dst_path, uri])
-
-        run_sync(["pkexec", mkefiboot_program, "cleanup", self.work_dir])
+        run_sync(["pkexec", mkefiboot_program, "efiboot", self.work_dir, self.osname, self.data["label"]])
 
     def _make_iso(self, diskpath):
         efiboot_path = os.path.join(self.iso_isolinux_dir, "efiboot.img")

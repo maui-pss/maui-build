@@ -20,55 +20,115 @@
 
 set -e
 
-action=$1
-shift
-work_dir=$1
-shift
-
-function usage() {
-    echo 1>&2 "usage: $0: ACTION WORK_DIR"
+function die() {
+    echo 1>&2 $*
     exit 1
 }
 
-test -n "$work_dir" || usage
-
-mountpoint=$work_dir/efiboot-mnt
-
-function create() {
-    iso_dir=$work_dir/iso
-    efiboot_dir=$iso_dir/EFI/mauibuild
-    efiboot_path=$efiboot_dir/efiboot.img
-
-    # Create VFAT image
-    mkdir -p $efiboot_dir $mountpoint
-    truncate -s 71M $efiboot_path
-    mkfs.vfat -n MAUIBUILD_EFI $efiboot_path
-
-    # Change owner to unprivileged user
-    uid=
-    gid=
-    if [ ! -z "$PKEXEC_UID" ]; then
-        uid=$PKEXEC_UID
-        gid=$PKEXEC_UID
-    elif [ ! -z "$SUDO_USER" ]; then
-        uid=$SUDO_UID
-        gid=$SUDO_GID
-    else
-        abort "This script must be run with pkexec or sudo"
-    fi
-    chown -R $uid:$gid $efiboot_dir $mountpoint
-
-    # Mount image
-    mount $efiboot_path $mountpoint
+function usage() {
+    die "usage: $0: ACTION WORK_DIR OSNAME LABEL"
 }
 
-function cleanup() {
-    umount $mountpoint
-    rm -rf $mountpoint
-}
+action=$1
+shift
+test -n "${action}" || usage
+work_dir=$1
+shift
+test -n "${work_dir}" || usage
+osname=$1
+shift
+test -n "${osname}" || usage
+label=$1
+shift
+test -n "${label}" || usage
+
+iso_dir=$work_dir/iso
 
 case $action in
-    create) create ;;
-    cleanup) cleanup ;;
-    *) abort "Unknown \"$action\" action" ;;
+efi)
+    efiboot_dir=$iso_dir/EFI/boot
+    mkdir -p $efiboot_dir
+    mountpoint=$iso_dir
+    efidir=$efiboot_dir
+;;
+efiboot)
+    efiboot_dir=$iso_dir/EFI/mauibuild
+    mountpoint=$work_dir/efiboot-mnt
+    efiboot_path=$efiboot_dir/efiboot.img
+    mkdir -p $efiboot_dir $mountpoint
+
+    # Create VFAT image
+    truncate -s 31M $efiboot_path
+    mkfs.vfat -n MAUIBUILD_EFI $efiboot_path
+
+    # Mount image
+    mount $efiboot_path $mountpoint || die "Unable to mount $efiboot_path"
+    mkdir -p $mountpoint/EFI/{boot,mauibuild}
+
+    # Change path
+    efidir=$mountpoint/EFI/boot
+
+    # Copy kernel and initramfs
+    kernel_path=$iso_dir/isolinux/vmlinuz
+    initramfs_path=$iso_dir/isolinux/initramfs.img
+    cp -f $kernel_path $mountpoint/EFI/mauibuild/vmlinuz.efi
+    cp -f $initramfs_path $mountpoint/EFI/mauibuild
+;;
+*)
+    echo 1>&2 "Unrecognized action, aborting..."
+    exit 1
+;;
 esac
+
+# Download prebootloader and verify the checksum
+filename=$efidir/bootx64.efi
+url=http://blog.hansenpartnership.com/wp-uploads/2013/PreLoader.efi
+curl -o $filename $url || die
+checksum=$(md5sum $filename | awk '{print $1}')
+[ ${checksum} != "4f7a4f566781869d252a09dc84923a82" ] && die "Checksum for $url is invalid"
+
+filename=$efidir/HashTool.efi
+url=http://blog.hansenpartnership.com/wp-uploads/2013/HashTool.efi
+curl -o $filename $url || die
+checksum=$(md5sum $filename | awk '{print $1}')
+[ ${checksum} != "45639d23aa5f2a394b03a65fc732acf2" ] && die "Checksum for $url is invalid"
+
+# Copy gummiboot
+cp -f /usr/lib/gummiboot/gummibootx64.efi $efidir/loader.efi
+
+# Create loader.conf
+mkdir -p $mountpoint/loader/entries
+cat > $mountpoint/loader/loader.conf <<EOF
+timeout 10
+default ${osname}-x86_64
+EOF
+for i in $(seq 1 2); do
+    cat > $mountpoint/loader/entries/uefi-shell-v${i}-x86_64.conf <<EOF
+title UEFI Shell x86_64 v${i}
+efi /EFI/shellx64_v${i}.efi
+EOF
+done
+cat > $mountpoint/loader/entries/${osname}-x86_64.conf <<EOF
+title ${osname} x86_64
+linux /isolinux/vmlinuz.efi
+initrd /isolinux/initramfs.img
+options root=live:CDLABEL=${label} rootfstype=auto ro rd.live.image quiet rd.luks=0 rd.md=0 rd.dm=0 ostree=${osname}/current
+EOF
+
+# EFI Shell 2.0 for UEFI 2.3+ ( http://sourceforge.net/apps/mediawiki/tianocore/index.php?title=UEFI_Shell )
+uri="https://edk2.svn.sourceforge.net/svnroot/edk2/trunk/edk2/ShellBinPkg/UefiShell/X64/Shell.efi"
+dst_path=$mountpoint/EFI/shellx64_v2.efi
+curl -o $dst_path $uri
+
+# EFI Shell 1.0 for non UEFI 2.3+ ( http://sourceforge.net/apps/mediawiki/tianocore/index.php?title=Efi-shell )
+uri="https://edk2.svn.sourceforge.net/svnroot/edk2/trunk/edk2/EdkShellBinPkg/FullShell/X64/Shell_Full.efi"
+dst_path=$mountpoint/EFI/shellx64_v1.efi
+curl -o $dst_path $uri
+
+if [ "$action" = "efiboot" ]; then
+    umount $mountpoint
+    rm -rf $mountpoint
+fi
+
+# Change owner to unprivileged user
+chown -R $PKEXEC_UID:$PKEXEC_UID $work_dir
