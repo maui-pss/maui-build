@@ -22,7 +22,7 @@ set -e
 
 action=$1
 shift
-work_dir=$2
+work_dir=$1
 shift
 
 function usage() {
