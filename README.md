@@ -23,6 +23,7 @@ Also install the following packages:
  * python-gi
  * fontconfig
  * elfutils
+ * dosfstools
 
 If you build disk images you will also need:
 
