@@ -241,13 +241,13 @@ class TaskBuildLive(TaskDef):
                 f.close()
 
     def _is_gummiboot_available(self):
-        gummiboot_path = os.path.join("usr", "lib", "gummiboot", "gummibootx64.efi")
+        gummiboot_path = os.path.join("/usr", "lib", "gummiboot", "gummibootx64.efi")
         return os.path.exists(gummiboot_path)
 
     def _create_efi(self):
         path = os.path.join(self.iso_dir, "EFI", "boot")
         fileutil.ensure_dir(path)
-        gummiboot_src_path = os.path.join("usr", "lib", "gummiboot", "gummibootx64.efi")
+        gummiboot_src_path = os.path.join("/usr", "lib", "gummiboot", "gummibootx64.efi")
         gummiboot_dst_path = os.path.join(path, "bootx64.efi")
         shutil.copy2(gummiboot_src_path, gummiboot_dst_path)
 
@@ -266,7 +266,7 @@ class TaskBuildLive(TaskDef):
 
         path = os.path.join(mountpoint, "EFI", "boot")
         fileutil.ensure_dir(path)
-        gummiboot_src_path = os.path.join("usr", "lib", "gummiboot", "gummibootx64.efi")
+        gummiboot_src_path = os.path.join("/usr", "lib", "gummiboot", "gummibootx64.efi")
         gummiboot_dst_path = os.path.join(path, "bootx64.efi")
         shutil.copy2(gummiboot_src_path, gummiboot_dst_path)
 
