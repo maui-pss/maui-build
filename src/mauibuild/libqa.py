@@ -182,6 +182,7 @@ def enable_autologin(current_dir, current_etc_dir, username):
     config_file.close()
 
 def _find_current_kernel(mntdir, osname):
+    import stat
     logger = Logger()
     boot_dir = os.path.join(mntdir, "ostree", "deploy", osname, "current", "boot")
     kernel_path = None
