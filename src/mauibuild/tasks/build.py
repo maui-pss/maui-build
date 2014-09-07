@@ -93,16 +93,16 @@ class TaskBuild(TaskDef):
             vcs.get_vcs_checkout(self.mirrordir, kickstartermeta, checkoutdir, overwrite=False)
 
         # Create kickstart files
-        cmd = [sdkmeta["chroot"], "cd", checkoutdir, ";",
+        cmd = [sdkmeta["chroot"], "cd", "/parentroot/" + checkoutdir, ";",
                "maui-kickstarter", "-e", ".",
                "-c", targetmeta["config"],
-               "-o", build_workdir]
+               "-o", "/parentroot/" + build_workdir]
         run_sync(cmd)
 
         # Run build
-        cmd = [sdkmeta["chroot"], "cd", build_workdir, ";",
+        cmd = [sdkmeta["chroot"], "cd", "/parentroot/" + build_workdir, ";",
                "sudo", "mic", "create", "auto", targetmeta["name"] + ".ks",
-               "-k", cachedir]
+               "-k", "/parentroot/" + cachedir]
         run_sync(cmd)
 
         if keytype == "local":
