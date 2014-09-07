@@ -54,16 +54,22 @@ PORT = 6667
 TRACKED_BUILD = "master"
 WORKDIR = "/srv/maui/mauibuild"
 WORKURL = "http://build.maui-project.org/builds"
+FLOOD_CHANNELS = ["#maui-build"]
+STATUS_CHANNELS = ["#maui-project"]
 
 # Configuration
 config = ConfigParser.ConfigParser()
 config_filename = os.path.expanduser("~/.config/mauibuild.cfg")
 if os.path.exists(config_filename):
     config.read([config_filename])
-    options = ("host", "port", "tracked_build", "workdir", "workurl")
+    options = ("host", "port", "tracked_build", "workdir", "workurl",
+               "flood_channels", "status_channels")
     for option in options:
         if config.has_option("ircbot", option):
-            locals()[option.upper()] = config.get("ircbot", option)
+            value = config.get("ircbot", option)
+            if option in ("flood_channels", "status_channels"):
+                value = value.split(" ")
+            locals()[option.upper()] = value
 
 # Actual bot
 class BuildMauiProjectOrg(irc.IRCClient):
@@ -72,8 +78,8 @@ class BuildMauiProjectOrg(irc.IRCClient):
     realname = nickname
 
     def __init__(self):
-        self._flood_channels = ["#prova"]
-        self._status_channels = ["#prova"]
+        self._flood_channels = FLOOD_CHANNELS
+        self._status_channels = STATUS_CHANNELS
         self._joined_channels = []
         self._last_task_versions = {}
         self._flood_tasks = ["build"]
