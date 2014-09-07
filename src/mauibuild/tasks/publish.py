@@ -69,15 +69,21 @@ class TaskBuild(TaskDef):
                             self.logger.fatal("Destination directory \"%s\" already exists" % destdir)
                     else:
                         os.makedirs(destdir)
-                    shutil.move(srcfilename, destdir)
 
-                    # Create checksums for some files
-                    valid_exts = (".tar", ".gz", ".bz2", ".xz", ".iso", ".raw", ".img")
-                    name, ext = os.path.splitext(os.path.basename(srcfilename))
-                    md5sum = run_sync_get_output(["md5sum", filename], cwd=destdir)
-                    sha256sum = run_sync_get_output(["sha256sum", filename], cwd=destdir)
-                    self._write_file(os.path.join(destdir, filename) + ".md5", md5sum)
-                    self._write_file(os.path.join(destdir, filename) + ".sha256", sha256sum)
+                    try:
+                        # Move to the publish directory
+                        shutil.move(srcfilename, destdir)
+
+                        # Create checksums for some files
+                        valid_exts = (".tar", ".gz", ".bz2", ".xz", ".iso", ".raw", ".img")
+                        name, ext = os.path.splitext(os.path.basename(srcfilename))
+                        if ext in valid_exts:
+                            md5sum = run_sync_get_output(["md5sum", filename], cwd=destdir)
+                            sha256sum = run_sync_get_output(["sha256sum", filename], cwd=destdir)
+                            self._write_file(os.path.join(destdir, filename) + ".md5", md5sum)
+                            self._write_file(os.path.join(destdir, filename) + ".sha256", sha256sum)
+                    except Exception, e:
+                        self.logger.fatal(unicode(e))
 
             # Set this task as published
             taskmeta["published"] = True
