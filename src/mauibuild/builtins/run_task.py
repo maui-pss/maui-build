@@ -22,6 +22,7 @@ from .. import builtins
 from .. import taskset
 from ..tasks import build
 from ..tasks import resolve
+from ..tasks import publish
 
 class BuiltinRunTask(builtins.Builtin):
     name = "run-task"
@@ -65,8 +66,13 @@ class BuiltinRunTask(builtins.Builtin):
             instance.subparser.print_help()
             self._loop.quit()
             return
-        instance.prepare()
-        instance.execute()
+        try:
+            instance.prepare()
+            instance.execute()
+        except Exception:
+            import traceback
+            traceback.print_exc()
+            sys.exit(127)
 
         self._loop.quit()
  
