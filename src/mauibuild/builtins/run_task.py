@@ -1,5 +1,5 @@
 # vim: et:ts=4:sw=4
-# Copyright (C) 2013 Pier Luigi Fiorini <pierluigi.fiorini@gmail.com>
+# Copyright (C) 2013-2014 Pier Luigi Fiorini <pierluigi.fiorini@gmail.com>
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -20,12 +20,8 @@ import sys, argparse
 
 from .. import builtins
 from .. import taskset
-from ..tasks import bdiff
-from ..tasks import builddisks
-from ..tasks import buildlive
 from ..tasks import build
 from ..tasks import resolve
-from ..tasks import zdisks
 
 class BuiltinRunTask(builtins.Builtin):
     name = "run-task"

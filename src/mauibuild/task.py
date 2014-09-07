@@ -1,5 +1,5 @@
 # vim: et:ts=4:sw=4
-# Copyright (C) 2012-2013 Pier Luigi Fiorini <pierluigi.fiorini@gmail.com>
+# Copyright (C) 2012-2014 Pier Luigi Fiorini <pierluigi.fiorini@gmail.com>
 # Copyright (C) 2012-2013 Colin Walters <walters@verbum.org>
 #
 # This library is free software; you can redistribute it and/or
@@ -22,7 +22,7 @@ import __builtin__
 from multiprocessing import cpu_count
 from gi.repository import GLib, GObject
 
-from . import buildutil
+from . import miscutil
 from . import jsondb
 from . import jsonutil
 from . import timeutil
@@ -196,10 +196,6 @@ class TaskDef(GObject.GObject):
         self.subparser = builtin.subparsers.add_parser(self.name, add_help=False)
         self.argv = argv
 
-        self._linux_user_chroot_path = buildutil.find_user_chroot_path()
-        if not self._linux_user_chroot_path:
-            self.logger.fatal("You must have linux-user-chroot installed!")
-
     def get_depends(self):
         return []
 
@@ -210,9 +206,9 @@ class TaskDef(GObject.GObject):
         if self.taskmaster is not None:
             self.workdir = os.path.realpath(os.path.join(self.taskmaster.path, os.pardir))
         else:
-            self.workdir = os.environ["_OSTBUILD_WORKDIR"]
+            self.workdir = os.environ["_MAUIBUILD_WORKDIR"]
 
-        buildutil.check_is_work_directory(self.workdir)
+        miscutil.check_is_work_directory(self.workdir)
 
         self.resultdir = os.path.join(self.workdir, "results")
         if not os.path.isdir(self.resultdir):
@@ -220,9 +216,12 @@ class TaskDef(GObject.GObject):
         self.mirrordir = os.path.join(self.workdir, "src")
         if not os.path.isdir(self.mirrordir):
             os.makedirs(self.mirrordir)
-        self.cachedir = os.path.join(self.workdir, "cache", "raw")
+        self.cachedir = os.path.join(self.workdir, "cache")
         if not os.path.isdir(self.cachedir):
             os.makedirs(self.cachedir)
+        self.publishdir = os.path.join(self.workdir, "publish")
+        if not os.path.isdir(self.publishdir):
+            os.makedirs(self.publishdir)
         self.libdir = __builtin__.__dict__["LIBDIR"]
         self.libexecdir = __builtin__.__dict__["LIBEXECDIR"]
         self.repo = os.path.join(self.workdir, "repo")
@@ -243,7 +242,7 @@ class TaskDef(GObject.GObject):
                     continue
                 if subdir not in results:
                     results.append(subdir)
-        results.sort(cmp=buildutil.compare_versions)
+        results.sort(cmp=miscutil.compare_versions)
         return results
 
     def _clean_old_versions(self, path, retain):
@@ -267,7 +266,7 @@ class TaskDef(GObject.GObject):
         def cmp(a, b):
             (success_a, version_a) = a
             (success_b, version_b) = b
-            return buildutil.compare_versions(version_a, version_b)
+            return miscutil.compare_versions(version_a, version_b)
         all_versions.sort(cmp=cmp)
         return all_versions
 
@@ -316,7 +315,7 @@ class TaskDef(GObject.GObject):
         if len(self.argv) > 0:
             base_args.extend(["--",] + self.argv)
         env_copy = os.environ.copy()
-        env_copy["_OSTBUILD_WORKDIR"] = self.workdir
+        env_copy["_MAUIBUILD_WORKDIR"] = self.workdir
         out_path = os.path.join(self._workdir, "output.txt")
         if self.verbose:
             stdout = fileutil.TeeStream(out_path, "w")
@@ -347,9 +346,11 @@ class TaskDef(GObject.GObject):
 
         elapsed_millis = (timeutil.monotonic_time() * 1000.) - self._start_time_millis
         meta = {"task-meta-version": 0, "task-version": self._version,
-            "success": success, "errmsg": errmsg, "elapsed-millis": elapsed_millis}
+            "success": success, "errmsg": errmsg,
+            "elapsed-millis": elapsed_millis, "published": False}
         jsonutil.write_json_file_atomic(os.path.join(self._workdir, "meta.json"), meta)
 
+        # Move task results to either successful or failure directory
         if success:
             target = os.path.join(self._success_dir, self._version)
             if os.path.exists(target):
@@ -372,4 +373,4 @@ class TaskDef(GObject.GObject):
 
         self._update_index()
 
-        buildutil.atomic_symlink_swap(os.path.join(self.dir, "current"), target)
+        miscutil.atomic_symlink_swap(os.path.join(self.dir, "current"), target)

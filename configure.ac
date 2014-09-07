@@ -45,8 +45,6 @@ fi
 
 AC_CONFIG_FILES([
 Makefile
-data/Makefile
-data/polkit/Makefile
 doc/Makefile
 ])
 AC_OUTPUT

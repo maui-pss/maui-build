@@ -1,5 +1,5 @@
 # vim: et:ts=4:sw=4
-# Copyright (C) 2013 Pier Luigi Fiorini <pierluigi.fiorini@gmail.com>
+# Copyright (C) 2013-2014 Pier Luigi Fiorini <pierluigi.fiorini@gmail.com>
 # Copyright (C) 2012-2013 Colin Walters <walters@verbum.org>
 #
 # This library is free software; you can redistribute it and/or
@@ -22,12 +22,9 @@ import os, sys, argparse
 from .. import builtins
 from .. import taskset
 from ..task import TaskMaster
-from ..tasks import bdiff
-from ..tasks import builddisks
-from ..tasks import buildlive
 from ..tasks import build
 from ..tasks import resolve
-from ..tasks import zdisks
+from ..tasks import publish
 from ..logger import Logger
 from ..subprocess_helpers import run_sync
 

@@ -24,37 +24,20 @@ mauibuild: src/mauibuild.in Makefile
 	    -e s,@PYTHON\@,$(PYTHON), \
 	    $< > $@.tmp && mv $@.tmp $@
 
-mauibuild-compile-one: src/mauibuild-compile-one.in Makefile
-	sed -e s,@libdir\@,$(libdir), \
-	    -e s,@libexecdir\@,$(libexecdir), \
-	    -e s,@datarootdir\@,$(datarootdir), \
-	    -e s,@pkgdatadir\@,$(pkgdatadir), \
-	    -e s,@PYTHON\@,$(PYTHON), \
-	    $< > $@.tmp && mv $@.tmp $@
-EXTRA_DIST += src/mauibuild.in src/mauibuild-compile-one.in
+EXTRA_DIST += src/mauibuild.in
 
 bin_SCRIPTS += mauibuild
-
-utilsdir = $(libexecdir)
-utils_SCRIPTS =						\
-	mauibuild-compile-one				\
-	src/mauibuild-build-yocto			\
-	src/mauibuild-image-pull-deploy			\
-	src/mauibuild-mkefiboot				\
-	$(NULL)
 
 mauibuilddir=$(libdir)/mauibuild
 mauibuild_PYTHON =					\
 	src/mauibuild/__init__.py			\
-	src/mauibuild/buildutil.py			\
+	src/mauibuild/miscutil.py			\
 	src/mauibuild/filemonitor.py			\
 	src/mauibuild/task.py				\
 	src/mauibuild/taskset.py			\
 	src/mauibuild/fileutil.py			\
-	src/mauibuild/guestfish.py			\
 	src/mauibuild/jsondb.py				\
 	src/mauibuild/jsonutil.py			\
-	src/mauibuild/libqa.py				\
 	src/mauibuild/logger.py				\
 	src/mauibuild/main.py				\
 	src/mauibuild/mainloop.py			\
@@ -69,30 +52,15 @@ mauibuild_PYTHON =					\
 mauibuildbuiltinsdir=$(mauibuilddir)/builtins
 mauibuildbuiltins_PYTHON =				\
 	src/mauibuild/builtins/__init__.py		\
-	src/mauibuild/builtins/checkout.py		\
 	src/mauibuild/builtins/git_mirror.py		\
 	src/mauibuild/builtins/make.py			\
-	src/mauibuild/builtins/qa_make_disk.py		\
 	src/mauibuild/builtins/run_task.py		\
-	$(NULL)
-
-mauibuildbuildsystemsdir=$(mauibuilddir)/buildsystems
-mauibuildbuildsystems_PYTHON =				\
-	src/mauibuild/buildsystems/__init__.py		\
-	src/mauibuild/buildsystems/buildapi.py		\
-	src/mauibuild/buildsystems/cmake.py		\
-	src/mauibuild/buildsystems/make.py		\
-	src/mauibuild/buildsystems/qmake.py		\
 	$(NULL)
 
 mauibuildtasksdir=$(mauibuilddir)/tasks
 mauibuildtasks_PYTHON =				\
 	src/mauibuild/tasks/__init__.py		\
-	src/mauibuild/tasks/bdiff.py		\
-	src/mauibuild/tasks/builddisks.py	\
-	src/mauibuild/tasks/buildlive.py	\
 	src/mauibuild/tasks/build.py		\
 	src/mauibuild/tasks/resolve.py		\
-	src/mauibuild/tasks/smoketest.py	\
-	src/mauibuild/tasks/zdisks.py		\
+	src/mauibuild/tasks/publish.py		\
 	$(NULL)

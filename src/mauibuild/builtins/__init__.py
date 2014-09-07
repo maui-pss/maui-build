@@ -1,5 +1,5 @@
 # vim: et:ts=4:sw=4
-# Copyright (C) 2012-2013 Pier Luigi Fiorini <pierluigi.fiorini@gmail.com>
+# Copyright (C) 2012-2014 Pier Luigi Fiorini <pierluigi.fiorini@gmail.com>
 # Copyright (C) 2011 Colin Walters <walters@verbum.org>
 #
 # This library is free software; you can redistribute it and/or
@@ -20,12 +20,11 @@
 import os, sys, stat, argparse, json, types
 import __builtin__
 
-from .. import buildutil
+from .. import miscutil
 from .. import fileutil
 from .. import jsonutil
 from .. import jsondb
 from ..logger import Logger
-from ..snapshot import Snapshot
 from ..subprocess_helpers import run_sync, run_sync_get_output
 
 _all_builtins = {}
@@ -48,14 +47,12 @@ class Builtin(object):
         if workdir is None:
             workdir = os.getcwd()
 
-        buildutil.check_is_work_directory(workdir)
+        miscutil.check_is_work_directory(workdir)
 
         self.workdir = workdir
         self.mirrordir = os.path.join(workdir, "src")
         if not os.path.isdir(self.mirrordir):
             os.makedirs(self.mirrordir)
-        self.patchdir = os.path.join(workdir, "patches")
-        self.supportdir = os.path.join(workdir, "support")
         self.libdir = __builtin__.__dict__["LIBDIR"]
         self.repo = os.path.join(workdir, "repo")
 

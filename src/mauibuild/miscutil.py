@@ -1,5 +1,5 @@
 # vim: et:ts=4:sw=4
-# Copyright (C) 2012-2013 Pier Luigi Fiorini <pierluigi.fiorini@gmail.com>
+# Copyright (C) 2012-2014 Pier Luigi Fiorini <pierluigi.fiorini@gmail.com>
 # Copyright (C) 2011 Colin Walters <walters@verbum.org>
 #
 # This library is free software; you can redistribute it and/or
@@ -20,49 +20,6 @@
 import os, shutil
 
 from .logger import Logger
-
-BUILD_ENV = {
-    'HOME' : '/', 
-    'HOSTNAME' : 'mauibuild',
-    'LANG': 'C',
-    'PATH' : '/usr/bin:/bin:/usr/sbin:/sbin',
-    'SHELL' : '/bin/bash',
-    'TERM' : 'vt100',
-    'TMPDIR' : '/tmp',
-    'TZ': 'EST5EDT'
-    }
-
-def get_patch_paths_for_component(patchdir, component):
-    patches = component.get('patches')
-    if not patches:
-        return []
-    patch_subdir = patches.get('subdir', None)
-    if patch_subdir is not None:
-        sub_patchdir = os.path.join(patchdir, patch_subdir)
-    else:
-        sub_patchdir = patchdir
-    result = []
-    for patch in patches['files']:
-        result.append(os.path.join(sub_patchdir, patch))
-    return result
-
-def find_user_chroot_path():
-    # We need to search PATH here manually so we correctly pick up an
-    # ostree install in e.g. ~/bin even though we're going to set PATH
-    # below for our children inside the chroot.
-    user_chroot_path = None
-    for dirname in os.environ['PATH'].split(':'):
-        path = os.path.join(dirname, 'linux-user-chroot')
-        if os.access(path, os.X_OK):
-            user_chroot_path = path
-            break
-    if user_chroot_path is None:
-        user_chroot_path = 'linux-user-chroot'
-    return user_chroot_path
-
-def get_base_user_chroot_args():
-    path = find_user_chroot_path()
-    return [path, '--unshare-pid', '--unshare-ipc', '--unshare-net']
 
 def compare_versions(a, b):
     adot = a.find(".")

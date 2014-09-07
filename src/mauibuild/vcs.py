@@ -20,7 +20,7 @@
 import os, re, urlparse, shutil, datetime, hashlib
 
 from .subprocess_helpers import run_sync_get_output, run_sync
-from . import buildutil
+from . import miscutil
 from . import fileutil
 from .logger import Logger
 

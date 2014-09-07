@@ -41,7 +41,6 @@ class BuiltinGitMirror(builtins.Builtin):
                                  help="Also do a git fetch for components")
         self.parser.add_argument('-k', '--keep-going', action='store_true',
                                  help="Don't exit on fetch failures")
-        self.parser.add_argument('components', nargs='*')
 
         args = self.parser.parse_args(argv)
 
@@ -54,20 +53,15 @@ class BuiltinGitMirror(builtins.Builtin):
         else:
             self._init_snapshot(None, args.snapshot)
 
-        if len(args.components) == 0:
-            component_names = self._snapshot.get_all_component_names()
-        else:
-            component_names = args.components
+        kickstartermeta = self._snapshot.get_kickstarter_meta()
 
-        for name in component_names:
-            component = self._snapshot.get_component(name)
-            if not args.fetch:
-                vcs.ensure_vcs_mirror(self.mirrordir, component)
-            else:
-                self.logger.info("Running git fetch for \"%s\"" % name)
-                vcs.fetch(self.mirrordir, component,
-                          keep_going=args.keep_going,
-                          timeout_sec=args.timeout_sec)
+        if args.fetch:
+            self.logger.info("Running git fetch for \"%s\"" % kickstartermeta["name"])
+            vcs.fetch(self.mirrordir, kickstartermeta,
+                      keep_going=args.keep_going,
+                      timeout_sec=args.timeout_sec)
+        else:
+            vcs.ensure_vcs_mirror(self.mirrordir, kickstartermeta)
 
         self._loop.quit()
 

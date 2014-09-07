@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # vim: et:ts=4:sw=4
 #
-# Copyright (C) 2012-2013 Pier Luigi Fiorini <pierluigi.fiorini@gmail.com>
+# Copyright (C) 2012-2014 Pier Luigi Fiorini <pierluigi.fiorini@gmail.com>
 # Copyright (C) 2011 Colin Walters <walters@verbum.org>
 #
 # This library is free software; you can redistribute it and/or
@@ -23,10 +23,8 @@ import os, sys, argparse
 from gi.repository import GLib, GObject
 
 from . import builtins
-from builtins import checkout
 from builtins import git_mirror
 from builtins import make
-from builtins import qa_make_disk
 from builtins import run_task
 
 def usage(ecode):

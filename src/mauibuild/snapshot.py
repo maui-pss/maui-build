@@ -1,5 +1,5 @@
 # vim: et:ts=4:sw=4
-# Copyright (C) 2012-2013 Pier Luigi Fiorini <pierluigi.fiorini@gmail.com>
+# Copyright (C) 2012-2014 Pier Luigi Fiorini <pierluigi.fiorini@gmail.com>
 # Copyright (C) 2012 Colin Walters <walters@verbum.org>
 #
 # This library is free software; you can redistribute it and/or
@@ -20,37 +20,23 @@
 import os, sys
 from .logger import Logger
 
-def _component_dict(snapshot):
-    r = {}
-    for component in snapshot['components']:
-        r[component['name']] = component
-    patches = snapshot.get('patches')
-    if patches is not None:
-        r[patches['name']] = patches
-    support = snapshot.get('support')
-    if support is not None:
-        r[support['name']] = support
-    base = snapshot['base']
-    r[base['name']] = base
-    return r
-
 def snapshot_diff(a, b):
-    a_components = _component_dict(a)
-    b_components = _component_dict(b)
+    a_targets = _target_dict(a)
+    b_targets = _target_dict(b)
 
     added = []
     modified = []
     removed = []
 
-    for name in a_components:
-        c_a = a_components[name]
-        c_b = b_components.get(name)
+    for name in a_targets:
+        c_a = a_targets[name]
+        c_b = b_targets.get(name)
         if c_b is None:
             removed.append(name)
-        elif c_a['revision'] != c_b['revision']:
+        elif c_a["revision"] != c_b["revision"]:
             modified.append(name)
-    for name in b_components:
-        if name not in a_components:
+    for name in b_targets:
+        if name not in a_targets:
             added.append(name)
     return (added, modified, removed)
  
@@ -60,28 +46,19 @@ class Snapshot(object):
         self.data = data
         self.path = path
         if prepare_resolve:
-            data["base"] = self._resolve_component(data, data["base"])
-            if "patches" in data:
-                data["patches"] = self._resolve_component(data, data["patches"])
-            if "support" in data:
-                data["support"] = self._resolve_component(data, data["support"])
-            data["components"] = [self._resolve_component(data, component) for component in data["components"]]
-            data["components"] = [component for component in data["components"] if not component.get("disabled", False)]
-        self._dict = _component_dict(data)
-        self._names = []
-        for name in self._dict:
-            self._names.append(name)
+            kickstarter = self._resolve_kickstarter(data, data["kickstarter"])
+            targets = {}
+            for target in data.get("targets"):
+                if not target.get("disabled", False):
+                    targets[target["name"]] = target
+            self.data["kickstarter"] = kickstarter
+            self.data["targets"] = targets
+        self._names = self.data["targets"].keys()
 
-    def _resolve_component(self, manifest, component_meta):
-        result = dict(component_meta)
-        orig_src = component_meta["src"]
-        name = component_meta.get("name")
-
-        if orig_src.startswith("tarball:"):
-            if not name:
-                self.logger.fatal("Component src %s has no name attribute" % orig_src)
-            if not component_meta.get("checksum"):
-                self.logger.fatal("Component src %s has no checksum attribute" % orig_src)
+    def _resolve_kickstarter(self, manifest, kickstartermeta):
+        result = dict(kickstartermeta)
+        orig_src = kickstartermeta["src"]
+        name = kickstartermeta.get("name")
 
         did_expand = False
         vcs_config = manifest["vcsconfig"]
@@ -114,39 +91,15 @@ class Snapshot(object):
 
         return result
 
-    def _expand_component(self, component):
-        meta = dict(component)
-        patch_meta = self.data.get('patches')
-        if patch_meta is not None:
-            component_patch_files = component.get('patches', [])
-            if len(component_patch_files) > 0:
-                patches = dict(patch_meta)
-                patches['files'] = component_patch_files
-                meta['patches'] = patches
-        meta['default-config-opts'] = dict(self.data.get("default-config-opts", {}))
-        meta['config-opts'] = list(component.get("config-opts", []))
-        return meta
+    def get_kickstarter_meta(self):
+        return self.data["kickstarter"]
 
-    def get_all_component_names(self):
+    def get_all_target_names(self):
         return self._names
 
-    def get_component_map(self):
-        return self._dict
-
-    def get_component(self, name, allow_none=False):
-        if not self._dict.get(name):
+    def get_target(self, name, allow_none=False):
+        if not self.data["targets"].get(name):
             if allow_none:
                 return None
-            self.logger.fatal("No component '%s' in snapshot" % (name, ))
-        return self._dict[name]
-
-    def get_matching_src(self, src, allow_none=False):
-        result = []
-        for name in self._names:
-            component = self.get_component(name)
-            if component['src'] == src:
-                result.append(component)
-        return result
-
-    def get_expanded(self, name):
-        return self._expand_component(self.get_component(name))
+            self.logger.fatal("No target '%s' in snapshot" % (name, ))
+        return self.data["targets"][name]
