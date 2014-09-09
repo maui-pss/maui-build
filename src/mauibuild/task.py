@@ -316,6 +316,7 @@ class TaskDef(GObject.GObject):
             base_args.extend(["--",] + self.argv)
         env_copy = os.environ.copy()
         env_copy["_MAUIBUILD_WORKDIR"] = self.workdir
+        env_copy["_MAUIBUILD_TASK_VERSION"] = self._version
         out_path = os.path.join(self._workdir, "output.txt")
         if self.verbose:
             stdout = fileutil.TeeStream(out_path, "w")

@@ -82,8 +82,8 @@ class BuildMauiProjectOrg(irc.IRCClient):
         self._status_channels = STATUS_CHANNELS
         self._joined_channels = []
         self._last_task_versions = {}
-        self._flood_tasks = ["build"]
-        self._announce_changed_tasks = ["resolve", "publish"]
+        self._flood_tasks = ["resolve"]
+        self._announce_changed_tasks = ["build"]
         self._workdir = os.path.expanduser("%s/%s/" % (WORKDIR, TRACKED_BUILD, ))
         self._workurl = "%s/%s" % (WORKURL, TRACKED_BUILD, )
         self._loop = task.LoopingCall(self._query_new_tasks)

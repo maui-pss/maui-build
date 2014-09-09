@@ -22,7 +22,6 @@ from .. import builtins
 from .. import taskset
 from ..tasks import build
 from ..tasks import resolve
-from ..tasks import publish
 
 class BuiltinRunTask(builtins.Builtin):
     name = "run-task"

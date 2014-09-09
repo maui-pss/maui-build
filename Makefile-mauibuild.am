@@ -62,5 +62,4 @@ mauibuildtasks_PYTHON =				\
 	src/mauibuild/tasks/__init__.py		\
 	src/mauibuild/tasks/build.py		\
 	src/mauibuild/tasks/resolve.py		\
-	src/mauibuild/tasks/publish.py		\
 	$(NULL)

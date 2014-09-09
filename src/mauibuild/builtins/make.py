@@ -24,7 +24,6 @@ from .. import taskset
 from ..task import TaskMaster
 from ..tasks import build
 from ..tasks import resolve
-from ..tasks import publish
 from ..logger import Logger
 from ..subprocess_helpers import run_sync
 

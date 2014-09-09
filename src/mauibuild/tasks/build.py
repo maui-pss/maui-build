@@ -25,7 +25,7 @@ from .. import fileutil
 from .. import vcs
 from ..task import TaskDef
 from ..snapshot import Snapshot
-from ..subprocess_helpers import run_sync
+from ..subprocess_helpers import run_sync, run_sync_get_output
 
 class TaskBuild(TaskDef):
     name = "build"
@@ -109,5 +109,45 @@ class TaskBuild(TaskDef):
             os.unlink(checkoutdir)
         else:
             shutil.rmtree(checkoutdir)
+
+        self._publish(build_workdir, targetmeta["name"])
+
+    def _publish(self, build_workdir, target_name):
+        version = os.environ["_MAUIBUILD_TASK_VERSION"]
+        destdir = os.path.join(self.publishdir, version, target_name)
+        if os.path.exists(destdir):
+            if not os.path.isdir(destdir):
+                self.logger.fatal("Destination directory \"%s\" already exists" % destdir)
+        else:
+            os.makedirs(destdir)
+
+        for filename in os.listdir(build_workdir):
+            srcfilename = os.path.join(build_workdir, filename)
+            dstfilename = os.path.join(destdir, filename)
+
+            try:
+                # Get name and extention
+                name, ext = os.path.splitext(os.path.basename(srcfilename))
+
+                # Move to the publish directory
+                if not (ext == ".ks" and name != target_name):
+                    shutil.move(srcfilename, destdir)
+
+                # Create checksums for some files
+                valid_exts = (".tar", ".gz", ".bz2", ".xz", ".iso", ".raw", ".img")
+                if ext in valid_exts:
+                    if not os.path.exists(dstfilename + ".md5"):
+                        md5sum = run_sync_get_output(["md5sum", filename], cwd=destdir)
+                        self._write_file(dstfilename + ".md5", md5sum)
+                    if not os.path.exists(dstfilename + ".sha256"):
+                        sha256sum = run_sync_get_output(["sha256sum", filename], cwd=destdir)
+                        self._write_file(dstfilename + ".sha256", sha256sum)
+            except Exception, e:
+                self.logger.fatal(unicode(e))
+
+    def _write_file(self, filename, text):
+        f = open(filename, "w")
+        f.write(text)
+        f.close()
 
 taskset.register(TaskBuild)
