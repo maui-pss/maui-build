@@ -142,7 +142,10 @@ class BuildMauiProjectOrg(irc.IRCClient):
         msg = u"%s: %s in %.1f seconds. %s " \
               % (taskname, success_str, millis / 1000.0, metadata["errmsg"] or "")
 
-        msg += "%s/tasks/%s/%s/%s/output.txt" % (self._workurl, taskname, success_str, taskver)
+        if success and taskname == "build":
+            msg += "%s/publish/%s" % (self._workurl, taskver)
+        elif not success:
+            msg += "%s/tasks/%s/%s/%s/output.txt" % (self._workurl, taskname, success_str, taskver)
 
         if not success:
             msg = mirc_color(RED, msg)
