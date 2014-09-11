@@ -204,6 +204,13 @@ class BuildMauiProjectOrg(irc.IRCClient):
             for taskname in itertools.chain(self._flood_tasks, self._announce_changed_tasks):
                 status = self._buildstatus_for_task(taskname)
                 self._msg_unicode(channel, status)
+        elif message[:8] == "@promote":
+            args = message[:9].split(" ")
+            if len(args) != 2:
+                self._msg_unicode(channel, mirc_color(RED, "Usage: @promote <task version> <release>"))
+                self._msg_unicode(channel, mirc_color(RED, "Example: @promote 20140909.9 0.5.2"))
+                return
+            #mauibuild make -n promote --task-version args[0] --release args[1]
 
 class BuildMauiProjectOrgFactory(protocol.ReconnectingClientFactory):
     protocol = BuildMauiProjectOrg
