@@ -193,10 +193,25 @@ class BuildMauiProjectOrg(irc.IRCClient):
         self._msg_unicode(channel, "  * help        - Prints the list of commands")
         self._msg_unicode(channel, "  * buildstatus - Last build status")
         self._msg_unicode(channel, "  * build       - Run a build (fails if another build is running)")
+        self._msg_unicode(channel, "  * promote     - Promote a build task to an actual release")
+
+    def _help_command(self, channel, command):
+        if command == "help":
+            self._print_help(channel)
+        elif command == "buildstatus":
+            self._msg_unicode(channel, mirc_color(RED, "Usage: @buildstatus")
+        elif command == "build":
+            self._msg_unicode(channel, mirc_color(RED, "Usage: @build")
+        elif command == "promote":
+            self._msg_unicode(channel, mirc_color(RED, "Usage: @promote <task version> <release>"))
+            self._msg_unicode(channel, mirc_color(RED, "Example: @promote 20140909.9 0.5.2"))
 
     def privmsg(self, user, channel, message):
         message = message.strip()
-        if message == "@help":
+        if message[:5] == "@help":
+            help_cmd = message[6:]
+            if help_cmd != "":
+                return self._help_command(channel, help_cmd)
             self._print_help(channel)
         elif message == "@buildstatus":
             if len(self._errors) > 0:
@@ -214,9 +229,7 @@ class BuildMauiProjectOrg(irc.IRCClient):
         elif message[:8] == "@promote":
             args = message[:9].split(" ")
             if len(args) != 2:
-                self._msg_unicode(channel, mirc_color(RED, "Usage: @promote <task version> <release>"))
-                self._msg_unicode(channel, mirc_color(RED, "Example: @promote 20140909.9 0.5.2"))
-                return
+                return self._help_command(channel, "promote")
             cmd = "%s make -n promote --task-version %s --release %s" % (MAUIBUILD, args[0], args[1])
             subprocess.call(cmd, shell=True, cwd=self._workdir)
 
