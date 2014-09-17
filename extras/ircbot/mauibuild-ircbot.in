@@ -192,6 +192,7 @@ class BuildMauiProjectOrg(irc.IRCClient):
         self._msg_unicode(channel, "Commands:")
         self._msg_unicode(channel, "  * help        - Prints the list of commands")
         self._msg_unicode(channel, "  * buildstatus - Last build status")
+        self._msg_unicode(channel, "  * build       - Run a build (fails if another build is running)")
 
     def privmsg(self, user, channel, message):
         message = message.strip()
@@ -207,6 +208,9 @@ class BuildMauiProjectOrg(irc.IRCClient):
             for taskname in itertools.chain(self._flood_tasks, self._announce_changed_tasks):
                 status = self._buildstatus_for_task(taskname)
                 self._msg_unicode(channel, status)
+        elif message[:8] == "@build":
+            cmd = "%s make -n build -u" % (MAUIBUILD, )
+            subprocess.call(cmd, shell=True, cwd=self._workdir)
         elif message[:8] == "@promote":
             args = message[:9].split(" ")
             if len(args) != 2:
