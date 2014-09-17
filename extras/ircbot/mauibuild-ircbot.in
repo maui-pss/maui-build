@@ -35,6 +35,7 @@
 import itertools
 import os
 import json
+import subprocess
 import ConfigParser
 
 from twisted.internet import protocol, task
@@ -212,7 +213,8 @@ class BuildMauiProjectOrg(irc.IRCClient):
                 self._msg_unicode(channel, mirc_color(RED, "Usage: @promote <task version> <release>"))
                 self._msg_unicode(channel, mirc_color(RED, "Example: @promote 20140909.9 0.5.2"))
                 return
-            #mauibuild make -n promote --task-version args[0] --release args[1]
+            cmd = "%s make -n promote --task-version %s --release %s" % (MAUIBUILD, args[0], args[1])
+            subprocess.call(cmd, shell=True, cwd=self._workdir)
 
 class BuildMauiProjectOrgFactory(protocol.ReconnectingClientFactory):
     protocol = BuildMauiProjectOrg
