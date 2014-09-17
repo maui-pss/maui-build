@@ -224,8 +224,9 @@ class BuildMauiProjectOrg(irc.IRCClient):
                 status = self._buildstatus_for_task(taskname)
                 self._msg_unicode(channel, status)
         elif message[:8] == "@build":
-            cmd = "%s make -n build -u" % (MAUIBUILD, )
-            subprocess.call(cmd, shell=True, cwd=self._workdir)
+            for task in ("resolve", "build"):
+                cmd = "%s make -n %s -u" % (MAUIBUILD, task)
+                subprocess.call(cmd, shell=True, cwd=self._workdir)
         elif message[:8] == "@promote":
             args = message[:9].split(" ")
             if len(args) != 2:
