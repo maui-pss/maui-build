@@ -45,6 +45,8 @@ from twisted.python import log
 def mirc_color(code, S):
     return "\x03%d%s\x03" % (code, S)
 
+MAUIBUILD = "@bindir@/mauibuild"
+
 GREEN = 3
 RED = 4
 

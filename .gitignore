@@ -1,4 +1,5 @@
 Makefile*
+!Makefile-ircbot.am
 !Makefile-mauibuild.am
 !Makefile-tests.am
 !data/Makefile.am
@@ -14,5 +15,7 @@ config.status
 configure
 /mauibuild
 /mauibuild-compile-one
+/mauibuild-ircbot
 /data/polkit/org.maui.mauibuild.policy
 stamp-h1
+twistd.pid
