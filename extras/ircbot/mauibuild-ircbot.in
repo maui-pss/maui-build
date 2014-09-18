@@ -242,13 +242,13 @@ class BuildMauiProjectOrg(irc.IRCClient):
         elif command == "@build":
             for task in ("resolve", "build"):
                 cmd = "%s make -n %s -u" % (MAUIBUILD, task)
-                subprocess.call(cmd, shell=True, cwd=self._workdir)
+                subprocess.Popen(cmd.split(" "), cwd=self._workdir)
         elif message[:8] == "@promote":
             args = message[:9].split(" ")
             if len(args) != 2:
                 return self._help_command(channel, "promote")
             cmd = "%s make -n promote --task-version %s --release %s" % (MAUIBUILD, args[0], args[1])
-            subprocess.call(cmd, shell=True, cwd=self._workdir)
+            subprocess.Popen(cmd.split(" "), cwd=self._workdir)
 
     def privmsg(self, user, channel, message):
         message = message.strip()
