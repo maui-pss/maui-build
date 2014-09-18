@@ -81,6 +81,8 @@ class BuildMauiProjectOrg(irc.IRCClient):
     realname = nickname
 
     def __init__(self):
+        self._users = {}
+        self._protected_commands = ("build", "promote")
         self._flood_channels = FLOOD_CHANNELS
         self._status_channels = STATUS_CHANNELS
         self._joined_channels = []
@@ -106,6 +108,18 @@ class BuildMauiProjectOrg(irc.IRCClient):
     def joined(self, channel):
         if channel not in self._joined_channels:
             self._joined_channels.append(channel)
+
+    def userJoined(self, user, channel):
+        # Save voiced users or operators per channel
+        if not self._users.has_key(channel):
+            self._users[channel] = []
+        if user[:1] in ("+", "@"):
+            self._users[channel].append(user)
+
+    def userLeft(self, user, channel):
+        # Remove the user when leave the channel
+        if self._users.has_key(channel):
+            self._users[channel].remove(user)
 
     def _msg_unicode(self, channel, msg):
         self.msg(channel, msg.encode("utf8"))
@@ -206,14 +220,16 @@ class BuildMauiProjectOrg(irc.IRCClient):
             self._msg_unicode(channel, mirc_color(RED, "Usage: @promote <task version> <release>"))
             self._msg_unicode(channel, mirc_color(RED, "Example: @promote 20140909.9 0.5.2"))
 
-    def privmsg(self, user, channel, message):
-        message = message.strip()
-        if message[:5] == "@help":
-            help_cmd = message[6:]
-            if help_cmd != "":
-                return self._help_command(channel, help_cmd)
+    def _process_command(self, user, channel, command, args):
+        if command in self._protected_commands:
+            if user not in self._users.get(channel, []):
+                self._msg_unicode(channel, mirc_color(RED, "Command %s forbidden for user %s" % (command, user)))
+                return
+        if command == "@help":
+            if args[0]:
+                return self._help_command(channel, args[0])
             self._print_help(channel)
-        elif message == "@buildstatus":
+        elif command == "@buildstatus":
             if len(self._errors) > 0:
                 self._msg_unicode(channel, "No information available, something bad has happened:")
                 for error in self._errors:
@@ -223,7 +239,7 @@ class BuildMauiProjectOrg(irc.IRCClient):
             for taskname in itertools.chain(self._flood_tasks, self._announce_changed_tasks):
                 status = self._buildstatus_for_task(taskname)
                 self._msg_unicode(channel, status)
-        elif message[:8] == "@build":
+        elif command == "@build":
             for task in ("resolve", "build"):
                 cmd = "%s make -n %s -u" % (MAUIBUILD, task)
                 subprocess.call(cmd, shell=True, cwd=self._workdir)
@@ -233,6 +249,22 @@ class BuildMauiProjectOrg(irc.IRCClient):
                 return self._help_command(channel, "promote")
             cmd = "%s make -n promote --task-version %s --release %s" % (MAUIBUILD, args[0], args[1])
             subprocess.call(cmd, shell=True, cwd=self._workdir)
+
+    def privmsg(self, user, channel, message):
+        message = message.strip()
+        command = None
+        args = []
+        if message[:5] == "@help":
+            command = message[:5]
+            args = message[6:].split(" ")
+        elif message == "@buildstatus":
+            command = message
+        elif message == "@build":
+            command = message
+        elif message[:8] == "@promote":
+            command = message[:8]
+            args = message[:9].split(" ")
+        self._process_command(user, channel, command, args)
 
 class BuildMauiProjectOrgFactory(protocol.ReconnectingClientFactory):
     protocol = BuildMauiProjectOrg
