@@ -213,9 +213,9 @@ class BuildMauiProjectOrg(irc.IRCClient):
         if command == "help":
             self._print_help(channel)
         elif command == "buildstatus":
-            self._msg_unicode(channel, mirc_color(RED, "Usage: @buildstatus")
+            self._msg_unicode(channel, mirc_color(RED, "Usage: @buildstatus"))
         elif command == "build":
-            self._msg_unicode(channel, mirc_color(RED, "Usage: @build")
+            self._msg_unicode(channel, mirc_color(RED, "Usage: @build"))
         elif command == "promote":
             self._msg_unicode(channel, mirc_color(RED, "Usage: @promote <task version> <release>"))
             self._msg_unicode(channel, mirc_color(RED, "Example: @promote 20140909.9 0.5.2"))
