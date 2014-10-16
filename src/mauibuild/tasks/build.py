@@ -74,8 +74,8 @@ class TaskBuild(TaskDef):
         kickstartermeta = self._snapshot.data["kickstarter"]
         sdkmeta = self._snapshot.data["sdk"]
 
-        build_workdir = os.path.join(self.subworkdir, "build-" + targetmeta["name"])
-        checkoutdir = os.path.join(build_workdir, kickstartermeta["name"])
+        build_workdir = os.path.join(self.subworkdir, targetmeta["name"])
+        checkoutdir = os.path.join(self.subworkdir, kickstartermeta["name"])
 
         if targetmeta.get("cache"):
             cachedir = os.path.join(self.cachedir, targetmeta["cache"])
@@ -95,12 +95,11 @@ class TaskBuild(TaskDef):
         # Create kickstart files
         cmd = [sdkmeta["chroot"], "cd", "/parentroot/" + checkoutdir, ";",
                "maui-kickstarter", "-e", ".",
-               "-c", targetmeta["config"],
-               "-o", "/parentroot/" + build_workdir]
+               "-c", targetmeta["config"]]
         run_sync(cmd)
 
         # Run build
-        cmd = [sdkmeta["chroot"], "cd", "/parentroot/" + build_workdir, ";",
+        cmd = [sdkmeta["chroot"], "cd", "/parentroot/" + checkoutdir, ";",
                "sudo", "mic", "create", "auto", targetmeta["name"] + ".ks",
                "-k", "/parentroot/" + cachedir]
         run_sync(cmd)
