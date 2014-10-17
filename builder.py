@@ -41,10 +41,14 @@ def readconf():
     if not os.path.exists(manifest_filename):
         logger.fatal("Please provide \"maui-build.json\" manifest!")
 
+    logger.info("Reading manifest from \"%s\"" % manifest_filename)
     data = None
-    with open(manifest_filename, "r") as f:
-        data = json.loads(f.read())
-        f.close()
+    try:
+        with open(manifest_filename, "r") as f:
+            data = json.loads(f.read())
+            f.close()
+    except:
+        pass
 
     return data
 
