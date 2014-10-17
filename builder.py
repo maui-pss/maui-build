@@ -39,6 +39,7 @@ def readconf():
         print >> sys.stderr, "Please provide \"maui-build.json\" manifest!"
         sys.exit(1)
 
+    data = None
     with open(manifest_filename, "r") as f:
         data = json.loads(f.read())
         f.close()
@@ -96,6 +97,9 @@ def build(targets, sdk_cmd, sources_dir, build_dir):
 def main():
     # Read configuration and take a dictionary
     data = readconf()
+    if not data:
+        print >> sys.stderr, "No valid configuration found"
+        sys.exit(1)
 
     # Paths
     sources_dir = os.path.expanduser(data["paths"]["sources"])
