@@ -25,8 +25,11 @@ import json
 import shutil
 import datetime
 
+from builderlib.logger import Logger
 from builderlib.subprocess_helpers import *
 from builderlib.fileutil import ensure_parent_dir
+
+logger = Logger()
 
 def chown(path):
     s = "%d:%d" % (os.getuid(), os.getgid())
@@ -36,8 +39,7 @@ def readconf():
     script_dir = os.path.realpath(os.path.dirname(sys.argv[0]))
     manifest_filename = os.path.join(script_dir, "maui-build.json")
     if not os.path.exists(manifest_filename):
-        print >> sys.stderr, "Please provide \"maui-build.json\" manifest!"
-        sys.exit(1)
+        logger.fatal("Please provide \"maui-build.json\" manifest!")
 
     data = None
     with open(manifest_filename, "r") as f:
@@ -98,8 +100,7 @@ def main():
     # Read configuration and take a dictionary
     data = readconf()
     if not data:
-        print >> sys.stderr, "No valid configuration found"
-        sys.exit(1)
+        logger.fatal("No valid configuration found")
 
     # Paths
     sources_dir = os.path.expanduser(data["paths"]["sources"])
