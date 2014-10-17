@@ -1,0 +1,55 @@
+{
+    "00mauibuild-manifest-version": 0,
+    "targets": [
+        {
+            "cache": "x86",
+            "config": "releases/maui-latest-devel.yaml",
+            "disabled": true,
+            "name": "maui-x86"
+        },
+        {
+            "cache": "x86_64",
+            "config": "releases/maui-latest-devel.yaml",
+            "disabled": true,
+            "name": "maui-x86_64"
+        },
+        {
+            "cache": "x86",
+            "config": "releases/maui-latest-devel.yaml",
+            "disabled": true,
+            "name": "maui-x86-sdk"
+        },
+        {
+            "cache": "armv7hl",
+            "config": "releases/maui-latest-devel.yaml",
+            "disabled": true,
+            "name": "maui-sdk-target-armv7hl"
+        },
+        {
+            "cache": "x86_64",
+            "config": "releases/maui-latest-devel.yaml",
+            "disabled": true,
+            "name": "maui-x86_64-sdk"
+        },
+        {
+            "cache": "x86",
+            "config": "releases/maui-latest-devel.yaml",
+            "disabled": true,
+            "name": "maui-x86-livecd"
+        },
+        {
+            "cache": "x86_64",
+            "config": "releases/maui-latest-devel.yaml",
+            "disabled": true,
+            "name": "maui-x86_64-livecd"
+        }
+    ],
+    "paths": {
+        "sources": "~/maui-kickstarter-configs",
+        "buildroot": "/srv/builds/latest",
+        "publish": "/var/www/domains/build.maui-project.org/snapshots"
+    },
+    "sdk": {
+        "chroot": "/srv/mer/sdks/sdk/mer-sdk-chroot"
+    }
+}
